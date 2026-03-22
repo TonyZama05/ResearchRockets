@@ -566,17 +566,23 @@ function calcMetrics(){
   const efectivo=Math.max(0,S.capitalInicial-costoTotal)+divTotal;
   const totalFondo=valPort+efectivo;
   const rendAcum=S.capitalInicial>0?(totalFondo-S.capitalInicial)/S.capitalInicial*100:0;
-  const last=S.snapshots[S.snapshots.length-1];
-  const rendBench=S.benchmarkInicial>0&&last?.valorBench>0?(last.valorBench-S.benchmarkInicial)/S.benchmarkInicial*100:0;
-  const snaps=S.snapshots;
+  // Benchmark acumulado desde historial (no depende de snapshots)
+  const hist_pre=buildHistorical();
+  const lastHist=hist_pre.length?hist_pre[hist_pre.length-1]:null;
+  const rendBench=lastHist?.rendBench!=null?lastHist.rendBench:
+    (S.benchmarkInicial>0&&localPrice('MEXTRAC09')>0?
+      (localPrice('MEXTRAC09')-S.benchmarkInicial)/S.benchmarkInicial*100:0);
+  // Rendimiento semanal (últimos 5 días hábiles del historial)
   let rSem=0,rbSem=0;
-  if(snaps.length>=2){
-    const p=snaps[Math.max(0,snaps.length-6)],c=snaps[snaps.length-1];
-    if(p.valorPortafolio>0)rSem=(c.valorPortafolio-p.valorPortafolio)/p.valorPortafolio*100;
-    if(p.valorBench>0&&c.valorBench>0)rbSem=(c.valorBench-p.valorBench)/p.valorBench*100;
+  if(hist_pre.length>=2){
+    const wStart=hist_pre[Math.max(0,hist_pre.length-6)];
+    const wEnd=hist_pre[hist_pre.length-1];
+    if(wStart.totalFondo>0)rSem=(wEnd.totalFondo-wStart.totalFondo)/wStart.totalFondo*100;
+    if(wStart.mexPrice&&wEnd.mexPrice&&wStart.mexPrice>0)
+      rbSem=(wEnd.mexPrice-wStart.mexPrice)/wStart.mexPrice*100;
   }
   let stdDev=0,te=0,beta=1,ir=0,varH=0;
-  const hist=buildHistorical();
+  const hist=hist_pre;
   if(hist.length>=3){
     const rd=[],rb=[];
     for(let i=1;i<hist.length;i++){
