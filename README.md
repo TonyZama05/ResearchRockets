@@ -11,7 +11,7 @@
 ### 1. Crear el repositorio en GitHub
 
 ```bash
-git clone https://github.com/[tu-usuario]/research-rockets.git
+git clone https://github.com/[TonyZama05]/research-rockets.git
 cd research-rockets
 # Copia los archivos de este repo aquí
 git add .
