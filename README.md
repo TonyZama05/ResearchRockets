@@ -2,7 +2,7 @@
 
 **Sistema de Seguimiento de Operaciones** para el Fondo BBVA de la Clínica de Inversión, Tec de Monterrey.
 
-**URL del equipo:** `https://[tu-usuario].github.io/research-rockets/`
+**URL del equipo:** `https://[TonyZama05].github.io/research-rockets/`
 
 ---
 
