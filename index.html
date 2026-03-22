@@ -997,7 +997,7 @@ function pgRendimiento(){
   </div>
   <div class="card">
     <div class="sec-h"><div class="sec-h-bar"></div><div class="sec-h-text">Evolución diaria desde primera orden</div></div>
-    <canvas id="rend-chart" height="70"></canvas>
+    <canvas id="rend-chart" height="45"></canvas>
   </div>
   <div class="card">
     <div class="sec-h"><div class="sec-h-bar"></div><div class="sec-h-text">Resumen semanal</div></div>
@@ -1052,17 +1052,19 @@ function initRendChart(){
   const labels=hist.map(h=>h.date);
   const portData=hist.map(h=>+h.rendAcum.toFixed(2));
   const benchData=hist.map(h=>h.rendBench!=null?+h.rendBench.toFixed(2):null);
+  ctx.parentElement.style.height='320px';ctx.style.height='320px';
   const chart=new Chart(ctx,{
     type:'line',
     data:{labels,datasets:[
       {label:'Research Rockets',data:portData,borderColor:'#0C4A6E',backgroundColor:'rgba(12,74,110,.06)',borderWidth:2.5,pointRadius:0,tension:.3,fill:true},
       {label:'MEXTRACK',data:benchData,borderColor:'#5B21B6',backgroundColor:'transparent',borderWidth:1.5,pointRadius:0,tension:.3,borderDash:[4,3],fill:false,spanGaps:true}
     ]},
-    options:{responsive:true,maintainAspectRatio:true,interaction:{mode:'index',intersect:false},
+    options:{responsive:true,maintainAspectRatio:false,interaction:{mode:'index',intersect:false},
       plugins:{legend:{labels:{color:'#475467',font:{size:12,family:'Geist'}}},
         tooltip:{backgroundColor:'#fff',titleColor:'#101828',bodyColor:'#475467',borderColor:'#E4E7EC',borderWidth:1,padding:10}},
       scales:{x:{ticks:{color:'#98A2B3',font:{size:11},maxTicksLimit:10},grid:{color:'rgba(0,0,0,.04)'}},
-              y:{ticks:{color:'#98A2B3',font:{size:11},callback:v=>v.toFixed(1)+'%'},grid:{color:'rgba(0,0,0,.04)'}}}}
+              y:{ticks:{color:'#98A2B3',font:{size:11},callback:v=>v.toFixed(1)+'%'},grid:{color:'rgba(0,0,0,.04)'},
+                 grace:'10%'}}}
   });
   chartInst.push(chart);
 }
