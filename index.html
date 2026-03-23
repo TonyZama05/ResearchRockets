@@ -137,7 +137,7 @@ textarea{font-family:var(--sans);resize:vertical;font-size:13px}
 .tabs{display:flex;gap:0;border-bottom:2px solid var(--line);margin-bottom:16px}
 .tab-btn{padding:8px 16px;font-size:13px;font-weight:500;color:var(--txt3);cursor:pointer;border:none;background:none;border-bottom:2px solid transparent;margin-bottom:-2px;transition:all .12s;font-family:var(--sans)}
 .tab-btn:hover{color:var(--txt)}.tab-btn.active{color:var(--accent);border-bottom-color:var(--accent)}
-#treemap{width:100%;height:220px;position:relative;overflow:hidden;border-radius:var(--r)}
+#treemap{width:100%;height:100%;min-height:240px;position:relative;overflow:hidden;border-radius:var(--r)}
 .tm-cell{position:absolute;display:flex;flex-direction:column;align-items:center;justify-content:center;border-radius:3px;cursor:default;overflow:hidden;transition:filter .15s;border:2px solid var(--bg2)}
 .tm-cell:hover{filter:brightness(1.08);z-index:5}
 .tm-tick{font-weight:700;color:#fff;text-shadow:0 1px 3px rgba(0,0,0,.3);pointer-events:none}
@@ -1245,32 +1245,33 @@ function filtrarUniverso(filtro){
 // ── ANALYTICS ──────────────────────────────────────────────────────────────
 function pgAnalytics(){
   const m=calcMetrics();
-  const hist=m.hist;
+  const firstOrderDate=S.ordenes.length?S.ordenes.reduce((mn,o)=>o.fecha<mn?o.fecha:mn,S.ordenes[0].fecha):null;
   return`
-  <div class="sg2">
-    <div class="card">
+  <div style="display:grid;grid-template-columns:1fr 1fr;gap:14px">
+    <div class="card" style="display:flex;flex-direction:column">
       <div class="sec-h"><div class="sec-h-bar"></div><div class="sec-h-text">Valor portafolio vs MEXTRACK (relativo)</div></div>
-      <canvas id="perf-chart" height="100"></canvas>
+      <div style="flex:1;min-height:280px;position:relative"><canvas id="perf-chart" style="position:absolute;inset:0;width:100%!important;height:100%!important"></canvas></div>
     </div>
-    <div class="card">
+    <div class="card" style="display:flex;flex-direction:column">
       <div class="sec-h"><div class="sec-h-bar"></div><div class="sec-h-text">Rendimiento acumulado %</div></div>
-      <canvas id="rend-chart2" height="100"></canvas>
+      <div style="flex:1;min-height:280px;position:relative"><canvas id="rend-chart2" style="position:absolute;inset:0;width:100%!important;height:100%!important"></canvas></div>
     </div>
   </div>
-  <div class="sg2">
-    <div class="card">
+  <div style="display:grid;grid-template-columns:1fr 1fr;gap:14px">
+    <div class="card" style="display:flex;flex-direction:column">
       <div class="sec-h"><div class="sec-h-bar"></div><div class="sec-h-text">P&L diario</div></div>
-      <canvas id="pnl-chart" height="100"></canvas>
+      <div style="flex:1;min-height:260px;position:relative"><canvas id="pnl-chart" style="position:absolute;inset:0;width:100%!important;height:100%!important"></canvas></div>
     </div>
-    <div class="card">
+    <div class="card" style="display:flex;flex-direction:column">
       <div class="sec-h"><div class="sec-h-bar"></div><div class="sec-h-text">Holdings — treemap de rendimiento</div>
         <select id="tm-period" onchange="renderTreemap()" style="width:auto;padding:4px 8px;font-size:11px;margin-left:auto">
           <option value="all">Total (YTD)</option>
+          <option value="order">Desde 1ª orden ${firstOrderDate?'('+firstOrderDate+')':''}</option>
           <option value="1m">1 mes</option>
           <option value="1w">1 semana</option>
         </select>
       </div>
-      <div id="treemap"></div>
+      <div id="treemap" style="flex:1;min-height:260px"></div>
     </div>
   </div>`;
 }
@@ -1305,11 +1306,12 @@ function initCharts(){
 }
 
 function chartOpts(unit,legend=true){
-  return{responsive:true,maintainAspectRatio:true,interaction:{mode:'index',intersect:false},
+  return{responsive:true,maintainAspectRatio:false,interaction:{mode:'index',intersect:false},
     plugins:{legend:{display:legend,labels:{color:'#475467',font:{size:11,family:'Geist'}}},
       tooltip:{backgroundColor:'#fff',titleColor:'#101828',bodyColor:'#475467',borderColor:'#E4E7EC',borderWidth:1,padding:10}},
     scales:{x:{ticks:{color:'#98A2B3',font:{size:10},maxTicksLimit:10},grid:{color:'rgba(0,0,0,.03)'}},
-      y:{ticks:{color:'#98A2B3',font:{size:10},callback:v=>unit==='%'?v.toFixed(1)+'%':'$'+v.toLocaleString('es-MX')},grid:{color:'rgba(0,0,0,.03)'}}}};}
+      y:{ticks:{color:'#98A2B3',font:{size:10},callback:v=>unit==='%'?v.toFixed(1)+'%':'$'+v.toLocaleString('es-MX')},
+         grid:{color:'rgba(0,0,0,.03)'},grace:'8%'}}};}
 
 function renderTreemap(){
   const container=document.getElementById('treemap');if(!container)return;
