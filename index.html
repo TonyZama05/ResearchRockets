@@ -1421,12 +1421,12 @@ function pgConfig(){
     <div class="sec-h"><div class="sec-h-bar"></div><div class="sec-h-text">Parámetros del fondo</div></div>
     <div style="display:flex;flex-direction:column;gap:13px">
       <div class="fg"><label class="fl">Capital inicial ($MXN)</label><input type="number" id="c-cap" value="${S.capitalInicial||''}" placeholder="Monto asignado por BBVA"></div>
-      <div class="fg"><label class="fl">Fecha de inicio de gestión</label><input type="date" id="c-fecha" value="${S.fechaInicio||today()}"></div>
+      <div class="fg"><label class="fl">Fecha de inicio de gestión</label><input type="date" id="c-fecha" value="${(S.fechaInicio||today()).substring(0,10)}"></div>
       <div class="fg"><label class="fl">Precio MEXTRAC09 en fecha de inicio (benchmark base)</label>
         <input type="number" id="c-bench" value="${S.benchmarkInicial||''}" placeholder="Ej: 61.51 (precio ETF al inicio)">
         <div style="font-size:11px;color:var(--txt3);margin-top:3px">Consulta PRECIOS en el archivo → columna MEXTRAC09 → fila de tu fecha de inicio.</div></div>
       <div class="fg"><label class="fl">Comisión default (%)</label><input type="number" id="c-com" value="${S.comisionDefault}" step="0.01"></div>
-      <button class="btn btn-p" onclick="saveConfig()" style="align-self:flex-start">Guardar configuración</button>
+      <button class="btn btn-p" id="cfg-save-btn" onclick="saveConfig()" style="align-self:flex-start">Guardar configuración</button>
     </div>
   </div>
   <div class="card" style="max-width:520px">
@@ -1646,23 +1646,38 @@ function delFlujo(i){if(!confirm('¿Eliminar este flujo?'))return;S.flujos.splic
 // ── CONFIG ────────────────────────────────────────────────────────────────────
 function saveConfig(){
   const cap=parseFloat(document.getElementById('c-cap').value);
+  const fecha=document.getElementById('c-fecha').value;
   const bench=parseFloat(document.getElementById('c-bench').value);
-  if(!cap||cap<=0){alert('Capital inválido.');return;}
-  if(!bench||bench<=0){alert('Precio MEXTRAC09 inválido.');return;}
-  S.capitalInicial=cap;S.fechaInicio=document.getElementById('c-fecha').value;
-  S.benchmarkInicial=bench;S.comisionDefault=parseFloat(document.getElementById('c-com').value)||0.30;
-  // Save Firebase config if provided
+  const com=parseFloat(document.getElementById('c-com').value)||0.30;
+  // Validaciones claras
+  if(!cap||cap<=0){alert('Capital inválido. Ingresa un monto mayor a 0.');return;}
+  if(!fecha){alert('Ingresa la fecha de inicio de gestión.');return;}
+  if(!bench||bench<=0){alert('Precio MEXTRAC09 inválido. Ejemplo: 61.51');return;}
+  // Guardar
+  S.capitalInicial=cap;
+  S.fechaInicio=fecha;
+  S.benchmarkInicial=bench;
+  S.comisionDefault=com;
+  // Firebase
   const fbJson=document.getElementById('c-firebase')?.value?.trim();
   if(fbJson){
     try{
       const cfg=JSON.parse(fbJson);
-      if(cfg.apiKey){
-        fbSave(cfg);
-        initFirebase(cfg);
-      }
-    }catch(e){alert('JSON de Firebase inválido. Revisa el formato.');}
+      if(cfg.apiKey){fbSave(cfg);initFirebase(cfg);}
+    }catch(e){alert('JSON de Firebase inválido. Revisa el formato.');return;}
   }
-  save();go('dashboard');
+  save();
+  // Confirmar sin salir de la página
+  const btn=document.getElementById('cfg-save-btn');
+  if(btn){
+    const orig=btn.textContent;
+    btn.textContent='✓ Guardado';
+    btn.style.background='var(--grn)';
+    btn.style.borderColor='var(--grn)';
+    setTimeout(()=>{btn.textContent=orig;btn.style.background='';btn.style.borderColor='';},2000);
+  }
+  // Actualizar sidebar
+  document.getElementById('side-cap').textContent=fm(S.capitalInicial);
 }
 function exportJSON(){
   const a=document.createElement('a');
