@@ -371,11 +371,20 @@ function startListener(){
     .onSnapshot(snap=>{
       if(snap.exists){
         const remote=snap.data();
-        // Only update if remote is newer (has more ordenes or was changed externally)
-        if(JSON.stringify(remote)!==JSON.stringify(S)){
-          S={...S,...remote};
-          go(document.querySelector('.ni.active')?.onclick?.toString().match(/go\('(\w+)'/)?.[1]||'dashboard');
-        }
+        const remoteStr=JSON.stringify(remote);
+        const localStr=JSON.stringify(S);
+        // No sobreescribir si es eco de nuestro propio guardado
+        if(remoteStr===_lastSavedHash||remoteStr===localStr)return;
+        // No interrumpir si el usuario está en Configuración editando
+        const activeEl=document.querySelector('.ni.active');
+        const activeText=activeEl?.textContent?.toLowerCase()||'';
+        if(activeText.includes('config'))return;
+        S={...S,...remote};
+        _lastSavedHash=remoteStr;
+        const pages=['dashboard','ordenes','posicion','rendimiento','riesgo','universo','analytics','flujos','estadisticos','config'];
+        const active=pages.find(p=>activeText.includes(p.slice(0,5)))||'dashboard';
+        go(active);
+        setSyncStatus('ok','Actualizado por equipo · '+new Date().toLocaleTimeString('es-MX',{hour:'2-digit',minute:'2-digit'}));
       }
     }, err=>{setSyncStatus('err','Error: '+err.message);});
 }
