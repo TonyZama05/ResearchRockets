@@ -505,7 +505,9 @@ function portVal(pos){return Object.values(pos).reduce((s,p)=>s+p.titulos*p.prec
 // HISTORICAL PORTFOLIO VALUE (from price DB)
 function buildHistorical(){
   if(!S.ordenes.length)return[];
-  const firstDate=S.ordenes.reduce((m,o)=>o.fecha<m?o.fecha:m,S.ordenes[0].fecha);
+  // Usa la fecha de inicio configurada, o la primera orden si no hay config
+  const firstOrderDate=S.ordenes.reduce((m,o)=>o.fecha<m?o.fecha:m,S.ordenes[0].fecha);
+  const firstDate=S.fechaInicio&&S.fechaInicio<=firstOrderDate?S.fechaInicio:firstOrderDate;
   const dates=getAllDates().filter(d=>d>=firstDate);
   const result=[];
   for(const date of dates){
