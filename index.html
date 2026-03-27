@@ -1898,7 +1898,7 @@ async function openPrecioModal(){
   if(!tickers.length){alert('No hay posiciones abiertas.');return;}
   const form=document.getElementById('p-form');
   form.innerHTML=tickers.map(t=>`<div style="display:flex;align-items:center;gap:9px">
-    <label style="font-family:var(--mono);font-size:12px;font-weight:600;color:var(--accent);width:110px;flex-shrink:0">${t}</label>
+    <label style="font-size:12px;font-weight:600;color:var(--accent);width:140px;flex-shrink:0" title="${t}">${UNIVERSO.find(e=>e.t===t)?.n||t}</label>
     <input type="number" id="pp-${t.replace(/[\s*]/g,'_')}" value="${pos[t].precioActual}" step="0.0001" style="flex:1">
     <span id="pps-${t.replace(/[\s*]/g,'_')}" class="ps ps-load" style="min-width:64px;text-align:center">…</span>
   </div>`).join('');
@@ -2339,29 +2339,62 @@ function previewPaste(){
   btn.disabled=tickers.length===0;
 }
 
+function normTicker(t){
+  return t.toUpperCase().replace(/^BMV:/,'').replace(/&/g,'').trim()
+    .replace('BBAJIOO','BBAJIO O')
+    .replace('TLEVISACPO','TLEVICPO');
+}
+
 function processPaste(){
   const raw=document.getElementById('paste-data').value.trim();
-  if(!raw) return;
-
-  const lines=raw.split('\n').filter(l=>l.trim());
-  const sep=lines[0].includes('\t')?'\t':',';
+  if(!raw){return;}
   const today=new Date().toISOString().split('T')[0];
   let count=0, date=today;
 
-  const firstCols=lines[0].split(sep).map(c=>c.trim().replace(/"/g,''));
-  const isVertical=firstCols[0].toUpperCase()==='FECHA'&&lines.length>5;
+  // Split lines, detect separator
+  const lines=raw.split('\n').map(l=>l.trim()).filter(l=>l);
+  // Detect: tab (Google Sheets native), comma (CSV), or multiple spaces
+  let sep=',';
+  if(raw.includes('\t')) sep='\t';
+  else if(lines[0] && lines[0].split(',').length > 5) sep=',';
 
-  if(isVertical){
-    // Format: row 1 = FECHA/2026-03-25, row 2 = HORA/14:30, row 3+ = TICKER/price
-    for(const line of lines){
-      const cols=line.split(sep).map(c=>c.trim().replace(/"/g,''));
-      const key=cols[0].toUpperCase();
-      const val=cols[1]||'';
+  // If only 1 "column" detected with comma, try splitting by multiple spaces
+  const testSplit=lines[0]?lines[0].split(sep):[];
+  const rows = testSplit.length > 2
+    ? lines.map(l=>l.split(sep).map(c=>c.trim().replace(/"/g,'')))
+    : lines.map(l=>l.trim().split(/\s{2,}/).map(c=>c.trim().replace(/"/g,'')));
+
+  const firstCell=(rows[0]&&rows[0][0]||'').toUpperCase().replace(/^BMV:/,'').trim();
+  console.log('Paste debug: lines='+lines.length+' cols='+rows[0].length+' sep='+(sep==='\t'?'TAB':sep)+' first='+firstCell);
+
+  if(lines.length===1){
+    document.getElementById('paste-alert').innerHTML='<div class="alert a-warn">⚠ Solo se detectó 1 línea. En Google Sheets: selecciona desde A1 hasta la última columna de la fila 2 (headers + valores) y copia (Ctrl+C).</div>';
+    return;
+  }
+
+  if(firstCell==='FECHA' && rows.length===2){
+    // ── Horizontal: row0=headers, row1=values ────────────────────────────
+    const headers=rows[0], vals=rows[1];
+    const m=(vals[0]||'').match(/\d{4}-\d{2}-\d{2}/);
+    if(m) date=m[0];
+    for(let i=2;i<headers.length;i++){
+      const tk=normTicker(headers[i]);
+      const price=parseFloat(vals[i]);
+      if(!tk||isNaN(price)||price<=0) continue;
+      if(!PRICE_OVERLAY[tk]) PRICE_OVERLAY[tk]={};
+      PRICE_OVERLAY[tk][date]=+price.toFixed(4);
+      count++;
+    }
+  } else if(firstCell==='FECHA' && rows.length>2){
+    // ── Vertical: col0=label, col1=value ─────────────────────────────────
+    for(const row of rows){
+      const key=normTicker(row[0]||'');
+      const val=(row[1]||'').trim();
       if(key==='FECHA'||key==='DATE'){
-        if(val.match(/\d{4}-\d{2}-\d{2}/)) date=val.match(/\d{4}-\d{2}-\d{2}/)[0];
-        continue;
+        const m=val.match(/\d{4}-\d{2}-\d{2}/);
+        if(m) date=m[0]; continue;
       }
-      if(key==='HORA'||key==='HOUR'||key==='TIME'||!key) continue;
+      if(!key||key==='HORA'||key==='HOUR'||key==='TIME'||key==='Q') continue;
       const price=parseFloat(val.replace(/,/g,'.'));
       if(isNaN(price)||price<=0) continue;
       if(!PRICE_OVERLAY[key]) PRICE_OVERLAY[key]={};
@@ -2369,50 +2402,41 @@ function processPaste(){
       count++;
     }
   } else {
-    // Horizontal: row 1 = headers (FECHA,HORA,TICKER1...), row 2+ = values
-    const headers=firstCols;
-    for(let ri=1;ri<lines.length;ri++){
-      const vals=lines[ri].split(sep).map(c=>c.trim().replace(/"/g,''));
-      const rowDate=vals[0]||date;
-      if(rowDate.match(/\d{4}-\d{2}-\d{2}/)) date=rowDate.match(/\d{4}-\d{2}-\d{2}/)[0];
-      for(let i=2;i<headers.length;i++){
-        const ticker=headers[i].toUpperCase().replace(/^BMV:/,'').replace('&','').trim();
-        // Normalizar tickers especiales
-        const tickerNorm=ticker==='BBAJIOO'?'BBAJIO O':ticker;
-        const price=parseFloat(vals[i]||'');
-        if(!tickerNorm||isNaN(price)||price<=0) continue;
-        if(!PRICE_OVERLAY[tickerNorm]) PRICE_OVERLAY[tickerNorm]={};
-        PRICE_OVERLAY[tickerNorm][date]=+price.toFixed(4);
-        count++;
-      }
-    }
+    // Try treating as horizontal anyway (maybe FECHA is not first)
+    document.getElementById('paste-alert').innerHTML='<div class="alert a-warn">⚠ Formato no reconocido. Asegúrate de copiar desde la celda A1 de tu Google Sheet.</div>';
+    return;
   }
+
+  console.log('Paste result: count='+count+' date='+date+' overlay keys='+Object.keys(PRICE_OVERLAY).length);
 
   if(count>0){
     saveOverlay();
     closeModal('m-paste-prices');
-    // Si el modal de orden está abierto, refresca el precio automáticamente
+    // Refrescar modal de nueva orden si está abierto
     if(document.getElementById('m-orden')?.classList.contains('open')){
       loadPrice();
-    } else {
-      // Re-render página actual
+    }
+    // Refrescar modal de precios de cierre si está abierto
+    if(document.getElementById('m-precios')?.classList.contains('open')){
+      openPrecioModal();
+    }
+    else{
       const cur=document.querySelector('.ni.active');
       const pages=['dashboard','ordenes','posicion','rendimiento','riesgo','universo','analytics','flujos','estadisticos','config'];
       const activeText=cur?.textContent?.toLowerCase()||'';
-      const active=pages.find(p=>activeText.includes(p.slice(0,5)))||'dashboard';
-      go(active);
+      go(pages.find(p=>activeText.includes(p.slice(0,5)))||'dashboard');
     }
-    // Confirmación en botón snapshot
     setTimeout(()=>{
       const btn=document.getElementById('btn-snapshot');
-      if(btn){const o=btn.textContent;btn.textContent=`✓ ${count} precios (${date})`;
+      if(btn){const o=btn.textContent;btn.textContent='✓ '+count+' precios ('+date+')';
         btn.style.background='var(--grn2)';btn.style.color='var(--grn)';
         setTimeout(()=>{btn.textContent=o;btn.style.background='';btn.style.color='';},3000);}
     },100);
   } else {
-    document.getElementById('paste-alert').innerHTML='<div class="alert a-err">No se encontraron precios válidos. Verifica el formato.</div>';
+    document.getElementById('paste-alert').innerHTML='<div class="alert a-err">✗ 0 precios guardados. Revisa la consola (F12) para ver el debug.</div>';
   }
 }
+
 
 // INIT
 go('dashboard');
