@@ -264,7 +264,10 @@ canvas{display:block;width:100%!important}
 
     <!-- Precio + comisión -->
     <div class="frow">
-      <div class="fg"><label class="fl">Precio operado ($) <span id="o-ps"></span></label>
+      <div class="fg"><label class="fl" style="display:flex;align-items:center;justify-content:space-between">
+        <span>Precio operado ($) <span id="o-ps"></span></span>
+        <button type="button" onclick="loadPrice()" style="font-size:10px;padding:2px 8px;border:1px solid var(--line2);border-radius:var(--r);background:var(--bg3);color:var(--txt2);cursor:pointer">↻ Actualizar</button>
+      </label>
         <input type="number" id="o-precio" placeholder="Cargando…" step="0.0001" oninput="calcRes()">
       </div>
       <div class="fg"><label class="fl">Comisión (%)</label>
@@ -482,20 +485,24 @@ let PRICE_OVERLAY = {};
 function saveOverlay(){try{localStorage.setItem('rr_price_overlay',JSON.stringify(PRICE_OVERLAY));}catch(e){}}
 
 function localPrice(t,date){
-  // Busca en overlay primero (datos frescos), luego en DB estática
   const overlay=PRICE_OVERLAY[t]||{};
   const db=PRICE_DB[t]||{};
-  const combined={...db,...overlay};
-  if(!Object.keys(combined).length)return null;
   if(date){
+    // Fecha específica: overlay primero, luego DB
+    const combined={...db,...overlay};
+    if(!Object.keys(combined).length)return null;
     if(combined[date])return combined[date];
     const dates=Object.keys(combined).sort();
     let best=null;
     for(const d of dates){if(d<=date)best=d;else break;}
     return best?combined[best]:null;
   }
-  const dates=Object.keys(combined).sort();
-  return dates.length?combined[dates[dates.length-1]]:null;
+  // Sin fecha: siempre preferir el último precio del overlay (más reciente = GS)
+  const overlayDates=Object.keys(overlay).sort();
+  if(overlayDates.length) return overlay[overlayDates[overlayDates.length-1]];
+  // Fallback a DB
+  const dbDates=Object.keys(db).sort();
+  return dbDates.length?db[dbDates[dbDates.length-1]]:null;
 }
 
 // Retorna todas las fechas disponibles (DB + overlay mezcladas y ordenadas)
@@ -2324,7 +2331,7 @@ function previewPaste(){
     tickers=lines.slice(2).map(l=>l.split(sep)[0].trim()).filter(t=>t&&t.toUpperCase()!=='HORA');
     dateCount=1;
   } else {
-    tickers=cols.slice(2);
+    tickers=cols.slice(2).map(t=>t.toUpperCase().replace(/^BMV:/,'').trim()).filter(t=>t);
     dateCount=lines.length-1;
   }
 
@@ -2369,11 +2376,13 @@ function processPaste(){
       const rowDate=vals[0]||date;
       if(rowDate.match(/\d{4}-\d{2}-\d{2}/)) date=rowDate.match(/\d{4}-\d{2}-\d{2}/)[0];
       for(let i=2;i<headers.length;i++){
-        const ticker=headers[i].toUpperCase();
+        const ticker=headers[i].toUpperCase().replace(/^BMV:/,'').replace('&','').trim();
+        // Normalizar tickers especiales
+        const tickerNorm=ticker==='BBAJIOO'?'BBAJIO O':ticker;
         const price=parseFloat(vals[i]||'');
-        if(!ticker||isNaN(price)||price<=0) continue;
-        if(!PRICE_OVERLAY[ticker]) PRICE_OVERLAY[ticker]={};
-        PRICE_OVERLAY[ticker][date]=+price.toFixed(4);
+        if(!tickerNorm||isNaN(price)||price<=0) continue;
+        if(!PRICE_OVERLAY[tickerNorm]) PRICE_OVERLAY[tickerNorm]={};
+        PRICE_OVERLAY[tickerNorm][date]=+price.toFixed(4);
         count++;
       }
     }
@@ -2382,16 +2391,21 @@ function processPaste(){
   if(count>0){
     saveOverlay();
     closeModal('m-paste-prices');
-    // Re-render
-    const cur=document.querySelector('.ni.active');
-    const pages=['dashboard','ordenes','posicion','rendimiento','riesgo','universo','analytics','flujos','estadisticos','config'];
-    const activeText=cur?.textContent?.toLowerCase()||'';
-    const active=pages.find(p=>activeText.includes(p.slice(0,5)))||'dashboard';
-    go(active);
-    // Show confirmation
+    // Si el modal de orden está abierto, refresca el precio automáticamente
+    if(document.getElementById('m-orden')?.classList.contains('open')){
+      loadPrice();
+    } else {
+      // Re-render página actual
+      const cur=document.querySelector('.ni.active');
+      const pages=['dashboard','ordenes','posicion','rendimiento','riesgo','universo','analytics','flujos','estadisticos','config'];
+      const activeText=cur?.textContent?.toLowerCase()||'';
+      const active=pages.find(p=>activeText.includes(p.slice(0,5)))||'dashboard';
+      go(active);
+    }
+    // Confirmación en botón snapshot
     setTimeout(()=>{
       const btn=document.getElementById('btn-snapshot');
-      if(btn){const o=btn.textContent;btn.textContent=`✓ ${count} precios guardados (${date})`;
+      if(btn){const o=btn.textContent;btn.textContent=`✓ ${count} precios (${date})`;
         btn.style.background='var(--grn2)';btn.style.color='var(--grn)';
         setTimeout(()=>{btn.textContent=o;btn.style.background='';btn.style.color='';},3000);}
     },100);
