@@ -770,6 +770,7 @@ function pgDash(){
     <div class="card">
       <div class="sec-h"><div class="sec-h-bar"></div><div class="sec-h-text">Composición del portafolio</div></div>
       ${cBar('Accionario (estrategia activa + ETF)',m.valPort/m.totalFondo*100,'var(--accent)')}
+      ${cBar('Efectivo disponible',m.efectivo/m.totalFondo*100,'var(--blue)')}
       
       <div style="display:flex;justify-content:space-between;font-size:12px;color:var(--txt3);margin-top:10px">
         <span>Total fondo <b style="color:var(--txt);font-family:var(--mono)">${fm(m.totalFondo)}</b></span>
@@ -828,33 +829,34 @@ function cBar(label,pct,color){
   return`<div style="margin-bottom:12px"><div style="display:flex;justify-content:space-between;font-size:12px;margin-bottom:4px"><span style="color:var(--txt2)">${label}</span><span style="font-family:var(--mono);font-weight:600">${p.toFixed(1)}%</span></div><div class="bar-bg"><div class="bar-f" style="width:${p}%;background:${color}"></div></div></div>`;
 }
 function renderWaterfallWU(wu){
-  // Filter out zero diffs, sort biggest over to biggest under
   const items = wu.filter(r => Math.abs(r.diff) >= 0.01)
                    .sort((a,b) => b.diff - a.diff);
   if(!items.length) return '<div class="empty">Sin posiciones — registra una orden para ver overweights/underweights</div>';
 
   const maxAbs = Math.max(...items.map(r => Math.abs(r.diff)), 1);
-  const BAR_MAX_PX = 200; // max bar width in px
+  // Barras flexibles — usan todo el espacio disponible
+  const barPct = r => (Math.abs(r.diff) / maxAbs * 100).toFixed(2);
 
   const rows = items.map(r => {
     const isOver = r.diff >= 0;
-    const barW   = Math.round(Math.abs(r.diff) / maxAbs * BAR_MAX_PX);
+    const pct    = barPct(r);
     const color  = isOver ? 'var(--grn)' : 'var(--red)';
     const sign   = isOver ? '+' : '';
-    // Under bar: aligned RIGHT in left half | Over bar: aligned LEFT in right half
-    // Layout: [ticker] [under zone BAR_MAX_PX] [center line] [over zone BAR_MAX_PX] [pct]
+    const nm     = UNIVERSO.find(e=>e.t===r.ticker)?.n||r.ticker;
+
     const underBar = isOver
-      ? `<div style="width:${BAR_MAX_PX}px;flex-shrink:0"></div>`
-      : `<div style="width:${BAR_MAX_PX}px;flex-shrink:0;display:flex;justify-content:flex-end">
-           <div style="width:${barW}px;height:16px;background:var(--red);border-radius:3px 0 0 3px;opacity:.85"></div>
+      ? `<div style="flex:1"></div>`
+      : `<div style="flex:1;display:flex;align-items:center;justify-content:flex-end">
+           <div style="width:${pct}%;height:12px;background:var(--red);border-radius:3px 0 0 3px;opacity:.85"></div>
          </div>`;
     const overBar = isOver
-      ? `<div style="width:${BAR_MAX_PX}px;flex-shrink:0;display:flex;justify-content:flex-start">
-           <div style="width:${barW}px;height:16px;background:var(--grn);border-radius:0 3px 3px 0;opacity:.85"></div>
+      ? `<div style="flex:1;display:flex;align-items:center;justify-content:flex-start">
+           <div style="width:${pct}%;height:12px;background:var(--grn);border-radius:0 3px 3px 0;opacity:.85"></div>
          </div>`
-      : `<div style="width:${BAR_MAX_PX}px;flex-shrink:0"></div>`;
-    return `<div style="display:flex;align-items:center;gap:0;padding:4px 0;border-bottom:1px solid var(--line)">
-      <div style="width:110px;font-size:11px;font-weight:600;color:var(--txt);text-align:right;padding-right:10px;flex-shrink:0" title="${r.ticker}">${UNIVERSO.find(e=>e.t===r.ticker)?.n||r.ticker}</div>
+      : `<div style="flex:1"></div>`;
+
+    return `<div style="display:flex;align-items:center;gap:0;padding:3px 0;border-bottom:1px solid var(--line)">
+      <div style="width:280px;font-size:11px;font-weight:600;color:var(--txt);text-align:right;padding-right:10px;flex-shrink:0;white-space:nowrap" title="${nm}">${nm}</div>
       ${underBar}
       <div style="width:70px;flex-shrink:0;display:flex;align-items:center;justify-content:center;position:relative">
         <div style="position:absolute;left:50%;top:0;bottom:0;width:2px;background:var(--line2);transform:translateX(-50%)"></div>
@@ -866,10 +868,10 @@ function renderWaterfallWU(wu){
 
   return `<div style="display:flex;flex-direction:column">
     <div style="display:flex;align-items:center;gap:0;padding:4px 0 8px;border-bottom:2px solid var(--line2);margin-bottom:4px">
-      <div style="width:110px;font-size:10px;color:var(--txt3);text-align:right;padding-right:10px;font-weight:600">EMPRESA</div>
-      <div style="width:${BAR_MAX_PX}px;text-align:center;font-size:10px;color:var(--red);font-weight:600">← UNDER</div>
+      <div style="width:280px;font-size:10px;color:var(--txt3);text-align:right;padding-right:10px;font-weight:600">EMPRESA</div>
+      <div style="flex:1;font-size:10px;color:var(--red);font-weight:600;text-align:center">← UNDER</div>
       <div style="width:70px;text-align:center;font-size:10px;color:var(--txt3);font-weight:600">DIFF %</div>
-      <div style="width:${BAR_MAX_PX}px;text-align:center;font-size:10px;color:var(--grn);font-weight:600">OVER →</div>
+      <div style="flex:1;font-size:10px;color:var(--grn);font-weight:600;text-align:center">OVER →</div>
     </div>
     ${rows}
   </div>`;
@@ -1093,7 +1095,18 @@ function pgPosicion(){
         <td data-val="${rend}" class="${cc(rend)} mono">${fp(rend)}</td>
         <td data-val="${pnl}" class="${cc(pnl)} mono">${fm(pnl)}</td></tr>`;
     }).join('')||'<tr><td colspan="11" class="empty">Sin posiciones abiertas</td></tr>'}
-    </tbody></table></div>
+    </tbody>
+    <tfoot>${(()=>{
+      const cashPct=m.totalFondo>0?m.efectivo/m.totalFondo*100:0;
+      return`<tr style="border-top:2px solid var(--line2);font-weight:600;background:var(--bg3)">
+        <td class="lbl">CASH</td>
+        <td class="dim">Efectivo disponible</td>
+        <td class="mono">—</td><td class="mono">—</td><td class="mono">—</td>
+        <td data-val="${m.efectivo}" class="mono">${fm(m.efectivo)}</td>
+        <td data-val="${cashPct}" class="b mono">${cashPct.toFixed(1)}%</td>
+        <td class="d mono">—</td><td class="d mono">—</td><td class="d mono">—</td><td class="d mono">—</td>
+      </tr>`;
+    })()}</tfoot></table></div>
   </div>
   <div class="card">
     <div class="sec-h"><div class="sec-h-bar"></div><div class="sec-h-text">Exposición efectiva por componente MEXTRAC</div><span class="sec-h-sub">Directo + vía ETF</span></div>
@@ -1137,7 +1150,7 @@ function pgRendimiento(){
   </div>
   <div class="card">
     <div class="sec-h"><div class="sec-h-bar"></div><div class="sec-h-text">Evolución diaria desde primera orden</div></div>
-    <canvas id="rend-chart" height="45"></canvas>
+    <canvas id="rend-chart" height="45" style="width:100%;display:block" style="position:relative"></canvas>
   </div>
   <div class="card">
     <div class="sec-h"><div class="sec-h-bar"></div><div class="sec-h-text">Resumen semanal</div></div>
@@ -1219,8 +1232,9 @@ function initRendChart(){
       scales:{x:{ticks:{color:'#98A2B3',font:{size:11},maxTicksLimit:10},grid:{color:'rgba(0,0,0,.04)'}},
               y:{ticks:{color:'#98A2B3',font:{size:11},callback:v=>`${v.toFixed(0)}`},
                  grid:{color:'rgba(0,0,0,.04)'},grace:'5%',
-                 title:{display:true,text:'Base 100',color:'#98A2B3',font:{size:10}}}}}
-  });
+                 title:{display:true,text:'Base 100',color:'#98A2B3',font:{size:10}}}},
+      layout:{padding:{right:75}}},
+  plugins:[endLabelPlugin('base100')]});
   chartInst.push(chart);
 }
 
@@ -1346,6 +1360,22 @@ function pgAnalytics(){
       </div>
       <div id="treemap" style="flex:1;min-height:260px"></div>
     </div>
+  </div>
+  <div style="display:grid;grid-template-columns:1fr 1fr;gap:14px;margin-top:14px">
+    <div class="card" style="display:flex;flex-direction:column">
+      <div class="sec-h"><div class="sec-h-bar"></div><div class="sec-h-text">Composición del fondo</div></div>
+      <div style="display:flex;align-items:center;gap:24px;padding:16px;flex:1">
+        <div style="position:relative;width:200px;height:200px;flex-shrink:0"><canvas id="donut-holdings"></canvas></div>
+        <div id="donut-holdings-legend" style="flex:1;font-size:12px;display:flex;flex-direction:column;gap:6px"></div>
+      </div>
+    </div>
+    <div class="card" style="display:flex;flex-direction:column">
+      <div class="sec-h"><div class="sec-h-bar"></div><div class="sec-h-text">Distribución por sector</div></div>
+      <div style="display:flex;align-items:center;gap:24px;padding:16px;flex:1">
+        <div style="position:relative;width:200px;height:200px;flex-shrink:0"><canvas id="donut-sectors"></canvas></div>
+        <div id="donut-sectors-legend" style="flex:1;font-size:12px;display:flex;flex-direction:column;gap:6px"></div>
+      </div>
+    </div>
   </div>`;
 }
 
@@ -1360,7 +1390,7 @@ function initCharts(){
     const c=new Chart(ctx1,{type:'line',data:{labels,datasets:[
       {label:'Research Rockets',data:hist.map(h=>+h.totalFondo.toFixed(0)),borderColor:'#0C4A6E',backgroundColor:'rgba(12,74,110,.07)',borderWidth:2,pointRadius:0,tension:.3,fill:true},
       {label:'MEXTRAC (relativo)',data:(()=>{const fp=hist.find(h=>h.mexPrice!=null)?.mexPrice;return hist.map(h=>h.mexPrice&&fp?+(S.capitalInicial*h.mexPrice/fp).toFixed(0):null);})(),borderColor:'#5B21B6',backgroundColor:'transparent',borderWidth:1.5,pointRadius:0,tension:.3,borderDash:[5,3],spanGaps:true}
-    ]},options:chartOpts('$')});chartInst.push(c);}
+    ]},options:{...chartOpts('$'),layout:{padding:{right:80}}},plugins:[endLabelPlugin('$')]});chartInst.push(c);}
   // Chart 2: returns %
   const ctx2=document.getElementById('rend-chart2');
   if(ctx2){
@@ -1375,7 +1405,7 @@ function initCharts(){
     const c=new Chart(ctx2,{type:'line',data:{labels,datasets:[
       {label:'Fondo',data:portB100,borderColor:'#027A48',backgroundColor:'rgba(2,122,72,.06)',borderWidth:2,pointRadius:0,tension:.3,fill:true},
       {label:'MEXTRAC',data:benchB100,borderColor:'#5B21B6',backgroundColor:'transparent',borderWidth:1.5,pointRadius:0,tension:.3,borderDash:[5,3],spanGaps:true}
-    ]},options:optsB100});chartInst.push(c);}
+    ]},options:{...optsB100,layout:{padding:{right:70}}},plugins:[endLabelPlugin('base100')]});chartInst.push(c);}
   // Chart 3: PnL daily
   const ctx3=document.getElementById('pnl-chart');
   if(ctx3){
@@ -1384,8 +1414,95 @@ function initCharts(){
     options:chartOpts('$',false)});chartInst.push(c);}
   // Treemap
   renderTreemap();
+  // Donuts
+  renderDonuts(m);
 }
 
+function renderDonuts(m){
+  const COLORS=['#0C4A6E','#027A48','#5B21B6','#B42318','#92400E','#1D4ED8','#0F766E','#7C3AED','#BE185D','#065F46','#C2410C','#1E40AF','#6B21A8','#9A3412','#166534'];
+  const pos=m.pos;
+
+  // ── Holdings donut ─────────────────────────────────────────────
+  const holdLabels=[], holdData=[], holdColors=[];
+  let ci=0;
+  Object.entries(pos).forEach(([t,p])=>{
+    const vm=p.titulos*p.precioActual;
+    if(vm>0){
+      holdLabels.push(t);
+      holdData.push(+vm.toFixed(0));
+      holdColors.push(COLORS[ci%COLORS.length]);
+      ci++;
+    }
+  });
+  // Add cash
+  if(m.efectivo>0){
+    holdLabels.push('CASH');
+    holdData.push(+m.efectivo.toFixed(0));
+    holdColors.push('#98A2B3');
+  }
+  const total=holdData.reduce((s,v)=>s+v,0);
+
+  const ctx4=document.getElementById('donut-holdings');
+  if(ctx4){
+    Chart.getChart(ctx4)?.destroy();
+    new Chart(ctx4,{type:'doughnut',data:{labels:holdLabels,datasets:[{data:holdData,backgroundColor:holdColors,borderWidth:2,borderColor:'#fff',hoverOffset:6}]},
+      options:{responsive:true,maintainAspectRatio:true,cutout:'62%',plugins:{legend:{display:false},tooltip:{callbacks:{label:c=>`${c.label}: ${(c.parsed/total*100).toFixed(1)}% (${fm(c.parsed)})`}}}}});
+  }
+  // Legend
+  const leg4=document.getElementById('donut-holdings-legend');
+  if(leg4) leg4.innerHTML=holdLabels.map((l,i)=>`<div style="display:flex;align-items:center;gap:8px"><div style="width:10px;height:10px;border-radius:2px;background:${holdColors[i]};flex-shrink:0"></div><span style="color:var(--txt2)">${l}</span><span style="margin-left:auto;font-weight:600;color:var(--txt)">${(holdData[i]/total*100).toFixed(1)}%</span></div>`).join('');
+
+  // ── Sectors donut ──────────────────────────────────────────────
+  const sectorMap={};
+  Object.entries(pos).forEach(([t,p])=>{
+    const vm=p.titulos*p.precioActual;
+    if(vm<=0)return;
+    const sector=UNIVERSO.find(u=>u.t===t)?.s||'Otros';
+    sectorMap[sector]=(sectorMap[sector]||0)+vm;
+  });
+  if(m.efectivo>0) sectorMap['Efectivo']=(sectorMap['Efectivo']||0)+m.efectivo;
+  const sLabels=Object.keys(sectorMap).sort((a,b)=>sectorMap[b]-sectorMap[a]);
+  const sData=sLabels.map(l=>+sectorMap[l].toFixed(0));
+  const sColors=sLabels.map((_,i)=>i===sLabels.length-1&&sLabels[i]==='Efectivo'?'#98A2B3':COLORS[i%COLORS.length]);
+  const sTotal=sData.reduce((s,v)=>s+v,0);
+
+  const ctx5=document.getElementById('donut-sectors');
+  if(ctx5){
+    Chart.getChart(ctx5)?.destroy();
+    new Chart(ctx5,{type:'doughnut',data:{labels:sLabels,datasets:[{data:sData,backgroundColor:sColors,borderWidth:2,borderColor:'#fff',hoverOffset:6}]},
+      options:{responsive:true,maintainAspectRatio:true,cutout:'62%',plugins:{legend:{display:false},tooltip:{callbacks:{label:c=>`${c.label}: ${(c.parsed/sTotal*100).toFixed(1)}% (${fm(c.parsed)})`}}}}});
+  }
+  const leg5=document.getElementById('donut-sectors-legend');
+  if(leg5) leg5.innerHTML=sLabels.map((l,i)=>`<div style="display:flex;align-items:center;gap:8px"><div style="width:10px;height:10px;border-radius:2px;background:${sColors[i]};flex-shrink:0"></div><span style="color:var(--txt2)">${l}</span><span style="margin-left:auto;font-weight:600;color:var(--txt)">${(sData[i]/sTotal*100).toFixed(1)}%</span></div>`).join('');
+}
+
+
+function endLabelPlugin(unit){
+  return {
+    id:'elp'+unit,
+    afterDatasetsDraw(chart){
+      const ctx=chart.ctx;
+      chart.data.datasets.forEach((ds,i)=>{
+        const meta=chart.getDatasetMeta(i);
+        if(meta.hidden||!meta.data.length)return;
+        let li=-1;
+        for(let j=ds.data.length-1;j>=0;j--){if(ds.data[j]!=null){li=j;break;}}
+        if(li<0)return;
+        const pt=meta.data[li];
+        if(!pt||pt.x==null)return;
+        const val=ds.data[li];
+        const label=unit==='$'?'$'+Math.round(val).toLocaleString('es-MX'):(val>=100?'+':'')+(val-100).toFixed(2)+'%';
+        ctx.save();
+        ctx.font='700 13px monospace';
+        ctx.fillStyle=ds.borderColor||'#333';
+        ctx.textAlign='left';
+        ctx.textBaseline='middle';
+        ctx.fillText(label,pt.x+8,pt.y);
+        ctx.restore();
+      });
+    }
+  };
+}
 function chartOpts(unit,legend=true){
   return{responsive:true,maintainAspectRatio:false,interaction:{mode:'index',intersect:false},
     plugins:{legend:{display:legend,labels:{color:'#475467',font:{size:11,family:'Geist'}}},
@@ -1393,6 +1510,8 @@ function chartOpts(unit,legend=true){
     scales:{x:{ticks:{color:'#98A2B3',font:{size:10},maxTicksLimit:10},grid:{color:'rgba(0,0,0,.03)'}},
       y:{ticks:{color:'#98A2B3',font:{size:10},callback:v=>unit==='%'?v.toFixed(1)+'%':'$'+v.toLocaleString('es-MX')},
          grid:{color:'rgba(0,0,0,.03)'},grace:'8%'}}};}
+
+
 
 function renderTreemap(){
   const container=document.getElementById('treemap');if(!container)return;
