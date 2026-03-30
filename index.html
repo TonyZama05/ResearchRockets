@@ -714,11 +714,23 @@ function calcMetrics(){
   const rendBench=lastHist?.rendBench!=null?lastHist.rendBench:
     (S.benchmarkInicial>0&&localPrice('MEXTRAC09')>0?
       (localPrice('MEXTRAC09')-S.benchmarkInicial)/S.benchmarkInicial*100:0);
-  // Rendimiento semanal (últimos 5 días hábiles del historial)
+  // Rendimiento semanal — semana calendario actual (lunes→último dato)
   let rSem=0,rbSem=0;
   if(hist_pre.length>=2){
-    const wStart=hist_pre[Math.max(0,hist_pre.length-6)];
     const wEnd=hist_pre[hist_pre.length-1];
+    // Encuentra el lunes de la semana del último dato
+    const lastDate=new Date(wEnd.date+'T00:00:00');
+    const dow=lastDate.getDay(); // 0=dom,1=lun,...,5=vie,6=sab
+    const daysToMon=dow===0?6:dow-1; // días desde el lunes
+    const monDate=new Date(lastDate);
+    monDate.setDate(monDate.getDate()-daysToMon);
+    const monStr=monDate.toISOString().split('T')[0];
+    // Busca el último punto ANTES del lunes de esta semana (cierre viernes anterior)
+    let wStart=null;
+    for(let i=hist_pre.length-1;i>=0;i--){
+      if(hist_pre[i].date<monStr){wStart=hist_pre[i];break;}
+    }
+    if(!wStart) wStart=hist_pre[Math.max(0,hist_pre.length-6)];
     if(wStart.totalFondo>0)rSem=(wEnd.totalFondo-wStart.totalFondo)/wStart.totalFondo*100;
     if(wStart.mexPrice&&wEnd.mexPrice&&wStart.mexPrice>0)
       rbSem=(wEnd.mexPrice-wStart.mexPrice)/wStart.mexPrice*100;
@@ -1186,16 +1198,37 @@ function pgPosicion(){
 function pgRendimiento(){
   const m=calcMetrics();
   const hist=m.hist;
-  // Weekly summaries
+  // Weekly summaries — semanas calendario (lunes→viernes)
   const weeks=[];
-  for(let i=0;i<hist.length;i+=5){
-    const wk=hist.slice(i,i+5);
-    if(!wk.length)continue;
-    const ini=wk[0];const fin=wk[wk.length-1];
+  // Agrupa el historial por semana ISO (lunes como inicio)
+  const weekMap={};
+  hist.forEach(h=>{
+    const d=new Date(h.date+'T00:00:00');
+    const dow=d.getDay(); // 0=dom,1=lun
+    const daysToMon=dow===0?6:dow-1;
+    const mon=new Date(d);
+    mon.setDate(mon.getDate()-daysToMon);
+    const key=mon.toISOString().split('T')[0];
+    if(!weekMap[key]) weekMap[key]=[];
+    weekMap[key].push(h);
+  });
+  // Para cada semana: ini = cierre semana anterior, fin = último dato de la semana
+  const weekKeys=Object.keys(weekMap).sort();
+  weekKeys.forEach((key,wi)=>{
+    const wk=weekMap[key];
+    const fin=wk[wk.length-1];
+    // ini = último dato de la semana anterior
+    let ini=null;
+    if(wi>0){
+      const prevWk=weekMap[weekKeys[wi-1]];
+      ini=prevWk[prevWk.length-1];
+    } else {
+      ini=wk[0]; // primera semana: compara primer día vs último
+    }
     const rF=ini.totalFondo>0?(fin.totalFondo-ini.totalFondo)/ini.totalFondo*100:0;
-    const rB=ini.mexPrice&&fin.mexPrice?(fin.mexPrice-ini.mexPrice)/ini.mexPrice*100:null;
+    const rB=ini.mexPrice&&fin.mexPrice&&ini.mexPrice>0?(fin.mexPrice-ini.mexPrice)/ini.mexPrice*100:null;
     weeks.push({ini:ini.date,fin:fin.date,valIni:ini.totalFondo,valFin:fin.totalFondo,rF,rB,rA:rB!=null?rF-rB:null});
-  }
+  });
   return`
   <div class="sg4">
     ${stCard(fp(m.rSem),'Rend. semana fondo','','stat-grn')}
