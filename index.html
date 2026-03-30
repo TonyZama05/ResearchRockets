@@ -253,6 +253,7 @@ canvas{display:block;width:100%!important}
     <div class="spacer"></div>
     <div class="sync-bar" onclick="go('config')" id="sync-bar" title="Estado de sincronización"><span class="sync-dot sync-off" id="sync-dot"></span><span id="sync-label">Sin conectar</span></div>
     <button class="btn btn-sm" onclick="openPrecioModal()">↻ Precios</button>
+    <button class="btn btn-sm" onclick="openPreciosDia()" style="border-color:var(--accent);color:var(--accent)">📥 Precios del día</button>
 
     <button class="btn btn-p btn-sm" onclick="openOrdenModal()">+ Nueva orden</button>
   </div>
@@ -343,6 +344,30 @@ canvas{display:block;width:100%!important}
     <button class="btn btn-p" onclick="regOrden()">Registrar</button>
   </div>
 </div>
+</div>
+
+<div class="overlay" id="m-precio-dia">
+  <div class="modal" style="width:520px;max-width:95vw">
+    <div class="modal-h">
+      <div class="modal-t">📥 Precios del día</div>
+      <button class="modal-x" onclick="closeModal('m-precio-dia')">✕</button>
+    </div>
+    <div style="font-size:12px;color:var(--txt2);margin-bottom:12px">
+      Pega los precios de hoy. Formato aceptado:<br>
+      <span style="font-family:var(--mono);background:var(--bg3);padding:2px 6px;border-radius:4px;font-size:11px">TICKER&nbsp;&nbsp;&nbsp;PRECIO</span> — una emisora por línea, separado por tab, coma o espacio.
+    </div>
+    <div id="pdia-fecha-row" style="display:flex;align-items:center;gap:10px;margin-bottom:10px">
+      <label style="font-size:12px;font-weight:600;color:var(--txt2);flex-shrink:0">Fecha:</label>
+      <input type="date" id="pdia-fecha" style="flex:1;font-size:12px">
+    </div>
+    <textarea id="pdia-data" rows="14" placeholder="AMXB&#9;22.46&#10;FEMSAUBD&#9;188.02&#10;WALMEX&#9;58.18&#10;..." style="font-family:var(--mono);font-size:12px;resize:vertical;width:100%;box-sizing:border-box"></textarea>
+    <div id="pdia-preview" style="font-size:11px;color:var(--txt3);margin-top:6px;min-height:18px"></div>
+    <div id="pdia-alert" style="margin-top:6px"></div>
+    <div class="modal-f">
+      <button class="btn" onclick="closeModal('m-precio-dia')">Cancelar</button>
+      <button class="btn btn-p" onclick="guardarPreciosDia()">Guardar precios</button>
+    </div>
+  </div>
 </div>
 
 <div class="overlay" id="m-precios">
@@ -455,6 +480,7 @@ function startListener(){
         const pages=['dashboard','ordenes','posicion','rendimiento','riesgo','universo','analytics','flujos','estadisticos','config'];
         const active=pages.find(p=>activeText.includes(p.slice(0,5)))||'dashboard';
         go(active);
+        setTimeout(()=>initCharts&&initCharts(),200);
         setSyncStatus('ok','Actualizado por equipo · '+new Date().toLocaleTimeString('es-MX',{hour:'2-digit',minute:'2-digit'}));
       }
     }, err=>{setSyncStatus('err','Error: '+err.message);});
@@ -1945,6 +1971,134 @@ function regOrden(){
 function delOrden(i){if(!confirm('¿Eliminar esta orden?'))return;S.ordenes.splice(i,1);save();go('ordenes');}
 
 // ── MODAL PRECIOS ────────────────────────────────────────────────────────────
+async function openPreciosDia(){
+  // Set today's date by default
+  const d = new Date();
+  const dateStr = d.toISOString().split('T')[0];
+  document.getElementById('pdia-fecha').value = dateStr;
+  document.getElementById('pdia-data').value = '';
+  document.getElementById('pdia-preview').textContent = '';
+  document.getElementById('pdia-alert').innerHTML = '';
+  document.getElementById('m-precio-dia').classList.add('open');
+  // Live preview on input
+  document.getElementById('pdia-data').oninput = previewPreciosDia;
+}
+
+function previewPreciosDia(){
+  const raw = document.getElementById('pdia-data').value.trim();
+  if(!raw){ document.getElementById('pdia-preview').textContent=''; return; }
+  const lines = raw.split('\n').filter(l=>l.trim());
+  const first = lines[0]||'';
+  const isH = first.toUpperCase().includes('FECHA') || first.toUpperCase().includes('BMV:') || /^\d{4}-\d{2}-\d{2}/.test(first);
+  let count = 0;
+  if(isH){
+    // Count headers (minus FECHA col)
+    const headers = first.split('\t').map(h=>h.trim()).filter(h=>h && h.toUpperCase()!=='FECHA');
+    const dataRows = lines.length - 1;
+    count = headers.length * Math.max(dataRows, 1);
+    document.getElementById('pdia-preview').textContent = `✓ Formato horizontal · ${headers.length} tickers · ${dataRows} fila(s) de datos`;
+  } else {
+    lines.forEach(l => {
+      const p = l.trim().split(/[\t\s]+/);
+      if(p.length>=2 && !isNaN(parseFloat(p[1]))) count++;
+    });
+    document.getElementById('pdia-preview').textContent = count>0 ? `✓ ${count} emisoras detectadas` : '';
+  }
+}
+
+function guardarPreciosDia(){
+  const fechaInput = document.getElementById('pdia-fecha').value;
+  const raw        = document.getElementById('pdia-data').value.trim();
+  const al         = document.getElementById('pdia-alert');
+
+  if(!raw){ al.innerHTML='<div class="alert a-err">Pega los datos primero.</div>'; return; }
+
+  const lines = raw.split('\n').filter(l=>l.trim());
+  if(!lines.length){ al.innerHTML='<div class="alert a-err">Sin datos.</div>'; return; }
+
+  // Split each line by tab (preferred) or multiple spaces
+  const split = l => l.split('\t').map(c=>c.trim()).filter(c=>c!=='').length > 1
+    ? l.split('\t').map(c=>c.trim())
+    : l.trim().split(/\s{2,}/).map(c=>c.trim());
+
+  // Detect format:
+  // HORIZONTAL: first cell of row 1 = "FECHA" or a date → headers in row 1, values in row 2+
+  // VERTICAL:   each row = TICKER PRECIO
+  const firstCells = split(lines[0]);
+  const isHorizontal = firstCells[0].toUpperCase()==='FECHA' ||
+                       /^\d{4}-\d{2}-\d{2}$/.test(firstCells[0]) ||
+                       firstCells.some(c=>c.toUpperCase().startsWith('BMV:'));
+
+  let count = 0;
+
+  if(isHorizontal){
+    // Row 0 = headers: FECHA | BMV:MEXTRAC09 | BMV:AMXB | ...
+    // Row 1+ = values: 2026-03-30 | 65.71 | 22.31 | ...
+    const headers = split(lines[0]).map(h=>
+      h.replace(/^BMV:/i,'').toUpperCase().replace('PE&OLES','PEOLES').trim()
+    );
+
+    for(let r=1; r<lines.length; r++){
+      const vals = split(lines[r]);
+      if(!vals.length) continue;
+
+      // First col may be the date
+      let fecha = fechaInput;
+      let startCol = 0;
+      if(/^\d{4}-\d{2}-\d{2}$/.test(vals[0])){
+        fecha = vals[0];
+        startCol = 1;
+      } else if(/^\d{2}\/\d{2}\/\d{4}$/.test(vals[0])){
+        const [d,m,y] = vals[0].split('/');
+        fecha = `${y}-${m}-${d}`;
+        startCol = 1;
+      }
+
+      if(!fecha){ al.innerHTML='<div class="alert a-err">No se detectó fecha. Selecciónala arriba.</div>'; return; }
+
+      for(let c=startCol; c<headers.length && c<vals.length; c++){
+        const ticker = headers[c];
+        const precio = parseFloat(vals[c].replace(/,/g,'.'));
+        if(!ticker || ticker==='FECHA' || isNaN(precio) || precio<=0) continue;
+        if(!PRICE_DB[ticker]) PRICE_DB[ticker]={};
+        PRICE_DB[ticker][fecha] = +precio.toFixed(4);
+        count++;
+        if(!ALL_DATES.includes(fecha)){ ALL_DATES.push(fecha); ALL_DATES.sort(); }
+      }
+    }
+  } else {
+    // VERTICAL: each line = TICKER PRECIO
+    if(!fechaInput){ al.innerHTML='<div class="alert a-err">Selecciona una fecha.</div>'; return; }
+    lines.forEach(line => {
+      const parts = split(line);
+      if(parts.length < 2) return;
+      const ticker = parts[0].toUpperCase().replace(/^BMV:/i,'').replace('PE&OLES','PEOLES');
+      const precio = parseFloat(parts[1].replace(/,/g,'.'));
+      if(!ticker || isNaN(precio) || precio<=0) return;
+      if(!PRICE_DB[ticker]) PRICE_DB[ticker]={};
+      PRICE_DB[ticker][fechaInput] = +precio.toFixed(4);
+      count++;
+    });
+    if(!ALL_DATES.includes(fechaInput)){ ALL_DATES.push(fechaInput); ALL_DATES.sort(); }
+  }
+
+  if(count===0){
+    al.innerHTML='<div class="alert a-err">No se pudo leer ningún precio. Revisa el formato.</div>';
+    return;
+  }
+
+  al.innerHTML=`<div class="alert a-ok">✓ ${count} precios guardados</div>`;
+  setTimeout(()=>{
+    closeModal('m-precio-dia');
+    // Re-render current active page + reinit charts
+    const activeEl = document.querySelector('.ni.active');
+    const activeText = activeEl?.textContent?.toLowerCase()||'';
+    const pages = ['dashboard','ordenes','posicion','rendimiento','riesgo','universo','analytics','flujos','estadisticos','config'];
+    const active = pages.find(p=>activeText.includes(p.slice(0,5)))||'dashboard';
+    go(active);
+  }, 800);
+}
+
 async function openPrecioModal(){
   const pos=buildPos();const tickers=Object.keys(pos);
   if(!tickers.length){alert('No hay posiciones abiertas.');return;}
