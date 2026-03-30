@@ -801,7 +801,7 @@ function pgDash(){
     <div class="sec-h"><div class="sec-h-bar"></div><div class="sec-h-text">Órdenes recientes</div><button class="btn btn-sm" onclick="go('ordenes')" style="margin-left:auto">Ver todas →</button></div>
     <div class="tw"><table><thead><tr><th>Fecha</th><th>Tipo</th><th>Ticker</th><th>Títulos</th><th>Precio</th><th>Valor</th><th>Com+IVA</th><th>% Portafolio</th><th>Razón</th></tr></thead><tbody>
     ${S.ordenes.slice().reverse().slice(0,6).map(o=>{
-      const pct=m.totalFondo>0?o.titulos*o.precio/m.totalFondo*100:0;
+      const pct=S.capitalInicial>0?o.titulos*o.precio/S.capitalInicial*100:0;
       return`<tr>
         <td class="mono">${o.fecha}</td>
         <td><span class="pill ${o.tipo==='compra'?'p-buy':'p-sell'}">${o.tipo}</span>${o.isEtf?' <span class="pill p-etf">ETF</span>':''}</td>
@@ -907,7 +907,7 @@ function pgOrdenes(){
       </tr></thead><tbody>
       ${S.ordenes.slice().reverse().map((o,i)=>{
         const ri=S.ordenes.length-1-i;
-        const pct=m.totalFondo>0?o.titulos*o.precio/m.totalFondo*100:0;
+        const pct=S.capitalInicial>0?o.titulos*o.precio/S.capitalInicial*100:0;
         return`<tr>
           <td data-val="${o.fecha}" class="mono">${o.fecha}</td>
           <td><span class="pill ${o.tipo==='compra'?'p-buy':'p-sell'}">${o.tipo}</span>${o.isEtf?' <span class="pill p-etf">ETF</span>':''}</td>
