@@ -538,6 +538,35 @@ const today=()=>new Date().toISOString().split('T')[0];
 // PRICE LOOKUP
 let PRICE_OVERLAY = {}; // legado — ya no se usa
 
+// ── Precios del día (persistidos en localStorage) ─────────────────
+const PRICE_OVERLAY_KEY = 'rr_price_day';
+(function loadPriceOverlay(){
+  try{
+    const saved = localStorage.getItem(PRICE_OVERLAY_KEY);
+    if(!saved) return;
+    const overlay = JSON.parse(saved);
+    // Merge overlay into PRICE_DB
+    for(const ticker in overlay){
+      if(!PRICE_DB[ticker]) PRICE_DB[ticker] = {};
+      for(const date in overlay[ticker]){
+        PRICE_DB[ticker][date] = overlay[ticker][date];
+        if(!ALL_DATES.includes(date)){ ALL_DATES.push(date); }
+      }
+    }
+    ALL_DATES.sort();
+  } catch(e){ console.warn('loadPriceOverlay error:', e); }
+})();
+
+function savePriceOverlay(ticker, date, precio){
+  try{
+    const saved = localStorage.getItem(PRICE_OVERLAY_KEY);
+    const overlay = saved ? JSON.parse(saved) : {};
+    if(!overlay[ticker]) overlay[ticker] = {};
+    overlay[ticker][date] = precio;
+    localStorage.setItem(PRICE_OVERLAY_KEY, JSON.stringify(overlay));
+  } catch(e){ console.warn('savePriceOverlay error:', e); }
+}
+
 function localPrice(t,date){
   const db=PRICE_DB[t]||{};
   if(date){
@@ -2082,8 +2111,10 @@ function guardarPreciosDia(){
         const ticker = headers[c];
         const precio = parseFloat(vals[c].replace(/,/g,'.'));
         if(!ticker || ticker==='FECHA' || isNaN(precio) || precio<=0) continue;
+        const precioFinal = +precio.toFixed(4);
         if(!PRICE_DB[ticker]) PRICE_DB[ticker]={};
-        PRICE_DB[ticker][fecha] = +precio.toFixed(4);
+        PRICE_DB[ticker][fecha] = precioFinal;
+        savePriceOverlay(ticker, fecha, precioFinal);
         count++;
         if(!ALL_DATES.includes(fecha)){ ALL_DATES.push(fecha); ALL_DATES.sort(); }
       }
@@ -2097,8 +2128,10 @@ function guardarPreciosDia(){
       const ticker = parts[0].toUpperCase().replace(/^BMV:/i,'').replace('PE&OLES','PEOLES');
       const precio = parseFloat(parts[1].replace(/,/g,'.'));
       if(!ticker || isNaN(precio) || precio<=0) return;
+      const precioFinalV = +precio.toFixed(4);
       if(!PRICE_DB[ticker]) PRICE_DB[ticker]={};
-      PRICE_DB[ticker][fechaInput] = +precio.toFixed(4);
+      PRICE_DB[ticker][fechaInput] = precioFinalV;
+      savePriceOverlay(ticker, fechaInput, precioFinalV);
       count++;
     });
     if(!ALL_DATES.includes(fechaInput)){ ALL_DATES.push(fechaInput); ALL_DATES.sort(); }
