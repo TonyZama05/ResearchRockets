@@ -1508,6 +1508,10 @@ function endLabelPlugin(unit){
     id:'elp'+unit,
     afterDatasetsDraw(chart){
       const ctx=chart.ctx;
+      const MIN_GAP=16; // min px between labels vertically
+
+      // Collect last points for all visible datasets
+      const points=[];
       chart.data.datasets.forEach((ds,i)=>{
         const meta=chart.getDatasetMeta(i);
         if(meta.hidden||!meta.data.length)return;
@@ -1518,12 +1522,30 @@ function endLabelPlugin(unit){
         if(!pt||pt.x==null)return;
         const val=ds.data[li];
         const label=unit==='$'?'$'+Math.round(val).toLocaleString('es-MX'):(val>=100?'+':'')+(val-100).toFixed(2)+'%';
+        points.push({y:pt.y, drawY:pt.y, x:pt.x, label, color:ds.borderColor||'#333'});
+      });
+
+      // Sort by y position and resolve overlaps (push apart)
+      points.sort((a,b)=>a.y-b.y);
+      for(let i=1;i<points.length;i++){
+        const prev=points[i-1];
+        const curr=points[i];
+        if(curr.drawY - prev.drawY < MIN_GAP){
+          // Push current down and previous up equally
+          const overlap = MIN_GAP - (curr.drawY - prev.drawY);
+          curr.drawY  += overlap/2;
+          prev.drawY  -= overlap/2;
+        }
+      }
+
+      // Draw labels at adjusted positions
+      points.forEach(p=>{
         ctx.save();
         ctx.font='700 13px monospace';
-        ctx.fillStyle=ds.borderColor||'#333';
+        ctx.fillStyle=p.color;
         ctx.textAlign='left';
         ctx.textBaseline='middle';
-        ctx.fillText(label,pt.x+8,pt.y);
+        ctx.fillText(p.label, p.x+8, p.drawY);
         ctx.restore();
       });
     }
