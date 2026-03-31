@@ -905,11 +905,11 @@ function renderWaterfallWU(wu){
   const barPct = r => (Math.abs(r.diff) / maxAbs * 100).toFixed(2);
 
   const rows = items.map(r => {
-    const isOver    = r.diff >= 0;
-    const isNeutral = Math.abs(r.diff) < 1;
+    const isOver    = r.diff > 0;
+    const isNeutral = r.diff <= 0 && r.diff > -1;
     const pct       = barPct(r);
-    const color     = isNeutral ? 'var(--txt3)' : isOver ? 'var(--grn)' : 'var(--red)';
-    const barColor  = isNeutral ? '#B0B7C3'     : isOver ? 'var(--grn)' : 'var(--red)';
+    const color     = isOver ? 'var(--grn)' : isNeutral ? 'var(--txt3)' : 'var(--red)';
+    const barColor  = isOver ? 'var(--grn)' : isNeutral ? '#B0B7C3'     : 'var(--red)';
     const sign      = isOver ? '+' : '';
     const nm        = UNIVERSO.find(e=>e.t===r.ticker)?.n||r.ticker;
 
