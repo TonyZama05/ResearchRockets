@@ -905,20 +905,22 @@ function renderWaterfallWU(wu){
   const barPct = r => (Math.abs(r.diff) / maxAbs * 100).toFixed(2);
 
   const rows = items.map(r => {
-    const isOver = r.diff >= 0;
-    const pct    = barPct(r);
-    const color  = isOver ? 'var(--grn)' : 'var(--red)';
-    const sign   = isOver ? '+' : '';
-    const nm     = UNIVERSO.find(e=>e.t===r.ticker)?.n||r.ticker;
+    const isOver    = r.diff >= 0;
+    const isNeutral = Math.abs(r.diff) < 1;
+    const pct       = barPct(r);
+    const color     = isNeutral ? 'var(--txt3)' : isOver ? 'var(--grn)' : 'var(--red)';
+    const barColor  = isNeutral ? '#B0B7C3'     : isOver ? 'var(--grn)' : 'var(--red)';
+    const sign      = isOver ? '+' : '';
+    const nm        = UNIVERSO.find(e=>e.t===r.ticker)?.n||r.ticker;
 
     const underBar = isOver
       ? `<div style="flex:1"></div>`
       : `<div style="flex:1;display:flex;align-items:center;justify-content:flex-end">
-           <div style="width:${pct}%;height:12px;background:var(--red);border-radius:3px 0 0 3px;opacity:.85"></div>
+           <div style="width:${pct}%;height:12px;background:${barColor};border-radius:3px 0 0 3px;opacity:.85"></div>
          </div>`;
     const overBar = isOver
       ? `<div style="flex:1;display:flex;align-items:center;justify-content:flex-start">
-           <div style="width:${pct}%;height:12px;background:var(--grn);border-radius:0 3px 3px 0;opacity:.85"></div>
+           <div style="width:${pct}%;height:12px;background:${barColor};border-radius:0 3px 3px 0;opacity:.85"></div>
          </div>`
       : `<div style="flex:1"></div>`;
 
