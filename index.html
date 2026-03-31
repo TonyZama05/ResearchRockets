@@ -824,10 +824,7 @@ function pgDash(){
   const semFin=m.weekEnd?fm(m.weekEnd.totalFondo):'—';
   const varMonto=m.weekStart&&m.weekEnd?m.weekEnd.totalFondo-m.weekStart.totalFondo:0;
 
-  // Build "en proceso" section
-  const opSection = renderOPSection(op);
   return`
-  ${opSection}
   <div class="sg4">
     ${stCard(fm(m.totalFondo),'Valor portafolio','Capital: '+fm(S.capitalInicial),'stat-blue')}
     ${stCard(fp(m.rendAcum),'Rend. acumulado','MEXTRAC: <span class="'+cc(m.rendBench)+'">'+fp(m.rendBench)+'</span>',m.rendAcum>=0?'stat-grn':'stat-red')}
