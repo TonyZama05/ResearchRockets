@@ -274,7 +274,7 @@ const UNIVERSO=[{"t":"MEXTRAC09","n":"ETF MEXTRAC 09","s":"ETF","b":"etf","isEtf
 const KEY='ssot_rr_v1';
 let S={capitalInicial:0,fechaInicio:'2026-04-20',benchmarkInicial:66.94,comisionDefault:0.30,
   fechaEntrega:'2026-04-13',fechaGestion:'2026-04-20',
-  ordenes:[],ordenesProceso:[],snapshots:[],flujos:[],ajustes:[]};
+  ordenes:[],ordenesProceso:[],snapshots:[],flujos:[],ajustes:[],preciosOverlay:{}};
 
 // FIREBASE
 let db=null,_unsubscribe=null,_syncEnabled=false,_saveTimeout=null,_lastSavedHash='';
@@ -297,7 +297,13 @@ function startListener(){
       const activeEl=document.querySelector('.ni.active');
       const activeText=activeEl?.textContent?.toLowerCase()||'';
       if(activeText.includes('config'))return;
-      S={...S,...remote};normalizeS();_lastSavedHash=remoteStr;
+      S={...S,...remote};normalizeS();
+      // Sync preciosOverlay into in-memory PRICE_DB
+      if(S.preciosOverlay)for(const t in S.preciosOverlay){
+        if(!PRICE_DB[t])PRICE_DB[t]={};
+        for(const d in S.preciosOverlay[t])PRICE_DB[t][d]=S.preciosOverlay[t][d];
+      }
+      _lastSavedHash=remoteStr;
       const active=PAGES.find(p=>activeText.includes(p.slice(0,5)))||'dashboard';
       go(active);setTimeout(()=>initCharts&&initCharts(),200);
       setSyncStatus('ok','Actualizado por equipo · '+new Date().toLocaleTimeString('es-MX',{hour:'2-digit',minute:'2-digit'}));
@@ -325,19 +331,45 @@ const save=()=>{
 };
 const load=()=>{
   try{const d=localStorage.getItem(KEY);if(d)S={...S,...JSON.parse(d)};}catch(e){}
+  // Migrate old price overlay (rr_price_day) into S.preciosOverlay if not already there
+  try{
+    const old=localStorage.getItem(PRICE_OVERLAY_KEY);
+    if(old){
+      const ov=JSON.parse(old);
+      if(!S.preciosOverlay)S.preciosOverlay={};
+      let migrated=0;
+      for(const t in ov)for(const d in ov[t]){
+        if(!S.preciosOverlay[t])S.preciosOverlay[t]={};
+        if(!S.preciosOverlay[t][d]){S.preciosOverlay[t][d]=ov[t][d];migrated++;}
+      }
+      if(migrated>0){save();localStorage.removeItem(PRICE_OVERLAY_KEY);console.log('Migrated',migrated,'prices to S.preciosOverlay');}
+    }
+  }catch(e){}
   const cfg=fbConfig();if(cfg&&cfg.apiKey)setTimeout(()=>initFirebase(cfg),100);
 };
 load();
 
 // ── Normalize S arrays (protect against null from Firebase/localStorage) ────
 function normalizeS(){
-  if(!Array.isArray(S.ordenes))S.ordenes=S.ordenes?Object.values(S.ordenes):[];
-  if(!Array.isArray(S.flujos))S.flujos=S.flujos?Object.values(S.flujos):[];
-  if(!Array.isArray(S.ajustes))S.ajustes=S.ajustes?Object.values(S.ajustes):[];
+  if(!Array.isArray(S.ordenes))S.ordenes=S.ordenes&&typeof S.ordenes==='object'?Object.values(S.ordenes):[];
+  if(!Array.isArray(S.flujos))S.flujos=S.flujos&&typeof S.flujos==='object'?Object.values(S.flujos):[];
+  if(!Array.isArray(S.ajustes))S.ajustes=S.ajustes&&typeof S.ajustes==='object'?Object.values(S.ajustes):[];
   if(!Array.isArray(S.snapshots))S.snapshots=[];
   if(!Array.isArray(S.ordenesProceso))S.ordenesProceso=[];
+  if(!S.preciosOverlay||typeof S.preciosOverlay!=='object'||Array.isArray(S.preciosOverlay))S.preciosOverlay={};
 }
 normalizeS();
+// Sync S.preciosOverlay into PRICE_DB on startup
+if(S.preciosOverlay){
+  for(const t in S.preciosOverlay){
+    if(!PRICE_DB[t])PRICE_DB[t]={};
+    for(const d in S.preciosOverlay[t]){
+      PRICE_DB[t][d]=S.preciosOverlay[t][d];
+      if(!ALL_DATES.includes(d))ALL_DATES.push(d);
+    }
+  }
+  ALL_DATES.sort();
+}
 
 // ── Toast notification ─────────────────────────────────────────────────────
 function showToast(msg,type='grn'){
@@ -385,7 +417,12 @@ function savePriceOverlay(ticker,date,precio){
   }catch(e){console.error('savePriceOverlay error:',e);}
 }
 function localPrice(t,date){
-  const db=PRICE_DB[t]||{};
+  // S.preciosOverlay (saved same as orders) takes priority over PRICE_DB
+  const overlay=S.preciosOverlay&&S.preciosOverlay[t]?S.preciosOverlay[t]:{};
+  const base=PRICE_DB[t]||{};
+  // Merge: overlay prices override base prices for same dates
+  const db=Object.assign({},base,overlay);
+  if(!Object.keys(db).length)return null;
   if(date){
     if(db[date]!=null)return db[date];
     const dates=Object.keys(db).sort();
@@ -427,14 +464,20 @@ function portVal(pos){return Object.values(pos).reduce((s,p)=>s+p.titulos*p.prec
 
 function buildHistorical(){
   const ord=S.ordenes||[];
-  // metricsStart = fechaInicio if set, else first order date
-  const firstOrderDate=ord.length?ord.reduce((m,o)=>o.fecha<m?o.fecha:m,ord[0].fecha):null;
-  const firstDate=S.fechaInicio||(firstOrderDate)||null;
+  if(!ord.length)return[];
+  const firstOrderDate=ord.reduce((m,o)=>o.fecha<m?o.fecha:m,ord[0].fecha);
+  // metricsStart = fechaInicio if configured AND <= first available price date
+  // If fechaInicio is in the future (no prices yet), fall back to firstOrderDate
+  const allDates=getAllDates();
+  const latestDate=allDates.length?allDates[allDates.length-1]:null;
+  let firstDate=firstOrderDate; // default: start from first order
+  if(S.fechaInicio){
+    // Use fechaInicio only if there are prices on or after it
+    const hasPricesFromV0=allDates.some(d=>d>=S.fechaInicio);
+    if(hasPricesFromV0)firstDate=S.fechaInicio<=firstOrderDate?S.fechaInicio:firstOrderDate;
+  }
   if(!firstDate)return[];
-  // Only show history from metricsStart onwards AND only if there is at least one order on or before end
-  // If no orders exist, return empty (no history before any trade)
-  if(!firstOrderDate)return[];
-  const dates=getAllDates().filter(d=>d>=firstDate);
+  const dates=allDates.filter(d=>d>=firstDate);
   const result=[];
   for(const date of dates){
     const pos={};
@@ -512,7 +555,7 @@ function calcMetrics(){try{
   }
   const wu=calcWU(pos,totalFondo);const weekStart=hist.length>=5?hist[Math.max(0,hist.length-6)]:null;const weekEnd=hist.length?hist[hist.length-1]:null;
   return{pos,valPort,costoTotal,efectivo,totalFondo,divTotal,rendAcum,rendBench,retActivo:rendBench!=null?rendAcum-rendBench:null,rSem,rbSem,retActivoSem:rSem-rbSem,hitRatio,stdDev,te,beta,ir,varH,wu,hist,weekStart,weekEnd};
-}catch(e){console.error('calcMetrics error:',e);const pos={},wu=[],hist=[];return{pos,valPort:0,costoTotal:0,efectivo:S.capitalInicial||0,totalFondo:S.capitalInicial||0,divTotal:0,rendAcum:0,rendBench:0,retActivo:0,rSem:0,rbSem:0,retActivoSem:0,hitRatio:0,stdDev:0,te:0,beta:1,ir:0,varH:0,wu,hist,weekStart:null,weekEnd:null};}}
+}catch(e){console.error('calcMetrics error:',e);const pos=buildPos()||{},wu=[],hist=[];const vp=portVal(pos);const ct=(S.ordenes||[]).filter(o=>o.tipo==='compra').reduce((s,o)=>s+o.titulos*o.precio+o.comision+o.iva,0);const iv=(S.ordenes||[]).filter(o=>o.tipo==='venta').reduce((s,o)=>s+o.titulos*o.precio-(o.comision+o.iva),0);const div=(S.flujos||[]).filter(f=>f.tipo==='dividendo_efectivo').reduce((s,f)=>s+f.monto,0);const ef=Math.max(0,S.capitalInicial-ct+iv)+div;const tf=vp+ef;const ra=S.capitalInicial>0?(tf-S.capitalInicial)/S.capitalInicial*100:0;return{pos,valPort:vp,costoTotal:ct,efectivo:ef,totalFondo:tf,divTotal:div,rendAcum:ra,rendBench:null,retActivo:null,rSem:0,rbSem:0,retActivoSem:0,hitRatio:0,stdDev:0,te:0,beta:1,ir:0,varH:0,wu:calcWU(pos,tf)||[],hist,weekStart:null,weekEnd:null};}}
 
 // SORT
 const sortState={};
@@ -1212,20 +1255,22 @@ function guardarPreciosDia(){
   if(result.count===0){
     al.innerHTML='<div class="alert a-err">No se detectaron precios. Aseg&#250;rate de pegar el encabezado de tickers y la fila con los precios.</div>';return;
   }
-  // ── Save prices ───────────────────────────────────────────────────────────
+  // ── Save prices into S.preciosOverlay (same persistence as orders) ────────
+  if(!S.preciosOverlay)S.preciosOverlay={};
   let saved=0;
   for(const ticker in result.prices){
+    if(!S.preciosOverlay[ticker])S.preciosOverlay[ticker]={};
     if(!PRICE_DB[ticker])PRICE_DB[ticker]={};
     for(const fecha in result.prices[ticker]){
       const precio=result.prices[ticker][fecha];
-      PRICE_DB[ticker][fecha]=precio;
-      savePriceOverlay(ticker,fecha,precio);
+      S.preciosOverlay[ticker][fecha]=precio;   // saved via save() → localStorage + Firebase
+      PRICE_DB[ticker][fecha]=precio;            // also update in-memory for immediate use
       saved++;
     }
   }
   for(const fecha of result.fechas){if(!ALL_DATES.includes(fecha))ALL_DATES.push(fecha);}
   ALL_DATES.sort();
-  // Update bench preview if config page has a date field visible
+  save(); // persist to localStorage + Firebase just like orders
   try{const cf=document.getElementById('c-fecha');if(cf)updateBenchPreview(cf.value);}catch(e){}
   // ── Show persistent success toast ─────────────────────────────────────────
   const fStr=result.fechas.length?` &middot; <b>${result.fechas.join(', ')}</b>`:'';
