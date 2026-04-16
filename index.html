@@ -158,7 +158,6 @@ canvas{display:block;width:100%!important}
     <div><div class="tb-title" id="tb-title">Dashboard</div><div class="tb-date" id="tb-date"></div></div>
     <div class="spacer"></div>
     <div class="sync-bar" onclick="go('config')" id="sync-bar"><span class="sync-dot sync-off" id="sync-dot"></span><span id="sync-label">Sin conectar</span></div>
-    <button class="btn btn-sm" onclick="openPrecioModal()">&#8635; Precios</button>
     <button class="btn btn-sm" onclick="openPreciosDia()" style="border-color:var(--accent);color:var(--accent)">&#128229; Precios del d&iacute;a</button>
     <button class="btn btn-p btn-sm" onclick="openOrdenModal()">+ Nueva orden</button>
   </div>
@@ -225,24 +224,16 @@ canvas{display:block;width:100%!important}
 <div class="overlay" id="m-precio-dia">
   <div class="modal" style="width:520px;max-width:95vw">
     <div class="modal-h"><div class="modal-t">&#128229; Precios del d&iacute;a</div><button class="modal-x" onclick="closeModal('m-precio-dia')">&#10005;</button></div>
-    <div style="font-size:12px;color:var(--txt2);margin-bottom:12px">Pega los precios de hoy. Formato aceptado:<br><span style="font-family:var(--mono);background:var(--bg3);padding:2px 6px;border-radius:4px;font-size:11px">TICKER&nbsp;&nbsp;&nbsp;PRECIO</span> &mdash; una emisora por l&iacute;nea, separado por tab, coma o espacio.</div>
+    <div style="font-size:12px;color:var(--txt2);margin-bottom:12px">Pega los precios directamente desde Excel/Refinitiv. Soporta dos formatos:<br><span style="font-family:var(--mono);background:var(--bg3);padding:2px 6px;border-radius:4px;font-size:11px">[tab]MEXTRAC09[tab]AMXB... / Fecha[tab]precio[tab]precio...</span><br><span style="color:var(--txt3);font-size:11px">o vertical: TICKER[tab]PRECIO por l&iacute;nea. Los precios se guardan autom&aacute;ticamente.</span></div>
     <div id="pdia-fecha-row" style="display:flex;align-items:center;gap:10px;margin-bottom:10px"><label style="font-size:12px;font-weight:600;color:var(--txt2);flex-shrink:0">Fecha:</label><input type="date" id="pdia-fecha" style="flex:1;font-size:12px"></div>
-    <textarea id="pdia-data" rows="14" placeholder="AMXB&#9;22.46&#10;FEMSAUBD&#9;188.02&#10;WALMEX&#9;58.18&#10;..." style="font-family:var(--mono);font-size:12px;resize:vertical;width:100%;box-sizing:border-box"></textarea>
+    <textarea id="pdia-data" rows="14" placeholder="[tab]MEXTRAC09[tab]AMXB[tab]ASURB...&#10;4/14/2026[tab]66.16[tab]22.7[tab]588.56...&#10;&#10;&#9; o vertical:&#10;AMXB&#9;22.46&#10;FEMSAUBD&#9;188.02" style="font-family:var(--mono);font-size:12px;resize:vertical;width:100%;box-sizing:border-box"></textarea>
     <div id="pdia-preview" style="font-size:11px;color:var(--txt3);margin-top:6px;min-height:18px"></div>
     <div id="pdia-alert" style="margin-top:6px"></div>
     <div class="modal-f"><button class="btn" onclick="closeModal('m-precio-dia')">Cancelar</button><button class="btn btn-p" onclick="guardarPreciosDia()">Guardar precios</button></div>
   </div>
 </div>
 
-<div class="overlay" id="m-precios">
-<div class="modal">
-  <div class="modal-t">Actualizar precios de cierre</div>
-  <div id="p-alert" class="a-info alert">Cargando autom&aacute;ticamente...</div>
-  <div id="p-form" style="display:flex;flex-direction:column;gap:8px"></div>
-  <div style="margin-top:12px" class="fg"><label class="fl">MEXTRAC precio <span id="mex-ps"></span></label><input type="number" id="p-mex" placeholder="Cargando..." step="0.0001"></div>
-  <div class="modal-f"><button class="btn" onclick="closeModal('m-precios')">Cancelar</button><button class="btn btn-p" onclick="savePrecios()">Guardar snapshot</button></div>
-</div>
-</div>
+
 
 <div class="overlay" id="m-flujo">
 <div class="modal">
@@ -1048,26 +1039,129 @@ function confirmarOP(id){
 }
 
 // MODALES DE PRECIOS
-async function openPreciosDia(){const d=new Date().toISOString().split('T')[0];document.getElementById('pdia-fecha').value=d;document.getElementById('pdia-data').value='';document.getElementById('pdia-preview').textContent='';document.getElementById('pdia-alert').innerHTML='';document.getElementById('m-precio-dia').classList.add('open');document.getElementById('pdia-data').oninput=previewPreciosDia;}
-function previewPreciosDia(){const raw=document.getElementById('pdia-data').value.trim();if(!raw){document.getElementById('pdia-preview').textContent='';return;}const lines=raw.split('\n').filter(l=>l.trim());let count=0;lines.forEach(l=>{const p=l.trim().split(/[\t\s]+/);if(p.length>=2&&!isNaN(parseFloat(p[1])))count++;});document.getElementById('pdia-preview').textContent=count>0?`&#10003; ${count} emisoras detectadas`:'';}
-function guardarPreciosDia(){
-  const fechaInput=document.getElementById('pdia-fecha').value;const raw=document.getElementById('pdia-data').value.trim();const al=document.getElementById('pdia-alert');
-  if(!raw){al.innerHTML='<div class="alert a-err">Pega los datos primero.</div>';return;}
-  const lines=raw.split('\n').filter(l=>l.trim());if(!lines.length){al.innerHTML='<div class="alert a-err">Sin datos.</div>';return;}
-  const split=l=>l.split('\t').map(c=>c.trim()).filter(c=>c!=='').length>1?l.split('\t').map(c=>c.trim()):l.trim().split(/\s{2,}/).map(c=>c.trim());
-  const firstCells=split(lines[0]);const isHorizontal=firstCells[0].toUpperCase()==='FECHA'||/^\d{4}-\d{2}-\d{2}$/.test(firstCells[0])||firstCells.some(c=>c.toUpperCase().startsWith('BMV:'));
-  let count=0;
-  if(isHorizontal){
-    const headers=split(lines[0]).map(h=>h.replace(/^BMV:/i,'').toUpperCase().replace('PE&OLES','PEOLES').trim());
-    for(let r=1;r<lines.length;r++){const vals=split(lines[r]);if(!vals.length)continue;let fecha=fechaInput,startCol=0;if(/^\d{4}-\d{2}-\d{2}$/.test(vals[0])){fecha=vals[0];startCol=1;}if(!fecha){al.innerHTML='<div class="alert a-err">No se detecto fecha.</div>';return;}for(let c=startCol;c<headers.length&&c<vals.length;c++){const ticker=headers[c];const precio=parseFloat(vals[c].replace(/,/g,'.'));if(!ticker||ticker==='FECHA'||isNaN(precio)||precio<=0)continue;if(!PRICE_DB[ticker])PRICE_DB[ticker]={};PRICE_DB[ticker][fecha]=+precio.toFixed(4);savePriceOverlay(ticker,fecha,+precio.toFixed(4));count++;if(!ALL_DATES.includes(fecha)){ALL_DATES.push(fecha);ALL_DATES.sort();}}}
-  }else{
-    if(!fechaInput){al.innerHTML='<div class="alert a-err">Selecciona una fecha.</div>';return;}
-    lines.forEach(line=>{const parts=split(line);if(parts.length<2)return;const ticker=parts[0].toUpperCase().replace(/^BMV:/i,'').replace('PE&OLES','PEOLES');const precio=parseFloat(parts[1].replace(/,/g,'.'));if(!ticker||isNaN(precio)||precio<=0)return;if(!PRICE_DB[ticker])PRICE_DB[ticker]={};PRICE_DB[ticker][fechaInput]=+precio.toFixed(4);savePriceOverlay(ticker,fechaInput,+precio.toFixed(4));count++;});
-    if(!ALL_DATES.includes(fechaInput)){ALL_DATES.push(fechaInput);ALL_DATES.sort();}
+async function openPreciosDia(){const d=new Date().toISOString().split('T')[0];document.getElementById('pdia-fecha').value=d;document.getElementById('pdia-data').value='';document.getElementById('pdia-preview').innerHTML='';document.getElementById('pdia-alert').innerHTML='';document.getElementById('m-precio-dia').classList.add('open');document.getElementById('pdia-data').oninput=previewPreciosDia;}
+
+// ── Parser universal de precios ──────────────────────────────────────────────
+function parseDate(s){
+  if(!s)return null;
+  s=s.trim();
+  if(/^\d{4}-\d{2}-\d{2}$/.test(s))return s;
+  // M/D/YYYY or MM/DD/YYYY
+  const m=s.match(/^(\d{1,2})\/(\d{1,2})\/(\d{4})$/);
+  if(m)return`${m[3]}-${m[1].padStart(2,'0')}-${m[2].padStart(2,'0')}`;
+  // D/M/YYYY heuristic (if month>12)
+  const m2=s.match(/^(\d{1,2})\/(\d{1,2})\/(\d{4})$/);
+  if(m2&&parseInt(m2[1])>12)return`${m2[3]}-${m2[2].padStart(2,'0')}-${m2[1].padStart(2,'0')}`;
+  return null;
+}
+
+function parsePreciosPaste(raw,fallbackFecha){
+  const lines=raw.split('\n');
+  const rows=lines.map(l=>l.split('\t').map(c=>c.trim()));
+  if(!rows.length)return{count:0,prices:{},fechas:[]};
+
+  const prices={};const fechas=new Set();
+  const cleanTicker=t=>t.replace(/^BMV:/i,'').replace(/PE&OLES|PE&amp;OLES/gi,'PEOLES').replace(/&amp;/g,'&').toUpperCase().trim();
+
+  // ── Detect HORIZONTAL format ──────────────────────────────────────────────
+  // Condition: first row has ≥2 cells where at least one looks like a ticker
+  // AND first cell is empty (leading tab) OR equals 'FECHA' / '' / date
+  const firstRow=rows[0];
+  const firstCell=firstRow[0]||'';
+  const firstCellIsDate=!!parseDate(firstCell);
+  const firstCellIsEmpty=firstCell===''||firstCell.toUpperCase()==='FECHA';
+  // Does this row contain recognizable tickers?
+  const knownTickers=new Set(Object.keys(PRICE_DB).concat(UNIVERSO.map(u=>u.t)));
+  const headerCandidates=firstRow.slice(firstCellIsEmpty?1:0);
+  const hasTickers=headerCandidates.some(h=>knownTickers.has(cleanTicker(h))||cleanTicker(h).length>=2&&cleanTicker(h).length<=12&&/^[A-Z0-9&]+$/.test(cleanTicker(h)));
+
+  if((firstCellIsEmpty||firstCellIsDate)&&hasTickers){
+    // HORIZONTAL: row 0 = [empty/FECHA, ticker1, ticker2, ...]
+    //             row 1+ = [date, precio1, precio2, ...]
+    let headerRow=rows[0];
+    let dataStartRow=1;
+    // If first cell is a date, the header IS row 0 and data is also row 0 (single row)
+    if(firstCellIsDate){
+      // Format: date\tprice1\tprice2... with no separate header — skip
+    }
+    const tickers=headerRow.slice(1).map(cleanTicker);
+    for(let r=dataStartRow;r<rows.length;r++){
+      const vals=rows[r];if(!vals.length||!vals[0])continue;
+      const fecha=parseDate(vals[0])||fallbackFecha;
+      if(!fecha)continue;
+      fechas.add(fecha);
+      for(let c=0;c<tickers.length;c++){
+        const ticker=tickers[c];
+        const rawVal=vals[c+1]||'';
+        const precio=parseFloat(rawVal.replace(/,/g,'.'));
+        if(!ticker||isNaN(precio)||precio<=0)continue;
+        if(!prices[ticker])prices[ticker]={};
+        prices[ticker][fecha]=+precio.toFixed(4);
+      }
+    }
+    const count=Object.keys(prices).reduce((s,t)=>s+Object.keys(prices[t]).length,0);
+    return{count,prices,fechas:[...fechas]};
   }
-  if(count===0){al.innerHTML='<div class="alert a-err">No se pudo leer ningun precio. Revisa el formato.</div>';return;}
-  al.innerHTML=`<div class="alert a-ok">&#10003; ${count} precios guardados</div>`;
-  setTimeout(()=>{closeModal('m-precio-dia');const activeEl=document.querySelector('.ni.active');const activeText=activeEl?.textContent?.toLowerCase()||'';const pages=['dashboard','ordenes','posicion','rendimiento','riesgo','analytics','flujos','estadisticos','config'];const active=pages.find(p=>activeText.includes(p.slice(0,5)))||'dashboard';go(active);},800);
+
+  // ── VERTICAL format: TICKER\tPRICE per line ───────────────────────────────
+  const fecha=fallbackFecha;
+  if(!fecha)return{count:0,prices:{},fechas:[],error:'nodate'};
+  for(const row of rows){
+    if(row.length<2)continue;
+    const ticker=cleanTicker(row[0]);
+    const precio=parseFloat(row[1].replace(/,/g,'.'));
+    if(!ticker||isNaN(precio)||precio<=0)continue;
+    if(!prices[ticker])prices[ticker]={};
+    prices[ticker][fecha]=+precio.toFixed(4);
+    fechas.add(fecha);
+  }
+  const count=Object.keys(prices).reduce((s,t)=>s+Object.keys(prices[t]).length,0);
+  return{count,prices,fechas:[...fechas]};
+}
+
+function previewPreciosDia(){
+  const raw=document.getElementById('pdia-data').value;
+  const fecha=document.getElementById('pdia-fecha').value;
+  const prev=document.getElementById('pdia-preview');
+  if(!raw.trim()){prev.innerHTML='';return;}
+  const result=parsePreciosPaste(raw,fecha);
+  if(result.count>0){
+    const fStr=result.fechas.length?` &middot; Fecha: <b>${result.fechas.join(', ')}</b>`:'';
+    prev.innerHTML=`<span style="color:var(--grn)">&#10003; <b>${result.count}</b> precios detectados${fStr}</span>`;
+  }else{
+    prev.innerHTML=`<span style="color:var(--red)">&#9888; No se detectaron precios. Revisa el formato.</span>`;
+  }}
+function guardarPreciosDia(){
+  const fechaInput=document.getElementById('pdia-fecha').value;
+  const raw=document.getElementById('pdia-data').value;
+  const al=document.getElementById('pdia-alert');
+  if(!raw.trim()){al.innerHTML='<div class="alert a-err">Pega los datos primero.</div>';return;}
+  const result=parsePreciosPaste(raw,fechaInput);
+  if(result.error==='nodate'){al.innerHTML='<div class="alert a-err">Selecciona una fecha o incluye la fecha en los datos.</div>';return;}
+  if(result.count===0){al.innerHTML='<div class="alert a-err">No se detectaron precios. Revisa el formato.</div>';return;}
+  // Save to PRICE_DB and overlay
+  for(const ticker in result.prices){
+    if(!PRICE_DB[ticker])PRICE_DB[ticker]={};
+    for(const fecha in result.prices[ticker]){
+      const precio=result.prices[ticker][fecha];
+      PRICE_DB[ticker][fecha]=precio;
+      savePriceOverlay(ticker,fecha,precio);
+    }
+  }
+  // Update ALL_DATES
+  for(const fecha of result.fechas){if(!ALL_DATES.includes(fecha)){ALL_DATES.push(fecha);}}
+  ALL_DATES.sort();
+  const fStr=result.fechas.length?` &mdash; fecha: <b>${result.fechas.join(', ')}</b>`:'';
+  al.innerHTML=`<div class="alert a-ok">&#10003; <b>${result.count}</b> precios guardados${fStr}</div>`;
+  // Auto-refresh active page after short delay
+  setTimeout(()=>{
+    closeModal('m-precio-dia');
+    const activeEl=document.querySelector('.ni.active');
+    const activeText=activeEl?.textContent?.toLowerCase()||'';
+    const pages=['dashboard','ordenes','posicion','rendimiento','riesgo','analytics','atribucion','flujos','estadisticos','config'];
+    const active=pages.find(p=>activeText.includes(p.slice(0,5)))||'dashboard';
+    go(active);
+  },900);
 }
 async function openPrecioModal(){const pos=buildPos();const tickers=Object.keys(pos);if(!tickers.length){alert('No hay posiciones abiertas.');return;}const form=document.getElementById('p-form');form.innerHTML=tickers.map(t=>`<div style="display:flex;align-items:center;gap:9px"><label style="font-size:12px;font-weight:600;color:var(--accent);width:140px;flex-shrink:0">${UNIVERSO.find(e=>e.t===t)?.n||t}</label><input type="number" id="pp-${t.replace(/[\s*]/g,'_')}" value="${pos[t].precioActual}" step="0.0001" style="flex:1"><span id="pps-${t.replace(/[\s*]/g,'_')}" class="ps ps-load" style="min-width:64px;text-align:center">...</span></div>`).join('');await Promise.all([...tickers.map(async t=>{const key=t.replace(/[\s*]/g,'_');const res=await fetchPrice(t,null);const inp=document.getElementById('pp-'+key),sta=document.getElementById('pps-'+key);if(inp&&res){inp.value=res.price;if(sta)sta.outerHTML=`<span class="ps ps-ok" id="pps-${key}" style="min-width:64px;text-align:center">&#10003; ${res.src}</span>`;}else if(sta){sta.outerHTML=`<span class="ps ps-err" id="pps-${key}" style="min-width:64px;text-align:center">manual</span>`;}})]);document.getElementById('m-precios').classList.add('open');}
 
@@ -1162,9 +1256,13 @@ function pgEstadisticos(){
 function pgAtribucion(){
   const m=calcMetrics();
   return`
-  <div class="card" style="max-width:900px">
-    <div class="sec-h"><div class="sec-h-bar" style="background:var(--purple)"></div><div class="sec-h-text">Performance Attribution &mdash; Brinson-Hood-Beebower</div>
-      <div style="margin-left:auto;display:flex;gap:8px;align-items:center">
+  <!-- Attribution header row -->
+  <div class="card" style="padding:14px 20px">
+    <div style="display:flex;align-items:center;gap:0">
+      <div class="sec-h-bar" style="background:var(--purple);width:4px;height:20px;border-radius:2px;margin-right:10px;flex-shrink:0"></div>
+      <div class="sec-h-text">Performance Attribution &mdash; Brinson-Hood-Beebower</div>
+      <div class="a-info" style="margin:0 16px;font-size:11px;padding:4px 10px;flex:1">Descompone el retorno activo (fondo vs MEXTRAC) en: <b>Asset Allocation</b>, <b>Stock Selection</b> e <b>Interaction</b></div>
+      <div style="display:flex;gap:8px;align-items:center;flex-shrink:0">
         <span style="font-size:11px;color:var(--txt3)">Periodo:</span>
         <select id="attr-period" onchange="renderAtribucion()" style="width:auto;padding:4px 10px;font-size:12px">
           <option value="acum">Acumulado (gestion)</option>
@@ -1173,26 +1271,33 @@ function pgAtribucion(){
         </select>
       </div>
     </div>
-    <div class="a-info" style="margin-bottom:14px;font-size:12px">
-      <b>Atribucion de desempeno:</b> Descompone el retorno activo (fondo vs MEXTRAC) en tres efectos: Asignacion de Activos, Seleccion de Valores e Interaccion.
-    </div>
-    <div id="attr-summary-cards" class="sg4" style="margin-bottom:18px"></div>
-    <div id="attr-chart-container" style="min-height:220px;position:relative;margin-bottom:18px"><canvas id="attr-bar-chart" style="width:100%;height:220px"></canvas></div>
-    <div class="sec-h" style="margin-top:4px"><div class="sec-h-bar"></div><div class="sec-h-text">Desglose por sector</div></div>
-    <div class="tw"><table id="tbl-attr"><thead><tr>
-      <th>Sector</th>
-      <th title="Peso del sector en el fondo (ajustado MEXTRAC)">W Fondo</th>
-      <th title="Peso del sector en el benchmark MEXTRAC">W Bench</th>
-      <th title="Retorno del sector en el fondo">R Fondo</th>
-      <th title="Retorno del sector en el benchmark">R Bench</th>
-      <th title="(Wf - Wb) x (Rb - Rp)">Asset Alloc</th>
-      <th title="Wb x (Rf - Rb)">Stock Sel</th>
-      <th title="(Wf - Wb) x (Rf - Rb)">Interaccion</th>
-      <th title="Contribucion total al retorno activo">Total</th>
-    </tr></thead><tbody id="attr-tbody"></tbody></table></div>
   </div>
-  <div class="card" style="max-width:900px">
-    <div class="sec-h"><div class="sec-h-bar" style="background:var(--grn)"></div><div class="sec-h-text">Seleccion de valores</div></div>
+  <!-- Summary cards -->
+  <div id="attr-summary-cards" class="sg4"></div>
+  <!-- Two-column: chart + sector table -->
+  <div style="display:grid;grid-template-columns:1fr 1.6fr;gap:14px;align-items:start">
+    <div class="card" style="display:flex;flex-direction:column">
+      <div class="sec-h"><div class="sec-h-bar" style="background:var(--purple)"></div><div class="sec-h-text">Efectos por sector</div></div>
+      <div style="position:relative;min-height:260px;flex:1"><canvas id="attr-bar-chart" style="width:100%!important;height:100%!important;position:absolute;inset:0"></canvas></div>
+    </div>
+    <div class="card">
+      <div class="sec-h"><div class="sec-h-bar"></div><div class="sec-h-text">Desglose por sector</div></div>
+      <div class="tw"><table id="tbl-attr"><thead><tr>
+        <th>Sector</th>
+        <th title="Peso sector en fondo">W&nbsp;Fondo</th>
+        <th title="Peso sector en benchmark">W&nbsp;Bench</th>
+        <th title="Retorno sector en fondo">R&nbsp;Fondo</th>
+        <th title="Retorno sector en benchmark">R&nbsp;Bench</th>
+        <th title="Asset Allocation effect">Asset&nbsp;Alloc</th>
+        <th title="Stock Selection effect">Stock&nbsp;Sel</th>
+        <th title="Interaction effect">Inter</th>
+        <th title="Total contribution">Total</th>
+      </tr></thead><tbody id="attr-tbody"></tbody></table></div>
+    </div>
+  </div>
+  <!-- Stock selection table full width -->
+  <div class="card">
+    <div class="sec-h"><div class="sec-h-bar" style="background:var(--grn)"></div><div class="sec-h-text">Seleccion de valores &mdash; contribucion por emisora</div></div>
     <div class="tw"><table id="tbl-attr2"><thead><tr>
       <th>Ticker</th><th>Sector</th><th>W Fondo</th><th>W Bench</th><th>Retorno</th><th>R Bench sector</th><th>Contribucion seleccion</th>
     </tr></thead><tbody id="attr-tbody2"></tbody></table></div>
@@ -1348,7 +1453,7 @@ function renderAtribucion(){
       {label:'Asset Allocation',data:d.rows.map(r=>+r.aa.toFixed(3)),backgroundColor:'rgba(12,74,110,0.7)',borderRadius:3},
       {label:'Stock Selection',data:d.rows.map(r=>+r.ss.toFixed(3)),backgroundColor:'rgba(2,122,72,0.7)',borderRadius:3},
       {label:'Interaccion',data:d.rows.map(r=>+r.inter.toFixed(3)),backgroundColor:'rgba(91,33,182,0.55)',borderRadius:3}
-    ]},options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{labels:{font:{size:11}}},tooltip:{callbacks:{label:c=>`${c.dataset.label}: ${c.parsed.y>=0?'+':''}${c.parsed.y.toFixed(3)}%`}}},scales:{x:{ticks:{font:{size:10}},grid:{display:false}},y:{ticks:{callback:v=>`${v>=0?'+':''}${v.toFixed(2)}%`,font:{size:10}},grid:{color:'rgba(0,0,0,.04)'}}}}});
+    ]},options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{position:'top',labels:{font:{size:11},boxWidth:12,padding:8}},tooltip:{callbacks:{label:c=>`${c.dataset.label}: ${c.parsed.y>=0?'+':''}${c.parsed.y.toFixed(3)}%`}}},scales:{x:{ticks:{font:{size:10}},grid:{display:false}},y:{ticks:{callback:v=>`${v>=0?'+':''}${v.toFixed(2)}%`,font:{size:10}},grid:{color:'rgba(0,0,0,.04)'}}}}});
     chartInst.push(Chart.getChart(ctx));
   }
   // Sector table
