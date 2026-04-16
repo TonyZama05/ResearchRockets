@@ -1130,15 +1130,7 @@ function pgConfig(){
         <div style="font-size:13px;font-family:var(--mono);font-weight:600;color:var(--accent);margin-top:4px" id="bench-auto-display">
           ${(()=>{const p=localPrice('MEXTRAC09',S.fechaInicio||'2026-04-13');return p?'$'+p.toFixed(4)+' en '+(S.fechaInicio||'2026-04-13'):'Sin precio — carga datos de esa fecha';})()}
         </div>
-        <div style="font-size:11px;color:var(--txt3);margin-top:6px" id="mex-nav-reciente">
-          ${(()=>{
-            const mexDB=Object.assign({},PRICE_DB['MEXTRAC09']||{},S.preciosOverlay&&S.preciosOverlay['MEXTRAC09']?S.preciosOverlay['MEXTRAC09']:{});
-            const allDts=Object.keys(mexDB).sort();
-            if(!allDts.length)return 'Sin datos MEXTRAC cargados';
-            const last5=allDts.slice(-5).reverse();
-            const rows=last5.map((d,i)=>`<span style="display:inline-flex;align-items:center;gap:6px;margin-right:10px"><b style="font-family:var(--mono);color:${i===0?'var(--accent)':'var(--txt)'}">${d}</b><span style="color:${i===0?'var(--accent)':'var(--txt2)'}">$${mexDB[d].toFixed(4)}</span>${i===0?' <span style="background:var(--accent);color:#fff;font-size:9px;padding:1px 5px;border-radius:3px">RECIENTE</span>':''}</span>`).join('');
-            return '<div style="margin-bottom:4px;font-weight:600;color:var(--txt2)">Ultimos precios MEXTRAC09 cargados:</div><div style="line-height:2">'+rows+'</div>';
-          })()}
+        <div style="font-size:11px;color:var(--txt3);margin-top:6px" id="mex-nav-reciente">Cargando historial de precios...</div>
         </div>
       </div>
       <div class="fg"><label class="fl">Comision default (%)</label><input type="number" id="c-com" value="${S.comisionDefault}" step="0.01"></div>
