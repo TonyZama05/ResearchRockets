@@ -361,6 +361,13 @@ function normalizeS(){
   if(!Array.isArray(S.snapshots))S.snapshots=[];
   if(!Array.isArray(S.ordenesProceso))S.ordenesProceso=[];
   if(!S.preciosOverlay||typeof S.preciosOverlay!=='object'||Array.isArray(S.preciosOverlay))S.preciosOverlay={};
+  // Normalize fechaGestion: if it's ahead of fechaInicio or unset, use fechaInicio
+  // This prevents stale Firebase values from breaking the adjustment-week logic
+  if(!S.fechaGestion||S.fechaGestion===''||S.fechaGestion==='2026-04-20'){
+    S.fechaGestion=S.fechaInicio||'2026-04-13';
+  }
+  // Ensure benchmarkInicial is a number
+  if(!S.benchmarkInicial||isNaN(S.benchmarkInicial))S.benchmarkInicial=66.94;
 }
 normalizeS();
 // Sync S.preciosOverlay into PRICE_DB on startup
@@ -608,6 +615,7 @@ function go(page){
   if(page==='analytics')setTimeout(initCharts,50);
   if(page==='atribucion')setTimeout(initAtribucionCharts,50);
   if(page==='rendimiento')setTimeout(initRendChart,50);
+  if(page==='config')setTimeout(()=>{const f=document.getElementById('c-fecha');if(f)updateBenchPreview(f.value);},50);
 }
 
 // DASHBOARD
@@ -1007,7 +1015,7 @@ function pgConfig(){
       <div class="fg"><label class="fl">Capital inicial ($MXN)</label><input type="number" id="c-cap" value="${S.capitalInicial||''}" placeholder="Monto asignado por BBVA"></div>
       <div class="fg">
         <label class="fl">Fecha inicio de m&eacute;tricas (V0)</label>
-        <input type="date" id="c-fecha" value="${(S.fechaInicio||'2026-04-20').substring(0,10)}" onchange="updateBenchPreview(this.value)">
+        <input type="date" id="c-fecha" value="${(S.fechaInicio||'2026-04-13').substring(0,10)}" onchange="updateBenchPreview(this.value)">
         <div style="font-size:11px;color:var(--txt3);margin-top:4px;line-height:1.6">
           Todas las m&eacute;tricas (rendimiento, benchmark, retorno activo) corren desde esta fecha.
           El precio base del MEXTRAC se toma en esta fecha. Si no tienes &oacute;rdenes todav&iacute;a,
