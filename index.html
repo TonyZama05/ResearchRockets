@@ -407,6 +407,9 @@ function showToast(msg,type='grn'){
 const f2=(n,d=2)=>n==null||isNaN(n)?'—':n.toFixed(d);
 const fp=(n,d=2)=>n==null||isNaN(n)?'—':(n>=0?'+':'')+n.toFixed(d)+'%';
 const fm=n=>n==null||isNaN(n)?'—':'$'+Math.round(n).toLocaleString('es-MX');
+// Safe date parsing — returns null instead of throwing
+function parseISODate(str){if(!str||typeof str!=='string'||str.length<10)return null;const d=new Date(str.substring(0,10)+'T12:00:00');return isNaN(d.getTime())?null:d;}
+function diffDays(a,b){const da=parseISODate(a),db=parseISODate(b);if(!da||!db)return 0;return Math.round((db-da)/86400000);}
 const cc=n=>n>0?'g':n<0?'r':'d';
 const today=()=>new Date().toISOString().split('T')[0];
 
@@ -516,9 +519,11 @@ function buildHistorical(){
   if(!allDates.some(d=>d>=fechaRef)&&latestDate)firstDate=latestDate;
 
   if(!firstDate)return[];
-  let dates=allDates.filter(d=>d>=firstDate);
-  if(!dates.length&&latestDate)dates=[latestDate];
-  if(latestDate&&!dates.includes(latestDate))dates.push(latestDate);
+  // Filter: only valid YYYY-MM-DD strings at or after firstDate
+  const validDate=d=>typeof d==='string'&&/^\d{4}-\d{2}-\d{2}$/.test(d);
+  let dates=allDates.filter(d=>validDate(d)&&d>=firstDate);
+  if(!dates.length&&latestDate&&validDate(latestDate))dates=[latestDate];
+  if(latestDate&&validDate(latestDate)&&!dates.includes(latestDate))dates.push(latestDate);
   dates.sort();
 
   // Anchors: fund value and MEXTRAC price at fechaInicio (V0 and mexStart)
@@ -592,15 +597,19 @@ function calcMetrics(){
   let rSem=0,rbSem=0;
   if(hist.length>=2){
     const wEnd=hist[hist.length-1];
-    const lastDate=new Date(wEnd.date+'T00:00:00');
-    const dow=lastDate.getDay();const daysToMon=dow===0?6:dow-1;
-    const monDate=new Date(lastDate);monDate.setDate(monDate.getDate()-daysToMon);
-    const monStr=monDate.toISOString().split('T')[0];
-    let wStart=null;
-    for(let i=hist.length-1;i>=0;i--){if(hist[i].date<monStr){wStart=hist[i];break;}}
-    if(!wStart)wStart=hist[0];
-    if(wStart.totalFondo>0)rSem=(wEnd.totalFondo-wStart.totalFondo)/wStart.totalFondo*100;
-    if(wStart.mexPrice&&wEnd.mexPrice&&wStart.mexPrice>0)rbSem=(wEnd.mexPrice-wStart.mexPrice)/wStart.mexPrice*100;
+    const wEndDate=parseISODate(wEnd.date);  // safe — returns null if invalid
+    if(wEndDate){
+      const dow=wEndDate.getDay();
+      const daysToMon=dow===0?6:dow-1;
+      const monDate=new Date(wEndDate.getTime());
+      monDate.setDate(monDate.getDate()-daysToMon);
+      const monStr=monDate.toISOString().split('T')[0];
+      let wStart=null;
+      for(let i=hist.length-1;i>=0;i--){if(hist[i].date<monStr){wStart=hist[i];break;}}
+      if(!wStart)wStart=hist[0];
+      if(wStart&&wStart.totalFondo>0)rSem=(wEnd.totalFondo-wStart.totalFondo)/wStart.totalFondo*100;
+      if(wStart&&wStart.mexPrice&&wEnd.mexPrice&&wStart.mexPrice>0)rbSem=(wEnd.mexPrice-wStart.mexPrice)/wStart.mexPrice*100;
+    }
   }
 
   // ── risk metrics (require ≥3 data points) ────────────────────────────────
