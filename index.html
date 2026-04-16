@@ -296,7 +296,7 @@ function startListener(){
       const activeEl=document.querySelector('.ni.active');
       const activeText=activeEl?.textContent?.toLowerCase()||'';
       if(activeText.includes('config'))return;
-      S={...S,...remote};_lastSavedHash=remoteStr;
+      S={...S,...remote};normalizeS();_lastSavedHash=remoteStr;
       const active=PAGES.find(p=>activeText.includes(p.slice(0,5)))||'dashboard';
       go(active);setTimeout(()=>initCharts&&initCharts(),200);
       setSyncStatus('ok','Actualizado por equipo · '+new Date().toLocaleTimeString('es-MX',{hour:'2-digit',minute:'2-digit'}));
@@ -327,6 +327,28 @@ const load=()=>{
   const cfg=fbConfig();if(cfg&&cfg.apiKey)setTimeout(()=>initFirebase(cfg),100);
 };
 load();
+
+// ── Normalize S arrays (protect against null from Firebase/localStorage) ────
+function normalizeS(){
+  if(!Array.isArray(S.ordenes))S.ordenes=S.ordenes?Object.values(S.ordenes):[];
+  if(!Array.isArray(S.flujos))S.flujos=S.flujos?Object.values(S.flujos):[];
+  if(!Array.isArray(S.ajustes))S.ajustes=S.ajustes?Object.values(S.ajustes):[];
+  if(!Array.isArray(S.snapshots))S.snapshots=[];
+  if(!Array.isArray(S.ordenesProceso))S.ordenesProceso=[];
+}
+normalizeS();
+
+// ── Toast notification ─────────────────────────────────────────────────────
+function showToast(msg,type='grn'){
+  const t=document.createElement('div');
+  t.style.cssText='position:fixed;bottom:24px;right:24px;z-index:9999;padding:12px 18px;border-radius:8px;font-size:13px;font-weight:500;box-shadow:0 4px 16px rgba(0,0,0,.15);max-width:360px;line-height:1.4;transition:opacity .3s';
+  t.style.background=type==='grn'?'#ECFDF3':type==='err'?'#FEF3F2':'#FFFAEB';
+  t.style.color=type==='grn'?'#027A48':type==='err'?'#B42318':'#B54708';
+  t.style.border=`1px solid ${type==='grn'?'#D1FADF':type==='err'?'#FEE4E2':'#FEF0C7'}`;
+  t.innerHTML=msg;
+  document.body.appendChild(t);
+  setTimeout(()=>{t.style.opacity='0';setTimeout(()=>t.remove(),400);},4000);
+}
 
 // FORMATTERS
 const f2=(n,d=2)=>n==null||isNaN(n)?'—':n.toFixed(d);
@@ -382,7 +404,7 @@ async function fetchPrice(t,date){const p=localPrice(t,date);if(p!=null)return{p
 // POSITION ENGINE
 function buildPos(){
   const pos={};
-  for(const o of S.ordenes){
+  for(const o of (S.ordenes||[])){
     if(!pos[o.ticker])pos[o.ticker]={titulos:0,costoTotal:0,precioActual:o.precio,isEtf:o.isEtf||false};
     if(o.tipo==='compra'){pos[o.ticker].titulos+=o.titulos;pos[o.ticker].costoTotal+=o.titulos*o.precio;}
     else{
@@ -402,14 +424,14 @@ function buildPos(){
 function portVal(pos){return Object.values(pos).reduce((s,p)=>s+p.titulos*p.precioActual,0);}
 
 function buildHistorical(){
-  if(!S.ordenes.length)return[];
-  const firstOrderDate=S.ordenes.reduce((m,o)=>o.fecha<m?o.fecha:m,S.ordenes[0].fecha);
+  const ord=S.ordenes||[];if(!ord.length)return[];
+  const firstOrderDate=ord.reduce((m,o)=>o.fecha<m?o.fecha:m,ord[0].fecha);
   const firstDate=S.fechaInicio&&S.fechaInicio<=firstOrderDate?S.fechaInicio:firstOrderDate;
   const dates=getAllDates().filter(d=>d>=firstDate);
   const result=[];
   for(const date of dates){
     const pos={};
-    for(const o of S.ordenes){
+    for(const o of ord){
       if(o.fecha>date)continue;
       if(!pos[o.ticker])pos[o.ticker]={titulos:0,costoTotal:0,isEtf:o.isEtf||false};
       if(o.tipo==='compra'){pos[o.ticker].titulos+=o.titulos;pos[o.ticker].costoTotal+=o.titulos*o.precio;}
@@ -419,8 +441,8 @@ function buildHistorical(){
     for(const a of S.ajustes||[]){if(a.fecha<=date&&pos[a.ticker]){if(a.tipo==='split')pos[a.ticker].titulos*=a.factor;if(a.tipo==='split_inverso')pos[a.ticker].titulos/=a.factor;}}
     let portValue=0;
     for(const t in pos){const p=localPrice(t,date);if(p!=null)portValue+=pos[t].titulos*p;}
-    const costUpTo=S.ordenes.filter(o=>o.fecha<=date&&o.tipo==='compra').reduce((s,o)=>s+o.titulos*o.precio+o.comision+o.iva,0);
-    const ventasUpTo=S.ordenes.filter(o=>o.fecha<=date&&o.tipo==='venta').reduce((s,o)=>s+o.titulos*o.precio-(o.comision+o.iva),0);
+    const costUpTo=ord.filter(o=>o.fecha<=date&&o.tipo==='compra').reduce((s,o)=>s+o.titulos*o.precio+o.comision+o.iva,0);
+    const ventasUpTo=ord.filter(o=>o.fecha<=date&&o.tipo==='venta').reduce((s,o)=>s+o.titulos*o.precio-(o.comision+o.iva),0);
     const divUpTo=(S.flujos||[]).filter(f=>f.fecha<=date&&f.tipo==='dividendo_efectivo').reduce((s,f)=>s+f.monto,0);
     const efectivo=Math.max(0,S.capitalInicial-costUpTo+ventasUpTo)+divUpTo;
     const totalFondo=portValue+efectivo;
@@ -446,11 +468,11 @@ function calcWU(pos,totalFondo){
 
 function calcMetrics(){try{
   const pos=buildPos();const valPort=portVal(pos);
-  const costoTotalCompras=S.ordenes.filter(o=>o.tipo==='compra').reduce((s,o)=>s+o.titulos*o.precio+o.comision+o.iva,0);
-  const ingresosVentas=S.ordenes.filter(o=>o.tipo==='venta').reduce((s,o)=>s+o.titulos*o.precio-(o.comision+o.iva),0);
+  const costoTotalCompras=(S.ordenes||[]).filter(o=>o.tipo==='compra').reduce((s,o)=>s+o.titulos*o.precio+o.comision+o.iva,0);
+  const ingresosVentas=(S.ordenes||[]).filter(o=>o.tipo==='venta').reduce((s,o)=>s+o.titulos*o.precio-(o.comision+o.iva),0);
   const divTotal=(S.flujos||[]).filter(f=>f.tipo==='dividendo_efectivo').reduce((s,f)=>s+f.monto,0);
   const efectivo=Math.max(0,S.capitalInicial-costoTotalCompras+ingresosVentas)+divTotal;
-  const comisionesPagadas=S.ordenes.filter(o=>o.tipo==='compra').reduce((s,o)=>s+o.comision+o.iva,0);
+  const comisionesPagadas=(S.ordenes||[]).filter(o=>o.tipo==='compra').reduce((s,o)=>s+o.comision+o.iva,0);
   const costoTotal=Object.values(pos).reduce((s,p)=>s+p.costoTotal,0)+comisionesPagadas;
   const totalFondo=valPort+efectivo;
   const rendAcum=S.capitalInicial>0?(totalFondo-S.capitalInicial)/S.capitalInicial*100:0;
@@ -570,7 +592,7 @@ function pgDash(){
   <div class="card">
     <div class="sec-h"><div class="sec-h-bar"></div><div class="sec-h-text">Ordenes recientes</div><button class="btn btn-sm" onclick="go('ordenes')" style="margin-left:auto">Ver todas &rarr;</button></div>
     <div class="tw"><table><thead><tr><th>Fecha</th><th>Tipo</th><th>Ticker</th><th>Titulos</th><th>Precio</th><th>Valor</th><th>Com+IVA</th><th>% Portafolio</th><th>Razon</th></tr></thead><tbody>
-    ${S.ordenes.slice().reverse().slice(0,6).map(o=>{const pct=S.capitalInicial>0?o.titulos*o.precio/S.capitalInicial*100:0;return`<tr><td class="mono">${o.fecha}</td><td><span class="pill ${o.tipo==='compra'?'p-buy':'p-sell'}">${o.tipo}</span>${o.isEtf?' <span class="pill p-etf">ETF</span>':''}</td><td class="lbl">${UNIVERSO.find(e=>e.t===o.ticker)?.n||o.ticker}</td><td class="mono">${o.titulos.toLocaleString()}</td><td class="mono">$${f2(o.precio,4)}</td><td class="mono">${fm(o.titulos*o.precio)}</td><td class="r mono">-${fm(o.comision+o.iva)}</td><td class="mono">${pct.toFixed(1)}%</td><td class="dim">${o.razon||'&mdash;'}</td></tr>`;}).join('')||'<tr><td colspan="9" class="empty">Sin ordenes registradas</td></tr>'}
+    ${(S.ordenes||[]).slice().reverse().slice(0,6).map(o=>{const pct=S.capitalInicial>0?o.titulos*o.precio/S.capitalInicial*100:0;return`<tr><td class="mono">${o.fecha}</td><td><span class="pill ${o.tipo==='compra'?'p-buy':'p-sell'}">${o.tipo}</span>${o.isEtf?' <span class="pill p-etf">ETF</span>':''}</td><td class="lbl">${UNIVERSO.find(e=>e.t===o.ticker)?.n||o.ticker}</td><td class="mono">${o.titulos.toLocaleString()}</td><td class="mono">$${f2(o.precio,4)}</td><td class="mono">${fm(o.titulos*o.precio)}</td><td class="r mono">-${fm(o.comision+o.iva)}</td><td class="mono">${pct.toFixed(1)}%</td><td class="dim">${o.razon||'&mdash;'}</td></tr>`;}).join('')||'<tr><td colspan="9" class="empty">Sin ordenes registradas</td></tr>'}
     </tbody></table></div>
   </div>`;
 }
@@ -604,7 +626,7 @@ function pgOrdenes(){
   return`
   ${opSection}
   <div class="tabs">
-    <button class="tab-btn active" onclick="switchTab(this,'tab-realizadas')">Realizadas (${S.ordenes.length})</button>
+    <button class="tab-btn active" onclick="switchTab(this,'tab-realizadas')">Realizadas (${(S.ordenes||[]).length})</button>
     <button class="tab-btn" onclick="switchTab(this,'tab-abiertas')">Abiertas (${trades.abiertas.length})</button>
     <button class="tab-btn" onclick="switchTab(this,'tab-cerradas')">Cerradas (${trades.cerradas.length})</button>
   </div>
@@ -616,8 +638,8 @@ function pgOrdenes(){
         ${th('Titulos','tbl-ord',3,'num')}${th('Precio op.','tbl-ord',4,'num')}${th('Valor','tbl-ord',5,'num')}
         ${th('Comision','tbl-ord',6,'num')}${th('IVA','tbl-ord',7,'num')}${th('% Fondo','tbl-ord',8,'num')}${th('Razon','tbl-ord',9,'str')}<th></th>
       </tr></thead><tbody>
-      ${S.ordenes.slice().reverse().map((o,i)=>{
-        const ri=S.ordenes.length-1-i;const pct=S.capitalInicial>0?o.titulos*o.precio/S.capitalInicial*100:0;
+      ${(S.ordenes||[]).slice().reverse().map((o,i)=>{
+        const ri=(S.ordenes||[]).length-1-i;const pct=S.capitalInicial>0?o.titulos*o.precio/S.capitalInicial*100:0;
         return`<tr><td data-val="${o.fecha}" class="mono">${o.fecha}</td><td><span class="pill ${o.tipo==='compra'?'p-buy':'p-sell'}">${o.tipo}</span>${o.isEtf?' <span class="pill p-etf">ETF</span>':''}</td><td class="lbl">${UNIVERSO.find(e=>e.t===o.ticker)?.n||o.ticker}</td><td data-val="${o.titulos}" class="mono">${o.titulos.toLocaleString()}</td><td data-val="${o.precio}" class="mono">$${f2(o.precio,4)}</td><td data-val="${o.titulos*o.precio}" class="mono">${fm(o.titulos*o.precio)}</td><td data-val="${o.comision}" class="r mono">-${fm(o.comision)}</td><td data-val="${o.iva}" class="r mono">-${fm(o.iva)}</td><td data-val="${pct}" class="mono">${pct.toFixed(1)}%</td><td class="dim">${o.razon||'&mdash;'}</td><td><button class="btn btn-danger btn-sm" onclick="delOrden(${ri})">&#10005;</button></td></tr>`;
       }).join('')||'<tr><td colspan="11" class="empty">Sin ordenes</td></tr>'}
       </tbody></table></div>
@@ -647,7 +669,7 @@ function pgOrdenes(){
 
 function buildTrades(){
   const abiertas=[],cerradas=[];const byTicker={};
-  for(const o of S.ordenes){if(!byTicker[o.ticker])byTicker[o.ticker]={compras:[],ventas:[]};if(o.tipo==='compra')byTicker[o.ticker].compras.push({...o});else byTicker[o.ticker].ventas.push({...o});}
+  for(const o of (S.ordenes||[])){if(!byTicker[o.ticker])byTicker[o.ticker]={compras:[],ventas:[]};if(o.tipo==='compra')byTicker[o.ticker].compras.push({...o});else byTicker[o.ticker].ventas.push({...o});}
   const pos=buildPos();
   for(const[ticker,{compras,ventas}]of Object.entries(byTicker)){
     let remainingBuys=[...compras.map(b=>({...b,remaining:b.titulos}))];
@@ -681,7 +703,7 @@ function pgPosicion(){
     ${stCard(fm(m.totalFondo),'Valor total fondo','Accionario + efectivo','stat-blue')}
     ${stCard(fm(m.efectivo),'Efectivo disponible','Incl. dividendos','stat-amb')}
     ${stCard(fm(m.valPort-m.costoTotal),'P&amp;L no realizado','Valor mercado &minus; costo',m.valPort-m.costoTotal>=0?'stat-grn':'stat-red')}
-    ${(()=>{const pos_snap={};let pnlReal=0;for(const o of S.ordenes){if(!pos_snap[o.ticker])pos_snap[o.ticker]={titulos:0,costoTotal:0};if(o.tipo==='compra'){pos_snap[o.ticker].titulos+=o.titulos;pos_snap[o.ticker].costoTotal+=o.titulos*o.precio;}else{const pp=pos_snap[o.ticker].titulos>0?pos_snap[o.ticker].costoTotal/pos_snap[o.ticker].titulos:0;pnlReal+=(o.precio-pp)*o.titulos;pos_snap[o.ticker].costoTotal-=pp*o.titulos;pos_snap[o.ticker].titulos-=o.titulos;}}return stCard(fm(pnlReal),'P&amp;L realizado','Ganancia/perdida en operaciones cerradas',pnlReal>=0?'stat-grn':'stat-red');})()}
+    ${(()=>{const pos_snap={};let pnlReal=0;for(const o of (S.ordenes||[])){if(!pos_snap[o.ticker])pos_snap[o.ticker]={titulos:0,costoTotal:0};if(o.tipo==='compra'){pos_snap[o.ticker].titulos+=o.titulos;pos_snap[o.ticker].costoTotal+=o.titulos*o.precio;}else{const pp=pos_snap[o.ticker].titulos>0?pos_snap[o.ticker].costoTotal/pos_snap[o.ticker].titulos:0;pnlReal+=(o.precio-pp)*o.titulos;pos_snap[o.ticker].costoTotal-=pp*o.titulos;pos_snap[o.ticker].titulos-=o.titulos;}}return stCard(fm(pnlReal),'P&amp;L realizado','Ganancia/perdida en operaciones cerradas',pnlReal>=0?'stat-grn':'stat-red');})()}
   </div>
   <div class="card">
     <div class="sec-h"><div class="sec-h-bar"></div><div class="sec-h-text">Holdings actuales</div></div>
@@ -802,7 +824,7 @@ function betaCalc(a,b){if(a.length<2)return 1;const ma=mean(a),mb=mean(b);const 
 // ANALYTICS
 function pgAnalytics(){
   const m=calcMetrics();
-  const firstOrderDate=S.ordenes.length?S.ordenes.reduce((mn,o)=>o.fecha<mn?o.fecha:mn,S.ordenes[0].fecha):null;
+  const firstOrderDate=(S.ordenes||[]).length?(S.ordenes||[]).reduce((mn,o)=>o.fecha<mn?o.fecha:mn,(S.ordenes||[])[0].fecha):null;
   return`
   <div style="display:grid;grid-template-columns:1fr 1fr;gap:14px">
     <div class="card" style="display:flex;flex-direction:column"><div class="sec-h"><div class="sec-h-bar"></div><div class="sec-h-text">Valor portafolio vs MEXTRAC (relativo)</div></div><div style="flex:1;min-height:280px;position:relative"><canvas id="perf-chart" style="position:absolute;inset:0;width:100%!important;height:100%!important"></canvas></div></div>
@@ -967,8 +989,8 @@ function pgConfig(){
     <div class="sec-h"><div class="sec-h-bar"></div><div class="sec-h-text">Estado del sistema</div></div>
     <div style="display:flex;flex-direction:column;gap:0">
       ${cfgRow('Fondo','Research Rockets')}
-      ${cfgRow('Ordenes registradas',S.ordenes.length)}
-      ${cfgRow('Snapshots de precio',S.snapshots.length)}
+      ${cfgRow('Ordenes registradas',(S.ordenes||[]).length)}
+      ${cfgRow('Snapshots de precio',(S.snapshots||[]).length)}
       ${cfgRow('Flujos y ajustes',(S.flujos||[]).length+' flujos, '+(S.ajustes||[]).length+' ajustes')}
       ${cfgRow('Entrega de cartera','13 abril 2026')}
       ${cfgRow('Inicio fase competitiva','20 abril 2026')}
@@ -998,7 +1020,7 @@ async function loadPrice(){const t=document.getElementById('o-emisora').value.tr
 function calcRes(){const t=parseInt(document.getElementById('o-titulos').value);const p=parseFloat(document.getElementById('o-precio').value);const c=parseFloat(document.getElementById('o-com').value)/100;const r=document.getElementById('o-resumen');if(!t||!p){r.style.display='none';updatePoderBar();return;}const v=t*p,com=v*c,iva=com*.16;document.getElementById('r-val').textContent=fm(v);document.getElementById('r-com').textContent='-'+fm(com);document.getElementById('r-iva').textContent='-'+fm(iva);document.getElementById('r-tot').textContent=fm(v+com+iva);r.style.display='flex';updatePoderBar();}
 
 // MODAL ORDEN HELPERS
-function getEfectivoActual(){const costoComp=S.ordenes.filter(o=>o.tipo==='compra').reduce((s,o)=>s+o.titulos*o.precio+o.comision+o.iva,0);const ingVentas=S.ordenes.filter(o=>o.tipo==='venta').reduce((s,o)=>s+o.titulos*o.precio-(o.comision+o.iva),0);const divs=(S.flujos||[]).filter(f=>f.tipo==='dividendo_efectivo').reduce((s,f)=>s+f.monto,0);return Math.max(0,S.capitalInicial-costoComp+ingVentas+divs);}
+function getEfectivoActual(){const costoComp=(S.ordenes||[]).filter(o=>o.tipo==='compra').reduce((s,o)=>s+o.titulos*o.precio+o.comision+o.iva,0);const ingVentas=(S.ordenes||[]).filter(o=>o.tipo==='venta').reduce((s,o)=>s+o.titulos*o.precio-(o.comision+o.iva),0);const divs=(S.flujos||[]).filter(f=>f.tipo==='dividendo_efectivo').reduce((s,f)=>s+f.monto,0);return Math.max(0,S.capitalInicial-costoComp+ingVentas+divs);}
 function getTitulosActuales(ticker){const pos=buildPos();return pos[ticker]?.titulos||0;}
 function updatePoderBar(){const tipo=document.getElementById('o-tipo').value;const ticker=document.getElementById('o-emisora').value.trim().toUpperCase();const efectivo=getEfectivoActual();const label=document.getElementById('o-poder-label');const val=document.getElementById('o-poder-val');const bar=document.getElementById('o-poder-bar');if(tipo==='compra'){label.textContent='DISPONIBLE PARA COMPRAR';val.textContent='$'+efectivo.toLocaleString('es-MX',{minimumFractionDigits:2,maximumFractionDigits:2});const pct=S.capitalInicial>0?Math.min(efectivo/S.capitalInicial,1):1;bar.style.width=(pct*100)+'%';bar.style.background=pct>0.5?'var(--grn)':pct>0.2?'var(--amb)':'var(--red)';}else{const tits=ticker?getTitulosActuales(ticker):0;const precio=parseFloat(document.getElementById('o-precio').value)||0;label.textContent=`POSICION DISPONIBLE (${ticker||'&mdash;'})`;val.textContent=tits>0?tits.toLocaleString('es-MX')+' titulos':'Sin posicion';bar.style.width=tits>0?'100%':'0%';bar.style.background='var(--accent)';}}
 function onTipoChange(){const tipo=document.getElementById('o-tipo').value;const montoBox=document.getElementById('o-monto-box');const titulosInput=document.getElementById('o-titulos');if(tipo==='venta'){montoBox.style.display='none';titulosInput.placeholder='Titulos a vender';const fecha=document.getElementById('o-fecha').value;const fechaV0=S.fechaGestion||S.fechaInicio;if(S.fechaEntrega&&fechaV0&&fecha>=S.fechaEntrega&&fecha<fechaV0){document.getElementById('o-com').value=0;document.getElementById('o-com').style.background='var(--grn2)';}}else{montoBox.style.display='';titulosInput.placeholder='Auto-calculado';document.getElementById('o-com').value=S.comisionDefault||0.30;document.getElementById('o-com').style.background='';}updatePoderBar();}
@@ -1055,55 +1077,66 @@ function parseDate(s){
   if(!s)return null;
   s=s.trim();
   if(/^\d{4}-\d{2}-\d{2}$/.test(s))return s;
-  // M/D/YYYY or MM/DD/YYYY
   const m=s.match(/^(\d{1,2})\/(\d{1,2})\/(\d{4})$/);
   if(m)return`${m[3]}-${m[1].padStart(2,'0')}-${m[2].padStart(2,'0')}`;
-  // D/M/YYYY heuristic (if month>12)
-  const m2=s.match(/^(\d{1,2})\/(\d{1,2})\/(\d{4})$/);
-  if(m2&&parseInt(m2[1])>12)return`${m2[3]}-${m2[2].padStart(2,'0')}-${m2[1].padStart(2,'0')}`;
+  const m2=s.match(/^(\d{1,2})-(\d{1,2})-(\d{4})$/);
+  if(m2)return`${m2[3]}-${m2[1].padStart(2,'0')}-${m2[2].padStart(2,'0')}`;
   return null;
 }
 
 function parsePreciosPaste(raw,fallbackFecha){
-  const lines=raw.split('\n');
-  const rows=lines.map(l=>l.split('\t').map(c=>c.trim()));
-  if(!rows.length)return{count:0,prices:{},fechas:[]};
-
+  if(!raw||!raw.trim())return{count:0,prices:{},fechas:[]};
+  // Normalize line endings
+  const lines=raw.replace(/\r\n/g,'\n').replace(/\r/g,'\n').split('\n');
+  const cleanTicker=t=>{
+    if(!t)return'';
+    return t.replace(/^BMV:/i,'').replace(/PE&amp;OLES/gi,'PEOLES').replace(/PE&OLES/gi,'PEOLES').replace(/&amp;/g,'&').toUpperCase().trim();
+  };
+  const splitRow=line=>line.split('\t').map(c=>c.trim());
+  const isTickerLike=s=>{
+    const t=cleanTicker(s);
+    return t.length>=1&&t.length<=14&&/^[A-Z0-9&]+$/.test(t);
+  };
   const prices={};const fechas=new Set();
-  const cleanTicker=t=>t.replace(/^BMV:/i,'').replace(/PE&OLES|PE&amp;OLES/gi,'PEOLES').replace(/&amp;/g,'&').toUpperCase().trim();
 
-  // ── Detect HORIZONTAL format ──────────────────────────────────────────────
-  // Condition: first row has ≥2 cells where at least one looks like a ticker
-  // AND first cell is empty (leading tab) OR equals 'FECHA' / '' / date
-  const firstRow=rows[0];
-  const firstCell=firstRow[0]||'';
-  const firstCellIsDate=!!parseDate(firstCell);
-  const firstCellIsEmpty=firstCell===''||firstCell.toUpperCase()==='FECHA';
-  // Does this row contain recognizable tickers?
-  const knownTickers=new Set(Object.keys(PRICE_DB).concat(UNIVERSO.map(u=>u.t)));
-  const headerCandidates=firstRow.slice(firstCellIsEmpty?1:0);
-  const hasTickers=headerCandidates.some(h=>knownTickers.has(cleanTicker(h))||cleanTicker(h).length>=2&&cleanTicker(h).length<=12&&/^[A-Z0-9&]+$/.test(cleanTicker(h)));
+  // ── Find header row (contains tickers, no dates) ──────────────────────────
+  // Strategy: scan first 3 rows to detect format
+  let headerRowIdx=-1;
+  let headerTickers=[];
 
-  if((firstCellIsEmpty||firstCellIsDate)&&hasTickers){
-    // HORIZONTAL: row 0 = [empty/FECHA, ticker1, ticker2, ...]
-    //             row 1+ = [date, precio1, precio2, ...]
-    let headerRow=rows[0];
-    let dataStartRow=1;
-    // If first cell is a date, the header IS row 0 and data is also row 0 (single row)
-    if(firstCellIsDate){
-      // Format: date\tprice1\tprice2... with no separate header — skip
+  for(let i=0;i<Math.min(3,lines.length);i++){
+    const cells=splitRow(lines[i]);
+    if(!cells.length)continue;
+    // Count cells that look like tickers vs dates vs numbers
+    const tickerCells=cells.filter(c=>isTickerLike(c)&&!parseDate(c)&&isNaN(parseFloat(c.replace(/,/g,'.'))));
+    const dateCells=cells.filter(c=>!!parseDate(c));
+    const numCells=cells.filter(c=>!isNaN(parseFloat(c.replace(/,/g,'.')))&&parseFloat(c.replace(/,/g,'.')>0));
+    // If majority are ticker-like and no date/numbers → this is the header row
+    if(tickerCells.length>=2&&dateCells.length===0&&numCells.length===0){
+      headerRowIdx=i;
+      // Skip the first cell if it's empty (leading tab)
+      headerTickers=cells.map(cleanTicker).filter((t,idx)=>idx===0?(t!==''&&t!=='FECHA'):true);
+      // If first cell is empty/FECHA, tickers start from idx 1
+      const firstCellEmpty=cells[0]===''||cells[0].toUpperCase()==='FECHA';
+      headerTickers=firstCellEmpty?cells.slice(1).map(cleanTicker):cells.map(cleanTicker);
+      break;
     }
-    const tickers=headerRow.slice(1).map(cleanTicker);
-    for(let r=dataStartRow;r<rows.length;r++){
-      const vals=rows[r];if(!vals.length||!vals[0])continue;
+  }
+
+  if(headerRowIdx>=0&&headerTickers.length>0){
+    // ── HORIZONTAL FORMAT ─────────────────────────────────────────────────
+    for(let r=headerRowIdx+1;r<lines.length;r++){
+      const vals=splitRow(lines[r]);
+      if(!vals.length||!vals[0])continue;
       const fecha=parseDate(vals[0])||fallbackFecha;
       if(!fecha)continue;
       fechas.add(fecha);
-      for(let c=0;c<tickers.length;c++){
-        const ticker=tickers[c];
+      for(let c=0;c<headerTickers.length;c++){
+        const ticker=headerTickers[c];
+        if(!ticker)continue;
         const rawVal=vals[c+1]||'';
         const precio=parseFloat(rawVal.replace(/,/g,'.'));
-        if(!ticker||isNaN(precio)||precio<=0)continue;
+        if(isNaN(precio)||precio<=0)continue;
         if(!prices[ticker])prices[ticker]={};
         prices[ticker][fecha]=+precio.toFixed(4);
       }
@@ -1112,13 +1145,14 @@ function parsePreciosPaste(raw,fallbackFecha){
     return{count,prices,fechas:[...fechas]};
   }
 
-  // ── VERTICAL format: TICKER\tPRICE per line ───────────────────────────────
+  // ── VERTICAL FORMAT: TICKER[tab]PRECIO per line ───────────────────────────
   const fecha=fallbackFecha;
   if(!fecha)return{count:0,prices:{},fechas:[],error:'nodate'};
-  for(const row of rows){
-    if(row.length<2)continue;
-    const ticker=cleanTicker(row[0]);
-    const precio=parseFloat(row[1].replace(/,/g,'.'));
+  for(const line of lines){
+    const cells=splitRow(line);
+    if(cells.length<2)continue;
+    const ticker=cleanTicker(cells[0]);
+    const precio=parseFloat(cells[1].replace(/,/g,'.'));
     if(!ticker||isNaN(precio)||precio<=0)continue;
     if(!prices[ticker])prices[ticker]={};
     prices[ticker][fecha]=+precio.toFixed(4);
@@ -1132,44 +1166,51 @@ function previewPreciosDia(){
   const raw=document.getElementById('pdia-data').value;
   const fecha=document.getElementById('pdia-fecha').value;
   const prev=document.getElementById('pdia-preview');
-  if(!raw.trim()){prev.innerHTML='';return;}
+  if(!raw||!raw.trim()){prev.innerHTML='';return;}
   const result=parsePreciosPaste(raw,fecha);
   if(result.count>0){
-    const fStr=result.fechas.length?` &middot; Fecha: <b>${result.fechas.join(', ')}</b>`:'';
+    const fStr=result.fechas.length?` &middot; <b>${result.fechas.join(', ')}</b>`:'';
     prev.innerHTML=`<span style="color:var(--grn)">&#10003; <b>${result.count}</b> precios detectados${fStr}</span>`;
   }else{
-    prev.innerHTML=`<span style="color:var(--red)">&#9888; No se detectaron precios. Revisa el formato.</span>`;
-  }}
+    prev.innerHTML=`<span style="color:var(--amb)">&#9888; Formato no detectado &mdash; intenta pegar de nuevo o verifica el formato.</span>`;
+  }
+}
 function guardarPreciosDia(){
   const fechaInput=document.getElementById('pdia-fecha').value;
   const raw=document.getElementById('pdia-data').value;
   const al=document.getElementById('pdia-alert');
-  if(!raw.trim()){al.innerHTML='<div class="alert a-err">Pega los datos primero.</div>';return;}
+  if(!raw||!raw.trim()){al.innerHTML='<div class="alert a-err">Pega los datos primero.</div>';return;}
   const result=parsePreciosPaste(raw,fechaInput);
-  if(result.error==='nodate'){al.innerHTML='<div class="alert a-err">Selecciona una fecha o incluye la fecha en los datos.</div>';return;}
-  if(result.count===0){al.innerHTML='<div class="alert a-err">No se detectaron precios. Revisa el formato.</div>';return;}
-  // Save to PRICE_DB and overlay
+  if(result.error==='nodate'){
+    al.innerHTML='<div class="alert a-err">Selecciona una fecha o incluye la fecha en los datos (ej: 4/15/2026).</div>';return;
+  }
+  if(result.count===0){
+    al.innerHTML='<div class="alert a-err">No se detectaron precios. Aseg&#250;rate de pegar el encabezado de tickers y la fila con los precios.</div>';return;
+  }
+  // ── Save prices ───────────────────────────────────────────────────────────
+  let saved=0;
   for(const ticker in result.prices){
     if(!PRICE_DB[ticker])PRICE_DB[ticker]={};
     for(const fecha in result.prices[ticker]){
       const precio=result.prices[ticker][fecha];
       PRICE_DB[ticker][fecha]=precio;
       savePriceOverlay(ticker,fecha,precio);
+      saved++;
     }
   }
-  // Update ALL_DATES
-  for(const fecha of result.fechas){if(!ALL_DATES.includes(fecha)){ALL_DATES.push(fecha);}}
+  for(const fecha of result.fechas){if(!ALL_DATES.includes(fecha))ALL_DATES.push(fecha);}
   ALL_DATES.sort();
-  const fStr=result.fechas.length?` &mdash; fecha: <b>${result.fechas.join(', ')}</b>`:'';
-  al.innerHTML=`<div class="alert a-ok">&#10003; <b>${result.count}</b> precios guardados${fStr}</div>`;
-  // Auto-refresh active page after short delay
+  // ── Show persistent success toast ─────────────────────────────────────────
+  const fStr=result.fechas.length?` &middot; <b>${result.fechas.join(', ')}</b>`:'';
+  al.innerHTML=`<div class="alert a-ok">&#10003; <b>${saved}</b> precios guardados${fStr}</div>`;
+  showToast(`&#10003; ${saved} precios guardados para ${result.fechas.join(', ')}`,'grn');
   setTimeout(()=>{
     closeModal('m-precio-dia');
     const activeEl=document.querySelector('.ni.active');
     const activeText=activeEl?.textContent?.toLowerCase()||'';
     const active=PAGES.find(p=>activeText.includes(p.slice(0,5)))||'dashboard';
-    go(active);
-  },900);
+    try{go(active);}catch(e){console.error('go error after price load:',e);}
+  },700);
 }
 function openPrecioModal(){openPreciosDia();} // redirects to Precios del día
 
@@ -1193,7 +1234,7 @@ function saveConfig(){
 function exportJSON(){const a=document.createElement('a');a.href=URL.createObjectURL(new Blob([JSON.stringify(S,null,2)],{type:'application/json'}));a.download='ssot_research_rockets_'+today()+'.json';a.click();}
 function importJSON(){const inp=document.createElement('input');inp.type='file';inp.accept='.json';inp.onchange=e=>{const file=e.target.files[0];if(!file)return;const reader=new FileReader();reader.onload=ev=>{try{const data=JSON.parse(ev.target.result);S={...S,...data};save();alert('Datos importados correctamente.');go('dashboard');}catch(err){alert('Archivo JSON invalido: '+err.message);}};reader.readAsText(file);};inp.click();}
 function closeModal(id){document.getElementById(id)?.classList.remove('open');}
-function resetDatosPrueba(){if(!confirm('Borrar TODAS las ordenes, flujos y ajustes?\n\nEsto no se puede deshacer.'))return;if(!confirm('Estas seguro? Se borraran '+S.ordenes.length+' ordenes registradas.'))return;S.ordenes=[];S.flujos=[];S.ajustes=[];S.snapshots=[];save();go('dashboard');alert('Datos eliminados. El SSOT esta listo para operar.');}
+function resetDatosPrueba(){if(!confirm('Borrar TODAS las ordenes, flujos y ajustes?\n\nEsto no se puede deshacer.'))return;if(!confirm('Estas seguro? Se borraran '+((S.ordenes||[]).length)+' ordenes registradas.'))return;S.ordenes=[];S.flujos=[];S.ajustes=[];S.snapshots=[];save();go('dashboard');alert('Datos eliminados. El SSOT esta listo para operar.');}
 
 // FIREBASE HELPERS
 async function testFirebase(){const res=document.getElementById('fb-test-result');if(!db){res.innerHTML='<div class="alert a-err">Firebase no esta configurado.</div>';return;}try{res.innerHTML='<div class="alert a-info">Probando conexion...</div>';await db.collection('_test').doc('ping').set({ts:Date.now()});await db.collection('_test').doc('ping').delete();res.innerHTML='<div class="alert a-ok">&#10003; Conexion exitosa.</div>';}catch(e){res.innerHTML=`<div class="alert a-err">Error: ${e.message}</div>`;}}
@@ -1563,7 +1604,7 @@ async function exportToExcel(){
     
     // Sheet 1: Ordenes
     const ordRows=[['Fecha','Tipo','Ticker','Titulos','Precio','Valor','Comision','IVA','Razon','Fase']];
-    for(const o of S.ordenes){
+    for(const o of ord){
       ordRows.push([o.fecha,o.tipo,o.ticker,o.titulos,o.precio,o.titulos*o.precio,o.comision||0,o.iva||0,o.razon||'',o.isEtf?'ETF':'Accion']);
     }
     XLSX.utils.book_append_sheet(wb,XLSX.utils.aoa_to_sheet(ordRows),'Ordenes');
