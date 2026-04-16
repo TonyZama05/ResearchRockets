@@ -228,6 +228,7 @@ canvas{display:block;width:100%!important}
     <div id="pdia-fecha-row" style="display:flex;align-items:center;gap:10px;margin-bottom:10px"><label style="font-size:12px;font-weight:600;color:var(--txt2);flex-shrink:0">Fecha:</label><input type="date" id="pdia-fecha" style="flex:1;font-size:12px"></div>
     <textarea id="pdia-data" rows="14" placeholder="[tab]MEXTRAC09[tab]AMXB[tab]ASURB...&#10;4/14/2026[tab]66.16[tab]22.7[tab]588.56...&#10;&#10;&#9; o vertical:&#10;AMXB&#9;22.46&#10;FEMSAUBD&#9;188.02" style="font-family:var(--mono);font-size:12px;resize:vertical;width:100%;box-sizing:border-box"></textarea>
     <div id="pdia-preview" style="font-size:11px;color:var(--txt3);margin-top:6px;min-height:18px"></div>
+    <div id="pdia-debug" style="font-size:11px;font-family:var(--mono);color:var(--txt2);margin-top:4px;max-height:80px;overflow-y:auto;background:var(--bg3);border-radius:4px;padding:4px 8px;display:none"></div>
     <div id="pdia-alert" style="margin-top:6px"></div>
     <div class="modal-f"><button class="btn" onclick="closeModal('m-precio-dia')">Cancelar</button><button class="btn btn-p" onclick="guardarPreciosDia()">Guardar precios</button></div>
   </div>
@@ -375,12 +376,13 @@ const PRICE_OVERLAY_KEY='rr_price_day';
 })();
 function savePriceOverlay(ticker,date,precio){
   try{
-    const saved=localStorage.getItem(PRICE_OVERLAY_KEY);
-    const overlay=saved?JSON.parse(saved):{};
+    let overlay={};
+    try{const s=localStorage.getItem(PRICE_OVERLAY_KEY);if(s)overlay=JSON.parse(s);}catch(e){}
     if(!overlay[ticker])overlay[ticker]={};
     overlay[ticker][date]=precio;
-    localStorage.setItem(PRICE_OVERLAY_KEY,JSON.stringify(overlay));
-  }catch(e){console.warn('savePriceOverlay error:',e);}
+    const str=JSON.stringify(overlay);
+    localStorage.setItem(PRICE_OVERLAY_KEY,str);
+  }catch(e){console.error('savePriceOverlay error:',e);}
 }
 function localPrice(t,date){
   const db=PRICE_DB[t]||{};
@@ -424,9 +426,14 @@ function buildPos(){
 function portVal(pos){return Object.values(pos).reduce((s,p)=>s+p.titulos*p.precioActual,0);}
 
 function buildHistorical(){
-  const ord=S.ordenes||[];if(!ord.length)return[];
-  const firstOrderDate=ord.reduce((m,o)=>o.fecha<m?o.fecha:m,ord[0].fecha);
-  const firstDate=S.fechaInicio&&S.fechaInicio<=firstOrderDate?S.fechaInicio:firstOrderDate;
+  const ord=S.ordenes||[];
+  // metricsStart = fechaInicio if set, else first order date
+  const firstOrderDate=ord.length?ord.reduce((m,o)=>o.fecha<m?o.fecha:m,ord[0].fecha):null;
+  const firstDate=S.fechaInicio||(firstOrderDate)||null;
+  if(!firstDate)return[];
+  // Only show history from metricsStart onwards AND only if there is at least one order on or before end
+  // If no orders exist, return empty (no history before any trade)
+  if(!firstOrderDate)return[];
   const dates=getAllDates().filter(d=>d>=firstDate);
   const result=[];
   for(const date of dates){
@@ -477,7 +484,8 @@ function calcMetrics(){try{
   const totalFondo=valPort+efectivo;
   const rendAcum=S.capitalInicial>0?(totalFondo-S.capitalInicial)/S.capitalInicial*100:0;
   const hist_pre=buildHistorical();const lastHist=hist_pre.length?hist_pre[hist_pre.length-1]:null;
-  const rendBench=lastHist?.rendBench!=null?lastHist.rendBench:(S.benchmarkInicial>0&&localPrice('MEXTRAC09')>0?(localPrice('MEXTRAC09')-S.benchmarkInicial)/S.benchmarkInicial*100:0);
+  // rendBench only from historical — if no history (no orders yet) it's null
+  const rendBench=lastHist?.rendBench!=null?lastHist.rendBench:null;
   let rSem=0,rbSem=0;
   if(hist_pre.length>=2){
     const wEnd=hist_pre[hist_pre.length-1];
@@ -503,7 +511,7 @@ function calcMetrics(){try{
     hitRatio=rd.length>0?rd.filter((_,i)=>rd[i]-rb[i]>0).length/rd.length*100:0;
   }
   const wu=calcWU(pos,totalFondo);const weekStart=hist.length>=5?hist[Math.max(0,hist.length-6)]:null;const weekEnd=hist.length?hist[hist.length-1]:null;
-  return{pos,valPort,costoTotal,efectivo,totalFondo,divTotal,rendAcum,rendBench,retActivo:rendAcum-rendBench,rSem,rbSem,retActivoSem:rSem-rbSem,hitRatio,stdDev,te,beta,ir,varH,wu,hist,weekStart,weekEnd};
+  return{pos,valPort,costoTotal,efectivo,totalFondo,divTotal,rendAcum,rendBench,retActivo:rendBench!=null?rendAcum-rendBench:null,rSem,rbSem,retActivoSem:rSem-rbSem,hitRatio,stdDev,te,beta,ir,varH,wu,hist,weekStart,weekEnd};
 }catch(e){console.error('calcMetrics error:',e);const pos={},wu=[],hist=[];return{pos,valPort:0,costoTotal:0,efectivo:S.capitalInicial||0,totalFondo:S.capitalInicial||0,divTotal:0,rendAcum:0,rendBench:0,retActivo:0,rSem:0,rbSem:0,retActivoSem:0,hitRatio:0,stdDev:0,te:0,beta:1,ir:0,varH:0,wu,hist,weekStart:null,weekEnd:null};}}
 
 // SORT
@@ -553,9 +561,9 @@ function pgDash(){
   return`
   <div class="sg4">
     ${stCard(fm(m.totalFondo),'Valor portafolio','Capital: '+fm(S.capitalInicial),'stat-blue')}
-    ${stCard(fp(m.rendAcum),'Rend. acumulado','MEXTRAC: <span class="'+cc(m.rendBench)+'">'+fp(m.rendBench)+'</span>',m.rendAcum>=0?'stat-grn':'stat-red')}
-    ${stCard(fp(m.retActivo),'Retorno activo acum.','Alpha generado vs benchmark',m.retActivo>=0?'stat-grn':'stat-red')}
-    ${stCard(fp(m.retActivoSem),'Retorno activo semana','Fondo '+fp(m.rSem)+' &middot; Bench '+fp(m.rbSem),m.retActivoSem>=0?'stat-grn':'stat-red')}
+    ${stCard(m.hist.length?fp(m.rendAcum):'&mdash;','Rend. acumulado',m.rendBench!=null?'MEXTRAC: <span class="'+cc(m.rendBench)+'">'+fp(m.rendBench)+'</span>':'Sin historial aun',hist_pre.length?(m.rendAcum>=0?'stat-grn':'stat-red'):'stat-acc')}
+    ${stCard(m.retActivo!=null?fp(m.retActivo):'&mdash;','Retorno activo acum.',m.retActivo!=null?'Alpha generado vs benchmark':'Sin ordenes desde V0','stat-acc')}
+    ${stCard(m.hist&&m.hist.length>=2?fp(m.retActivoSem):'&mdash;','Retorno activo semana',m.hist&&m.hist.length>=2?'Fondo '+fp(m.rSem)+' &middot; Bench '+fp(m.rbSem):'Sin historial semanal',m.hist&&m.hist.length>=2?(m.retActivoSem>=0?'stat-grn':'stat-red'):'stat-acc')}
   </div>
   <div class="sg4">
     ${stCard(m.weekStart?fm(m.weekStart.totalFondo):'&mdash;','Val. inicio semana','Periodo actual','stat-acc')}
@@ -940,9 +948,15 @@ function pgConfig(){
     </div>
     <div style="display:flex;flex-direction:column;gap:13px">
       <div class="fg"><label class="fl">Capital inicial ($MXN)</label><input type="number" id="c-cap" value="${S.capitalInicial||''}" placeholder="Monto asignado por BBVA"></div>
-      <div class="fg"><label class="fl">Fecha inicio fase competitiva (V0)</label>
+      <div class="fg">
+        <label class="fl">Fecha inicio de m&eacute;tricas (V0)</label>
         <input type="date" id="c-fecha" value="${(S.fechaInicio||'2026-04-20').substring(0,10)}" onchange="updateBenchPreview(this.value)">
-        <div style="font-size:11px;color:var(--txt3);margin-top:3px">Las m&eacute;tricas corren <b>desde la primera orden registrada</b>. Si estableces V0, todas las m&eacute;tricas (fondo y benchmark) se reinician desde esta fecha &mdash; el benchmark captura el movimiento de cierre del viernes previo al lunes V0.</div></div>
+        <div style="font-size:11px;color:var(--txt3);margin-top:4px;line-height:1.6">
+          Todas las m&eacute;tricas (rendimiento, benchmark, retorno activo) corren desde esta fecha.
+          El precio base del MEXTRAC se toma en esta fecha. Si no tienes &oacute;rdenes todav&iacute;a,
+          las m&eacute;tricas mostrar&aacute;n <b>&mdash;</b> hasta que registres la primera operaci&oacute;n.
+        </div>
+      </div>
       <input type="hidden" id="c-fecha-entrega" value="${(S.fechaEntrega||'2026-04-13').substring(0,10)}">
       <div class="fg" style="background:var(--bg3);padding:10px 12px;border-radius:var(--r);border:1px solid var(--line)">
         <label class="fl">Precio MEXTRAC09 en fecha de inicio</label>
@@ -1166,13 +1180,24 @@ function previewPreciosDia(){
   const raw=document.getElementById('pdia-data').value;
   const fecha=document.getElementById('pdia-fecha').value;
   const prev=document.getElementById('pdia-preview');
-  if(!raw||!raw.trim()){prev.innerHTML='';return;}
+  const dbg=document.getElementById('pdia-debug');
+  if(!raw||!raw.trim()){prev.innerHTML='';if(dbg)dbg.style.display='none';return;}
   const result=parsePreciosPaste(raw,fecha);
   if(result.count>0){
-    const fStr=result.fechas.length?` &middot; <b>${result.fechas.join(', ')}</b>`:'';
+    const fStr=result.fechas.length?` &middot; fecha: <b>${result.fechas.join(', ')}</b>`:'';
     prev.innerHTML=`<span style="color:var(--grn)">&#10003; <b>${result.count}</b> precios detectados${fStr}</span>`;
+    // Show ticker breakdown
+    if(dbg){
+      const tickers=Object.keys(result.prices);
+      dbg.style.display='block';
+      dbg.textContent=tickers.slice(0,8).map(t=>{
+        const dates=Object.keys(result.prices[t]);
+        return t+': '+result.prices[t][dates[0]];
+      }).join('  |  ')+(tickers.length>8?'  ... +'+( tickers.length-8)+' mas':'');
+    }
   }else{
-    prev.innerHTML=`<span style="color:var(--amb)">&#9888; Formato no detectado &mdash; intenta pegar de nuevo o verifica el formato.</span>`;
+    prev.innerHTML=`<span style="color:var(--amb)">&#9888; Formato no detectado. Intenta pegar incluyendo la fila de encabezados con los tickers.</span>`;
+    if(dbg){dbg.style.display='block';dbg.textContent='Filas recibidas: '+raw.split('\n').filter(l=>l.trim()).length+' | Intentando detectar formato...';}
   }
 }
 function guardarPreciosDia(){
@@ -1200,6 +1225,8 @@ function guardarPreciosDia(){
   }
   for(const fecha of result.fechas){if(!ALL_DATES.includes(fecha))ALL_DATES.push(fecha);}
   ALL_DATES.sort();
+  // Update bench preview if config page has a date field visible
+  try{const cf=document.getElementById('c-fecha');if(cf)updateBenchPreview(cf.value);}catch(e){}
   // ── Show persistent success toast ─────────────────────────────────────────
   const fStr=result.fechas.length?` &middot; <b>${result.fechas.join(', ')}</b>`:'';
   al.innerHTML=`<div class="alert a-ok">&#10003; <b>${saved}</b> precios guardados${fStr}</div>`;
