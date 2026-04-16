@@ -1436,16 +1436,6 @@ function delFlujo(i){if(!confirm('Eliminar este flujo?'))return;S.flujos.splice(
 
 // CONFIG FUNCTIONS
 function updateBenchPreview(fecha){if(!fecha)return;const mexDB={...(PRICE_DB['MEXTRAC09']||{}),...(S.preciosOverlay?.['MEXTRAC09']||{})};const mexDates=Object.keys(mexDB).sort();let benchDate=null;for(const d of mexDates){if(d<=fecha)benchDate=d;else break;}if(!benchDate&&mexDates.length)benchDate=mexDates[mexDates.length-1];const price=benchDate?mexDB[benchDate]:null;const el=document.getElementById('bench-auto-display');if(el){if(price){el.innerHTML=`$${price.toFixed(4)} <span style="font-size:11px;color:var(--txt3)">(${benchDate})</span>`;el.style.color='var(--accent)';S.benchmarkInicial=price;}else{el.innerHTML='<span style="color:var(--red)">Sin precio disponible &mdash; carga precios para esta fecha primero</span>';el.style.color='var(--red)';}}}
-  // Live-refresh the diagnostic dates panel
-  const _navEl=document.getElementById('mex-nav-reciente');
-  if(_navEl){
-    const _allDts=Object.keys(mexDB).sort();
-    if(_allDts.length){
-      const _last5=_allDts.slice(-5).reverse();
-      _navEl.innerHTML='<div style="margin-bottom:4px;font-weight:600;color:var(--txt2)">Ultimos precios MEXTRAC09 cargados:</div><div style="line-height:2">'+_last5.map((d,i)=>`<span style="display:inline-flex;align-items:center;gap:6px;margin-right:10px"><b style="font-family:var(--mono);color:${i===0?'var(--accent)':'var(--txt)'}">${d}</b><span style="color:${i===0?'var(--accent)':'var(--txt2)'}">$${mexDB[d].toFixed(4)}</span>${i===0?' <span style="background:var(--accent);color:#fff;font-size:9px;padding:1px 5px;border-radius:3px">RECIENTE</span>':''}</span>`).join('')+'</div>';
-    }
-  }
-}
 function saveConfig(){
   const cap=parseFloat(document.getElementById('c-cap').value);const fecha=document.getElementById('c-fecha').value;const com=parseFloat(document.getElementById('c-com').value)||0.30;
   if(!cap||cap<=0){alert('Capital invalido.');return;}if(!fecha){alert('Ingresa la fecha de inicio de gestion.');return;}
