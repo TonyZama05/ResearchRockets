@@ -561,7 +561,7 @@ function pgDash(){
   return`
   <div class="sg4">
     ${stCard(fm(m.totalFondo),'Valor portafolio','Capital: '+fm(S.capitalInicial),'stat-blue')}
-    ${stCard(m.hist.length?fp(m.rendAcum):'&mdash;','Rend. acumulado',m.rendBench!=null?'MEXTRAC: <span class="'+cc(m.rendBench)+'">'+fp(m.rendBench)+'</span>':'Sin historial aun',hist_pre.length?(m.rendAcum>=0?'stat-grn':'stat-red'):'stat-acc')}
+    ${stCard(m.hist.length?fp(m.rendAcum):'&mdash;','Rend. acumulado',m.rendBench!=null?'MEXTRAC: <span class="'+cc(m.rendBench)+'">'+fp(m.rendBench)+'</span>':'Sin historial aun',m.hist.length?(m.rendAcum>=0?'stat-grn':'stat-red'):'stat-acc')}
     ${stCard(m.retActivo!=null?fp(m.retActivo):'&mdash;','Retorno activo acum.',m.retActivo!=null?'Alpha generado vs benchmark':'Sin ordenes desde V0','stat-acc')}
     ${stCard(m.hist&&m.hist.length>=2?fp(m.retActivoSem):'&mdash;','Retorno activo semana',m.hist&&m.hist.length>=2?'Fondo '+fp(m.rSem)+' &middot; Bench '+fp(m.rbSem):'Sin historial semanal',m.hist&&m.hist.length>=2?(m.retActivoSem>=0?'stat-grn':'stat-red'):'stat-acc')}
   </div>
