@@ -622,17 +622,24 @@ function go(page){
 function pgDash(){
   if(!S.capitalInicial)return`<div style="display:flex;align-items:center;justify-content:center;height:55vh;flex-direction:column;gap:16px;text-align:center"><div style="font-size:48px;opacity:.1">&#9678;</div><div style="font-size:18px;font-weight:700;letter-spacing:-.02em">Research Rockets SSOT</div><div style="color:var(--txt3);font-size:13px;max-width:340px;line-height:1.7">Configura el capital inicial y el precio base del MEXTRAC09 para comenzar el seguimiento.</div><button class="btn btn-p" onclick="go('config')">Ir a Configuracion &#8594;</button></div>`;
   const m=calcMetrics();const spark=m.hist.slice(-22).map(h=>h.totalFondo);const maxS=Math.max(...spark,1);
-  const varMonto=m.weekStart&&m.weekEnd?m.weekEnd.totalFondo-m.weekStart.totalFondo:0;
+  // For weekly display: use hist if available, otherwise use current values as single point
+  const wStart=m.weekStart||{totalFondo:m.totalFondo};
+  const wEnd=m.weekEnd||{totalFondo:m.totalFondo};
+  const varMonto=wEnd.totalFondo-wStart.totalFondo;
+  const hasHist=m.hist&&m.hist.length>=2;
+  // rendAcum always computable from current positions (independent of hist)
+  const rendAcumStr=fp(m.rendAcum);
+  const rendBenchSub=m.rendBench!=null?'MEXTRAC: <span class="'+cc(m.rendBench)+'">'+fp(m.rendBench)+'</span>':'Cargando benchmark...';
   return`
   <div class="sg4">
     ${stCard(fm(m.totalFondo),'Valor portafolio','Capital: '+fm(S.capitalInicial),'stat-blue')}
-    ${stCard(m.hist.length?fp(m.rendAcum):'&mdash;','Rend. acumulado',m.rendBench!=null?'MEXTRAC: <span class="'+cc(m.rendBench)+'">'+fp(m.rendBench)+'</span>':'Sin historial aun',m.hist.length?(m.rendAcum>=0?'stat-grn':'stat-red'):'stat-acc')}
-    ${stCard(m.retActivo!=null?fp(m.retActivo):'&mdash;','Retorno activo acum.',m.retActivo!=null?'Alpha generado vs benchmark':'Sin ordenes desde V0','stat-acc')}
-    ${stCard(m.hist&&m.hist.length>=2?fp(m.retActivoSem):'&mdash;','Retorno activo semana',m.hist&&m.hist.length>=2?'Fondo '+fp(m.rSem)+' &middot; Bench '+fp(m.rbSem):'Sin historial semanal',m.hist&&m.hist.length>=2?(m.retActivoSem>=0?'stat-grn':'stat-red'):'stat-acc')}
+    ${stCard(rendAcumStr,'Rend. acumulado',rendBenchSub,m.rendAcum>=0?'stat-grn':'stat-red')}
+    ${stCard(m.retActivo!=null?fp(m.retActivo):'&mdash;','Retorno activo acum.',m.retActivo!=null?'Alpha generado vs benchmark':'Sin precios benchmark','stat-acc')}
+    ${stCard(hasHist?fp(m.retActivoSem):'&mdash;','Retorno activo semana',hasHist?'Fondo '+fp(m.rSem)+' &middot; Bench '+fp(m.rbSem):'Sin historial semanal',hasHist?(m.retActivoSem>=0?'stat-grn':'stat-red'):'stat-acc')}
   </div>
   <div class="sg4">
-    ${stCard(m.weekStart?fm(m.weekStart.totalFondo):'&mdash;','Val. inicio semana','Periodo actual','stat-acc')}
-    ${stCard(m.weekEnd?fm(m.weekEnd.totalFondo):'&mdash;','Val. fin semana','Ultimo dia registrado','stat-acc')}
+    ${stCard(fm(wStart.totalFondo),'Val. inicio semana','Periodo actual','stat-acc')}
+    ${stCard(fm(wEnd.totalFondo),'Val. fin semana','Ultimo dia registrado','stat-acc')}
     ${stCard((varMonto>=0?'+':'')+fm(varMonto),'Variacion $ semana','Monto absoluto',varMonto>=0?'stat-grn':'stat-red')}
     ${stCard(fm(m.efectivo),'Efectivo disponible','Capital no invertido + dividendos','stat-amb')}
   </div>
@@ -1003,34 +1010,28 @@ function pgFlujos(){
 }
 function guiaItem(t,d){return`<div style="padding:8px 0;border-bottom:1px solid var(--line)"><div style="font-weight:600;color:var(--txt);margin-bottom:2px">${t}</div><div style="font-size:12px">${d}</div></div>`;}
 
-// CONFIG - Updated with competition dates
+// CONFIG - simplified, no hardcoded competition dates
 function pgConfig(){
   return`
   <div class="card" style="max-width:520px">
     <div class="sec-h"><div class="sec-h-bar"></div><div class="sec-h-text">Parametros del fondo</div></div>
-    <div style="background:var(--grn2);border:1px solid var(--grn3);border-radius:var(--r);padding:10px 14px;margin-bottom:14px;font-size:12px;color:var(--grn)">
-      <b>Fase competitiva BBVA:</b> Entrega de cartera el <b>13 de abril de 2026</b> &mdash; Fase competitiva inicia el <b>20 de abril de 2026</b> &mdash; NAV MEXTRAC referencia: <b>$66.94</b>
-    </div>
     <div style="display:flex;flex-direction:column;gap:13px">
       <div class="fg"><label class="fl">Capital inicial ($MXN)</label><input type="number" id="c-cap" value="${S.capitalInicial||''}" placeholder="Monto asignado por BBVA"></div>
       <div class="fg">
-        <label class="fl">Fecha inicio de m&eacute;tricas (V0)</label>
+        <label class="fl">Fecha de inicio de m&eacute;tricas (V0)</label>
         <input type="date" id="c-fecha" value="${(S.fechaInicio||'2026-04-13').substring(0,10)}" onchange="updateBenchPreview(this.value)">
         <div style="font-size:11px;color:var(--txt3);margin-top:4px;line-height:1.6">
           Todas las m&eacute;tricas (rendimiento, benchmark, retorno activo) corren desde esta fecha.
-          El precio base del MEXTRAC se toma en esta fecha. Si no tienes &oacute;rdenes todav&iacute;a,
-          las m&eacute;tricas mostrar&aacute;n <b>&mdash;</b> hasta que registres la primera operaci&oacute;n.
+          El precio base del MEXTRAC se detecta autom&aacute;ticamente a partir de esta fecha.
         </div>
       </div>
-      <input type="hidden" id="c-fecha-entrega" value="${(S.fechaEntrega||'2026-04-13').substring(0,10)}">
       <div class="fg" style="background:var(--bg3);padding:10px 12px;border-radius:var(--r);border:1px solid var(--line)">
         <label class="fl">Precio MEXTRAC09 en fecha de inicio</label>
         <div style="font-size:13px;font-family:var(--mono);font-weight:600;color:var(--accent);margin-top:4px" id="bench-auto-display">
           ${S.benchmarkInicial>0?'$'+S.benchmarkInicial.toFixed(4)+' (auto-detectado)':'Calculando...'}
         </div>
         <div style="font-size:11px;color:var(--txt3);margin-top:3px">
-          NAV MEXTRAC al 13 abril 2026: <b>$66.94</b>. 
-          ${S.fechaInicio?'Fecha configurada: <b>'+S.fechaInicio+'</b>':''}
+          NAV MEXTRAC m&aacute;s reciente: <b>$${(()=>{const p=localPrice('MEXTRAC09');return p?p.toFixed(2):'--';})()}</b>${S.fechaInicio?' &middot; Fecha configurada: <b>'+S.fechaInicio+'</b>':''}
         </div>
       </div>
       <div class="fg"><label class="fl">Comision default (%)</label><input type="number" id="c-com" value="${S.comisionDefault}" step="0.01"></div>
@@ -1323,7 +1324,7 @@ function saveConfig(){
   if(!benchDate&&mexDates.length)benchDate=mexDates[mexDates.length-1];
   const bench=benchDate?mexDB[benchDate]:S.benchmarkInicial||66.94;
   S.capitalInicial=cap;S.fechaInicio=fecha;S.benchmarkInicial=bench;S.comisionDefault=com;
-  const fechaEntrega=document.getElementById('c-fecha-entrega')?.value;if(fechaEntrega)S.fechaEntrega=fechaEntrega;S.fechaGestion=fecha;
+  S.fechaGestion=fecha;// fechaGestion same as fechaInicio - no separate adjustment week
   const fbJson=document.getElementById('c-firebase')?.value?.trim();if(fbJson){try{const cfg=JSON.parse(fbJson);if(cfg.apiKey){fbSave(cfg);initFirebase(cfg);}}catch(e){alert('JSON de Firebase invalido.');return;}}
   save();const btn=document.getElementById('cfg-save-btn');if(btn){const orig=btn.textContent;btn.textContent='&#10003; Guardado';btn.style.background='var(--grn)';btn.style.borderColor='var(--grn)';setTimeout(()=>{btn.textContent=orig;btn.style.background='';btn.style.borderColor='';},2000);}
   document.getElementById('side-cap').textContent=fm(S.capitalInicial);
