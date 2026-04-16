@@ -120,6 +120,10 @@ canvas{display:block;width:100%!important}
 .fb-setup{background:var(--blue2);border:1px solid var(--blue3);border-radius:var(--r2);padding:14px 16px;margin-bottom:14px;font-size:13px}
 .fb-setup-t{font-weight:600;color:var(--blue);margin-bottom:6px;font-size:13px}
 .fb-setup pre{background:var(--bg3);border-radius:var(--r);padding:10px 12px;font-family:var(--mono);font-size:11px;white-space:pre-wrap;margin:8px 0;color:var(--txt2);overflow-x:auto}
+.modal-h{display:flex;align-items:center;justify-content:space-between;margin-bottom:18px}
+.modal-h .modal-t{margin-bottom:0}
+.modal-x{background:none;border:none;cursor:pointer;padding:4px 8px;border-radius:var(--r);color:var(--txt3);font-size:16px;line-height:1;transition:all .12s}
+.modal-x:hover{background:var(--bg3);color:var(--txt)}
 </style>
 <script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-app-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore-compat.js"></script>
@@ -272,7 +276,7 @@ const MEXTRAC_W={"WALMEX":10.05,"AC":7.58,"KOFUBL":6.39,"KIMBERA":3.77,"BIMBOA":
 const UNIVERSO=[{"t":"MEXTRAC09","n":"ETF MEXTRAC 09","s":"ETF","b":"etf","isEtf":true},{"t":"TLEVISACPO","n":"Grupo Televisa SAB","s":"Communication Services","b":"media"},{"t":"AMXB","n":"America Movil SAB de CV","s":"Communication Services","b":"alta"},{"t":"MEGACPO","n":"Megacable Holdings SAB de CV","s":"Communication Services","b":"media"},{"t":"ALSEA","n":"Alsea","s":"Consumer Discretionary","b":"alta"},{"t":"LIVEPOLC1","n":"Liverpool","s":"Consumer Discretionary","b":"media"},{"t":"NEMAKA","n":"Nemak","s":"Consumer Discretionary","b":"media"},{"t":"WALMEX","n":"Wal-Mart de Mexico SAB de CV","s":"Consumer Staples","b":"alta"},{"t":"AC","n":"Arca Continental SAB de CV","s":"Consumer Staples","b":"alta"},{"t":"ANB","n":"AB InBev Mexico","s":"Consumer Staples","b":"media"},{"t":"BIMBOA","n":"Grupo Bimbo SAB de CV","s":"Consumer Staples","b":"alta"},{"t":"CHDRAUIB","n":"Grupo Comercial Chedraui SA de CV","s":"Consumer Staples","b":"alta"},{"t":"CUERVO","n":"Becle (Cuervo)","s":"Consumer Staples","b":"media"},{"t":"FEMSAUBD","n":"Fomento Economico Mexicano SAB de CV UBD","s":"Consumer Staples","b":"alta"},{"t":"FRAGUAB","n":"Corp. Fragua","s":"Consumer Staples","b":"media"},{"t":"GRUMAB","n":"Gruma SAB de CV","s":"Consumer Staples","b":"alta"},{"t":"HERDEZ","n":"Grupo Herdez","s":"Consumer Staples","b":"media"},{"t":"KIMBERA","n":"Kimberly-Clark de Mexico SAB de CV","s":"Consumer Staples","b":"alta"},{"t":"KOFUBL","n":"Coca-Cola Femsa SAB de CV","s":"Consumer Staples","b":"alta"},{"t":"LACOMERUBC","n":"La Comer","s":"Consumer Staples","b":"media"},{"t":"SIGMAFA","n":"Sigma Foods SAB de CV","s":"Consumer Staples","b":"media"},{"t":"VISTAA","n":"Vista Energy","s":"Energy","b":"media"},{"t":"ACTINVRB","n":"Actinver","s":"Financials","b":"media"},{"t":"BBAJIOO","n":"Banco del Bajio SA","s":"Financials","b":"alta"},{"t":"BBVA","n":"BBVA Mexico","s":"Financials","b":"media"},{"t":"BOLSAA","n":"Bolsa Mexicana de Valores SAB de CV","s":"Financials","b":"alta"},{"t":"GENTERA","n":"Gentera SAB de CV","s":"Financials","b":"alta"},{"t":"GFINBURO","n":"Grupo Fin. Inbursa","s":"Financials","b":"alta"},{"t":"GFNORTEO","n":"Grupo Financiero Banorte SAB de CV","s":"Financials","b":"alta"},{"t":"Q","n":"Qualitas Controladora SAB de CV","s":"Financials","b":"alta"},{"t":"RA","n":"Regional SAB de CV","s":"Financials","b":"alta"},{"t":"LABB","n":"Genomma Lab","s":"Health Care","b":"alta"},{"t":"MEDICAB","n":"Medica Sur","s":"Health Care","b":"media"},{"t":"AGUA","n":"Rotoplas","s":"Industrials","b":"media"},{"t":"GCARSOA1","n":"Grupo Carso","s":"Industrials","b":"media"},{"t":"ASURB","n":"Grupo Aeroportuario del Sureste SAB de CV","s":"Industrials","b":"alta"},{"t":"GAPB","n":"Grupo Aeroportuario del Pacifico SAB de CV","s":"Industrials","b":"alta"},{"t":"OMAB","n":"Grupo Aeroportuario del Centro Norte SAB de CV","s":"Industrials","b":"alta"},{"t":"PINFRA","n":"Promotora y Operadora de Infraestructura SAB de CV","s":"Industrials","b":"alta"},{"t":"TRAXIONA","n":"Traxion","s":"Industrials","b":"media"},{"t":"VOLARA","n":"Volaris","s":"Industrials","b":"media"},{"t":"ALPEKA","n":"Alpek","s":"Materials","b":"media"},{"t":"CEMEXCPO","n":"CEMEX","s":"Materials","b":"alta"},{"t":"CMOCTEZ","n":"Cementos Moctezuma","s":"Materials","b":"media"},{"t":"GCC","n":"GCC SAB de CV","s":"Materials","b":"media"},{"t":"GMEXICOB","n":"Grupo Mexico SAB de CV","s":"Materials","b":"alta"},{"t":"ORBIA","n":"Orbia","s":"Materials","b":"media"},{"t":"PEOLES","n":"Penoles","s":"Materials","b":"alta"},{"t":"VESTA","n":"Vesta","s":"Real Estate","b":"alta"}];
 // STATE - Updated with competition dates
 const KEY='ssot_rr_v1';
-let S={capitalInicial:0,fechaInicio:'2026-04-20',benchmarkInicial:66.94,comisionDefault:0.30,
+let S={capitalInicial:0,fechaInicio:'2026-04-13',benchmarkInicial:66.94,comisionDefault:0.30,
   fechaEntrega:'2026-04-13',fechaGestion:'2026-04-20',
   ordenes:[],ordenesProceso:[],snapshots:[],flujos:[],ajustes:[],preciosOverlay:{}};
 
@@ -467,17 +471,24 @@ function buildHistorical(){
   if(!ord.length)return[];
   const firstOrderDate=ord.reduce((m,o)=>o.fecha<m?o.fecha:m,ord[0].fecha);
   // metricsStart = fechaInicio if configured AND <= first available price date
-  // If fechaInicio is in the future (no prices yet), fall back to firstOrderDate
   const allDates=getAllDates();
   const latestDate=allDates.length?allDates[allDates.length-1]:null;
-  let firstDate=firstOrderDate; // default: start from first order
+  let firstDate=firstOrderDate;
   if(S.fechaInicio){
-    // Use fechaInicio only if there are prices on or after it
     const hasPricesFromV0=allDates.some(d=>d>=S.fechaInicio);
     if(hasPricesFromV0)firstDate=S.fechaInicio<=firstOrderDate?S.fechaInicio:firstOrderDate;
+    else{
+      // fechaInicio is after latest prices - use min(firstOrderDate, latestDate)
+      if(latestDate)firstDate=firstOrderDate<=latestDate?firstOrderDate:latestDate;
+    }
   }
   if(!firstDate)return[];
-  const dates=allDates.filter(d=>d>=firstDate);
+  let dates=allDates.filter(d=>d>=firstDate);
+  // If no dates found (orders after latest price), add latest price date as virtual snapshot
+  if(dates.length===0&&latestDate){dates=[latestDate];}
+  // Always ensure latest price date is included for current valuation
+  if(latestDate&&!dates.includes(latestDate))dates.push(latestDate);
+  dates.sort();
   const result=[];
   for(const date of dates){
     const pos={};
@@ -527,8 +538,12 @@ function calcMetrics(){try{
   const totalFondo=valPort+efectivo;
   const rendAcum=S.capitalInicial>0?(totalFondo-S.capitalInicial)/S.capitalInicial*100:0;
   const hist_pre=buildHistorical();const lastHist=hist_pre.length?hist_pre[hist_pre.length-1]:null;
-  // rendBench only from historical — if no history (no orders yet) it's null
-  const rendBench=lastHist?.rendBench!=null?lastHist.rendBench:null;
+  // rendBench: prefer from history, fallback to direct calculation from latest MEXTRAC price
+  let rendBench=lastHist?.rendBench!=null?lastHist.rendBench:null;
+  if(rendBench==null&&S.benchmarkInicial>0){
+    const curMex=localPrice('MEXTRAC09');
+    if(curMex!=null)rendBench=(curMex-S.benchmarkInicial)/S.benchmarkInicial*100;
+  }
   let rSem=0,rbSem=0;
   if(hist_pre.length>=2){
     const wEnd=hist_pre[hist_pre.length-1];
@@ -540,8 +555,7 @@ function calcMetrics(){try{
     if(wStart.mexPrice&&wEnd.mexPrice&&wStart.mexPrice>0)rbSem=(wEnd.mexPrice-wStart.mexPrice)/wStart.mexPrice*100;
   }
   let stdDev=0,te=0,beta=1,ir=0,varH=0,hitRatio=0;const hist=hist_pre;
-  if(hist.length>=3){
-    const rd=[],rb=[];
+  if(hist.length>=3){    const rd=[],rb=[];
     for(let i=1;i<hist.length;i++){
       if(hist[i-1].totalFondo>0)rd.push((hist[i].totalFondo-hist[i-1].totalFondo)/hist[i-1].totalFondo*100);else rd.push(0);
       if(hist[i].rendBench!=null&&hist[i-1].rendBench!=null&&hist[i-1].mexPrice>0)rb.push((hist[i].mexPrice-hist[i-1].mexPrice)/hist[i-1].mexPrice*100);else rb.push(0);
@@ -1292,16 +1306,24 @@ function regFlujo(){const tipo=document.getElementById('fl-tipo').value;const fe
 function delFlujo(i){if(!confirm('Eliminar este flujo?'))return;S.flujos.splice(i,1);save();go('flujos');}
 
 // CONFIG FUNCTIONS
-function updateBenchPreview(fecha){if(!fecha)return;const mexDB={...(PRICE_DB['MEXTRAC09']||{})};const mexDates=Object.keys(mexDB).sort();let benchDate=null;for(const d of mexDates){if(d<=fecha)benchDate=d;else break;}const price=benchDate?mexDB[benchDate]:null;const el=document.getElementById('bench-auto-display');if(el){if(price){el.innerHTML=`$${price.toFixed(4)} <span style="font-size:11px;color:var(--txt3)">(${benchDate})</span>`;el.style.color='var(--accent)';}else{el.innerHTML='<span style="color:var(--red)">Sin precio disponible para esta fecha</span>';}}}
+function updateBenchPreview(fecha){if(!fecha)return;const mexDB={...(PRICE_DB['MEXTRAC09']||{}),...(S.preciosOverlay?.['MEXTRAC09']||{})};const mexDates=Object.keys(mexDB).sort();let benchDate=null;for(const d of mexDates){if(d<=fecha)benchDate=d;else break;}if(!benchDate&&mexDates.length)benchDate=mexDates[mexDates.length-1];const price=benchDate?mexDB[benchDate]:null;const el=document.getElementById('bench-auto-display');if(el){if(price){el.innerHTML=`$${price.toFixed(4)} <span style="font-size:11px;color:var(--txt3)">(${benchDate})</span>`;el.style.color='var(--accent)';}else{el.innerHTML='<span style="color:var(--red)">Sin precio disponible para esta fecha</span>';}}}
 function saveConfig(){
   const cap=parseFloat(document.getElementById('c-cap').value);const fecha=document.getElementById('c-fecha').value;const com=parseFloat(document.getElementById('c-com').value)||0.30;
   if(!cap||cap<=0){alert('Capital invalido.');return;}if(!fecha){alert('Ingresa la fecha de inicio de gestion.');return;}
-  const mexDB={...(PRICE_DB['MEXTRAC09']||{})};const mexDates=Object.keys(mexDB).sort();let benchDate=null;for(const d of mexDates){if(d<=fecha)benchDate=d;else break;}if(!benchDate&&mexDates.length)benchDate=mexDates[0];const bench=benchDate?mexDB[benchDate]:S.benchmarkInicial||66.94;
+  const mexDB={...(PRICE_DB['MEXTRAC09']||{}),...(S.preciosOverlay?.['MEXTRAC09']||{})};const mexDates=Object.keys(mexDB).sort();let benchDate=null;for(const d of mexDates){if(d<=fecha)benchDate=d;else break;}
+  // Fallback: use latest available MEXTRAC price if none found at/before fechaInicio
+  if(!benchDate&&mexDates.length)benchDate=mexDates[mexDates.length-1];
+  const bench=benchDate?mexDB[benchDate]:S.benchmarkInicial||66.94;
   S.capitalInicial=cap;S.fechaInicio=fecha;S.benchmarkInicial=bench;S.comisionDefault=com;
   const fechaEntrega=document.getElementById('c-fecha-entrega')?.value;if(fechaEntrega)S.fechaEntrega=fechaEntrega;S.fechaGestion=fecha;
   const fbJson=document.getElementById('c-firebase')?.value?.trim();if(fbJson){try{const cfg=JSON.parse(fbJson);if(cfg.apiKey){fbSave(cfg);initFirebase(cfg);}}catch(e){alert('JSON de Firebase invalido.');return;}}
   save();const btn=document.getElementById('cfg-save-btn');if(btn){const orig=btn.textContent;btn.textContent='&#10003; Guardado';btn.style.background='var(--grn)';btn.style.borderColor='var(--grn)';setTimeout(()=>{btn.textContent=orig;btn.style.background='';btn.style.borderColor='';},2000);}
   document.getElementById('side-cap').textContent=fm(S.capitalInicial);
+  // Re-render current page with updated config
+  const activeEl=document.querySelector('.ni.active');
+  const activeText=activeEl?.textContent?.toLowerCase()||'';
+  const active=PAGES.find(p=>activeText.includes(p.slice(0,5)))||'dashboard';
+  setTimeout(()=>go(active),100);
 }
 function exportJSON(){const a=document.createElement('a');a.href=URL.createObjectURL(new Blob([JSON.stringify(S,null,2)],{type:'application/json'}));a.download='ssot_research_rockets_'+today()+'.json';a.click();}
 function importJSON(){const inp=document.createElement('input');inp.type='file';inp.accept='.json';inp.onchange=e=>{const file=e.target.files[0];if(!file)return;const reader=new FileReader();reader.onload=ev=>{try{const data=JSON.parse(ev.target.result);S={...S,...data};save();alert('Datos importados correctamente.');go('dashboard');}catch(err){alert('Archivo JSON invalido: '+err.message);}};reader.readAsText(file);};inp.click();}
@@ -1313,7 +1335,12 @@ async function testFirebase(){const res=document.getElementById('fb-test-result'
 function disconnectFirebase(){if(!confirm('Desconectar Firebase? Los datos quedaran solo en este navegador.'))return;if(_unsubscribe){_unsubscribe();_unsubscribe=null;}db=null;_syncEnabled=false;localStorage.removeItem('rr_firebase_cfg');setSyncStatus('off','Sin conectar');go('config');}
 
 // EXCEL IMPORT
-async function importExcelPrices(input){const status=document.getElementById('excel-import-status');if(!input.files.length){status.textContent='Sin archivo';return;}status.textContent='Cargando...';const file=input.files[0];const buf=await file.arrayBuffer();try{if(typeof XLSX==='undefined'){await new Promise((res,rej)=>{const s=document.createElement('script');s.src='https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js';s.onload=res;s.onerror=rej;document.head.appendChild(s);});}const wb=XLSX.read(buf,{type:'array',cellDates:true});const ws=wb.Sheets[wb.SheetNames[0]];const rows=XLSX.utils.sheet_to_json(ws,{header:1,defval:null});const headers=rows[1]||[];let count=0,dates=new Set();for(let r=2;r<rows.length;r++){const row=rows[r];const dateVal=row[1];if(!dateVal)continue;let dateStr;if(dateVal instanceof Date)dateStr=dateVal.toISOString().split('T')[0];else if(typeof dateVal==='string')dateStr=dateVal.substring(0,10);else continue;for(let c=2;c<headers.length;c++){const ticker=(headers[c]||'').toString().trim().replace(/^BMV:/,'').replace('&','&');const val=row[c];if(!ticker||val==null||val===''||isNaN(+val))continue;if(!PRICE_DB[ticker])PRICE_DB[ticker]={};PRICE_DB[ticker][dateStr]=+parseFloat(val).toFixed(4);count++;dates.add(dateStr);}}const sorted=[...dates].sort();status.innerHTML=`<span style="color:var(--grn)">&#10003; ${count} precios cargados &middot; ${dates.size} fechas &middot; ultimo: ${sorted[sorted.length-1]}</span>`;input.value='';go(document.querySelector('.ni.active')?.textContent?.toLowerCase().trim().split(' ')[0]||'dashboard');}catch(e){status.innerHTML=`<span style="color:var(--red)">&#10005; Error: ${e.message}</span>`;console.error(e);}}
+async function importExcelPrices(input){const status=document.getElementById('excel-import-status');if(!input.files.length){status.textContent='Sin archivo';return;}status.textContent='Cargando...';const file=input.files[0];const buf=await file.arrayBuffer();try{if(typeof XLSX==='undefined'){await new Promise((res,rej)=>{const s=document.createElement('script');s.src='https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js';s.onload=res;s.onerror=rej;document.head.appendChild(s);});}const wb=XLSX.read(buf,{type:'array',cellDates:true});const ws=wb.Sheets[wb.SheetNames[0]];const rows=XLSX.utils.sheet_to_json(ws,{header:1,defval:null});const headers=rows[1]||[];let count=0;const dates=new Set();
+  if(!S.preciosOverlay)S.preciosOverlay={};
+  for(let r=2;r<rows.length;r++){const row=rows[r];const dateVal=row[1];if(!dateVal)continue;let dateStr;if(dateVal instanceof Date)dateStr=dateVal.toISOString().split('T')[0];else if(typeof dateVal==='string')dateStr=dateVal.substring(0,10);else continue;for(let c=2;c<headers.length;c++){const ticker=(headers[c]||'').toString().trim().replace(/^BMV:/,'').replace('&','&');const val=row[c];if(!ticker||val==null||val===''||isNaN(+val))continue;const precio=+parseFloat(val).toFixed(4);if(!PRICE_DB[ticker])PRICE_DB[ticker]={};PRICE_DB[ticker][dateStr]=precio;if(!S.preciosOverlay[ticker])S.preciosOverlay[ticker]={};S.preciosOverlay[ticker][dateStr]=precio;count++;dates.add(dateStr);}}
+  for(const d of dates){if(!ALL_DATES.includes(d))ALL_DATES.push(d);}ALL_DATES.sort();
+  save(); // persist to localStorage + Firebase
+  const sorted=[...dates].sort();status.innerHTML=`<span style="color:var(--grn)">&#10003; ${count} precios cargados &middot; ${dates.size} fechas &middot; ultimo: ${sorted[sorted.length-1]}</span>`;input.value='';go(document.querySelector('.ni.active')?.textContent?.toLowerCase().trim().split(' ')[0]||'dashboard');}catch(e){status.innerHTML=`<span style="color:var(--red)">&#10005; Error: ${e.message}</span>`;console.error(e);}}
 
 // ESTADISTICOS
 function calcIRT(hist,flujos){if(!hist.length)return[];const result=[];let adjustedBase=hist[0].totalFondo,divAccum=0;for(let i=0;i<hist.length;i++){const h=hist[i];const dayDiv=(flujos||[]).filter(f=>f.fecha===h.date&&f.tipo==='dividendo_efectivo').reduce((s,f)=>s+f.monto,0);divAccum+=dayDiv;const irt=adjustedBase>0?(h.totalFondo+divAccum-adjustedBase)/adjustedBase*100:0;result.push({date:h.date,irt,totalFondo:h.totalFondo,divAccum});}return result;}
