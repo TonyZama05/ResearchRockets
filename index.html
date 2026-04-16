@@ -508,7 +508,10 @@ function buildHistorical(){
   // Always ensure latest price date is included for current valuation
   if(latestDate&&!dates.includes(latestDate))dates.push(latestDate);
   dates.sort();
+  // Compute MEXTRAC start price once (at firstDate) — benchmark base
+  const mexStart=localPrice('MEXTRAC09',firstDate);
   const result=[];
+  let V0=null; // Fund value at firstDate — portfolio base (both metrics measured from same point)
   for(const date of dates){
     const pos={};
     for(const o of ord){
@@ -526,10 +529,12 @@ function buildHistorical(){
     const divUpTo=(S.flujos||[]).filter(f=>f.fecha<=date&&f.tipo==='dividendo_efectivo').reduce((s,f)=>s+f.monto,0);
     const efectivo=Math.max(0,S.capitalInicial-costUpTo+ventasUpTo)+divUpTo;
     const totalFondo=portValue+efectivo;
-    const rendAcum=S.capitalInicial>0?(totalFondo-S.capitalInicial)/S.capitalInicial*100:0;
+    // V0: fund value at firstDate (same anchor as benchmark) — set once on first iteration
+    if(V0===null)V0=totalFondo>0?totalFondo:S.capitalInicial;
+    const rendAcum=V0>0?(totalFondo-V0)/V0*100:0;
     const mexP=localPrice('MEXTRAC09',date);
-    const rendBench=S.benchmarkInicial>0&&mexP?(mexP-S.benchmarkInicial)/S.benchmarkInicial*100:null;
-    result.push({date,portValue,totalFondo,efectivo,mexPrice:mexP,rendAcum,rendBench,retActivo:rendBench!=null?rendAcum-rendBench:null});
+    const rendBench=(mexStart&&mexStart>0&&mexP!=null)?(mexP-mexStart)/mexStart*100:null;
+    result.push({date,portValue,totalFondo,efectivo,mexPrice:mexP,rendAcum,rendBench,retActivo:rendBench!=null?rendAcum-rendBench:null,V0});
   }
   return result;
 }
@@ -555,14 +560,19 @@ function calcMetrics(){try{
   const comisionesPagadas=(S.ordenes||[]).filter(o=>o.tipo==='compra').reduce((s,o)=>s+o.comision+o.iva,0);
   const costoTotal=Object.values(pos).reduce((s,p)=>s+p.costoTotal,0)+comisionesPagadas;
   const totalFondo=valPort+efectivo;
-  const rendAcum=S.capitalInicial>0?(totalFondo-S.capitalInicial)/S.capitalInicial*100:0;
   const hist_pre=buildHistorical();const lastHist=hist_pre.length?hist_pre[hist_pre.length-1]:null;
-  // rendBench: prefer from history, fallback to direct calculation from latest MEXTRAC price
-  let rendBench=lastHist?.rendBench!=null?lastHist.rendBench:null;
-  if(rendBench==null&&S.benchmarkInicial>0){
-    const curMex=localPrice('MEXTRAC09');
-    if(curMex!=null)rendBench=(curMex-S.benchmarkInicial)/S.benchmarkInicial*100;
-  }
+  // V0: fund value at fechaInicio — the shared anchor for BOTH portfolio and benchmark
+  // If hist has entries, use the first entry's totalFondo; otherwise fall back to capitalInicial
+  const V0=hist_pre.length>0?(hist_pre[0].V0||hist_pre[0].totalFondo):S.capitalInicial;
+  const rendAcum=V0>0?(totalFondo-V0)/V0*100:0;
+  // rendBench: ALWAYS compute directly from PRICE_DB — independent of orders/buildHistorical
+  // MEXTRAC price at fechaInicio vs latest price — same window as portfolio
+  const _fechaRef=S.fechaInicio||'2026-04-13';
+  const _mexStart=localPrice('MEXTRAC09',_fechaRef);
+  const _mexCur=localPrice('MEXTRAC09');
+  let rendBench=(_mexStart&&_mexStart>0&&_mexCur!=null)?(_mexCur-_mexStart)/_mexStart*100:null;
+  // Keep S.benchmarkInicial in sync with actual start price for exports/display
+  if(_mexStart&&_mexStart>0)S.benchmarkInicial=_mexStart;
   let rSem=0,rbSem=0;
   if(hist_pre.length>=2){
     const wEnd=hist_pre[hist_pre.length-1];
@@ -587,7 +597,8 @@ function calcMetrics(){try{
     hitRatio=rd.length>0?rd.filter((_,i)=>rd[i]-rb[i]>0).length/rd.length*100:0;
   }
   const wu=calcWU(pos,totalFondo);const weekStart=hist.length>=5?hist[Math.max(0,hist.length-6)]:null;const weekEnd=hist.length?hist[hist.length-1]:null;
-  return{pos,valPort,costoTotal,efectivo,totalFondo,divTotal,rendAcum,rendBench,retActivo:rendBench!=null?rendAcum-rendBench:null,rSem,rbSem,retActivoSem:rSem-rbSem,hitRatio,stdDev,te,beta,ir,varH,wu,hist,weekStart,weekEnd};
+  const V0ref=hist_pre.length>0?(hist_pre[0].V0||hist_pre[0].totalFondo):S.capitalInicial;
+  return{pos,valPort,costoTotal,efectivo,totalFondo,divTotal,rendAcum,rendBench,retActivo:rendBench!=null?rendAcum-rendBench:null,rSem,rbSem,retActivoSem:rSem-rbSem,hitRatio,stdDev,te,beta,ir,varH,wu,hist,weekStart,weekEnd,V0:V0ref,fechaRef:_fechaRef};
 }catch(e){console.error('calcMetrics error:',e);const pos=buildPos()||{},wu=[],hist=[];const vp=portVal(pos);const ct=(S.ordenes||[]).filter(o=>o.tipo==='compra').reduce((s,o)=>s+o.titulos*o.precio+o.comision+o.iva,0);const iv=(S.ordenes||[]).filter(o=>o.tipo==='venta').reduce((s,o)=>s+o.titulos*o.precio-(o.comision+o.iva),0);const div=(S.flujos||[]).filter(f=>f.tipo==='dividendo_efectivo').reduce((s,f)=>s+f.monto,0);const ef=Math.max(0,S.capitalInicial-ct+iv)+div;const tf=vp+ef;const ra=S.capitalInicial>0?(tf-S.capitalInicial)/S.capitalInicial*100:0;return{pos,valPort:vp,costoTotal:ct,efectivo:ef,totalFondo:tf,divTotal:div,rendAcum:ra,rendBench:null,retActivo:null,rSem:0,rbSem:0,retActivoSem:0,hitRatio:0,stdDev:0,te:0,beta:1,ir:0,varH:0,wu:calcWU(pos,tf)||[],hist,weekStart:null,weekEnd:null};}}
 
 // SORT
@@ -644,7 +655,7 @@ function pgDash(){
   const rendBenchSub=m.rendBench!=null?'MEXTRAC: <span class="'+cc(m.rendBench)+'">'+fp(m.rendBench)+'</span>':'Cargando benchmark...';
   return`
   <div class="sg4">
-    ${stCard(fm(m.totalFondo),'Valor portafolio','Capital: '+fm(S.capitalInicial),'stat-blue')}
+    ${stCard(fm(m.totalFondo),'Valor portafolio','Base '+m.fechaRef+': '+fm(m.V0),'stat-blue')}
     ${stCard(rendAcumStr,'Rend. acumulado',rendBenchSub,m.rendAcum>=0?'stat-grn':'stat-red')}
     ${stCard(m.retActivo!=null?fp(m.retActivo):'&mdash;','Retorno activo acum.',m.retActivo!=null?'Alpha generado vs benchmark':'Sin precios benchmark','stat-acc')}
     ${stCard(hasHist?fp(m.retActivoSem):'&mdash;','Retorno activo semana',hasHist?'Fondo '+fp(m.rSem)+' &middot; Bench '+fp(m.rbSem):'Sin historial semanal',hasHist?(m.retActivoSem>=0?'stat-grn':'stat-red'):'stat-acc')}
@@ -1040,7 +1051,7 @@ function pgConfig(){
       <div class="fg" style="background:var(--bg3);padding:10px 12px;border-radius:var(--r);border:1px solid var(--line)">
         <label class="fl">Precio MEXTRAC09 en fecha de inicio</label>
         <div style="font-size:13px;font-family:var(--mono);font-weight:600;color:var(--accent);margin-top:4px" id="bench-auto-display">
-          ${S.benchmarkInicial>0?'$'+S.benchmarkInicial.toFixed(4)+' (auto-detectado)':'Calculando...'}
+          ${(()=>{const p=localPrice('MEXTRAC09',S.fechaInicio||'2026-04-13');return p?'$'+p.toFixed(4)+' en '+(S.fechaInicio||'2026-04-13'):'Sin precio — carga datos de esa fecha';})()}
         </div>
         <div style="font-size:11px;color:var(--txt3);margin-top:3px">
           NAV MEXTRAC m&aacute;s reciente: <b>$${(()=>{const p=localPrice('MEXTRAC09');return p?p.toFixed(2):'--';})()}</b>${S.fechaInicio?' &middot; Fecha configurada: <b>'+S.fechaInicio+'</b>':''}
