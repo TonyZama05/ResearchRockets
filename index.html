@@ -142,6 +142,7 @@ canvas{display:block;width:100%!important}
     <button class="ni" onclick="go('rendimiento')"><svg viewBox="0 0 16 16"><rect x="1" y="8" width="3" height="6"/><rect x="6" y="4" width="3" height="10"/><rect x="11" y="1" width="3" height="13"/></svg>Rendimiento</button>
     <button class="ni" onclick="go('riesgo')"><svg viewBox="0 0 16 16"><path d="M8 2l1.5 4H14l-3.7 2.7 1.4 4.3L8 11l-3.7 2 1.4-4.3L2 6h4.5z"/></svg>Riesgo</button>
     <button class="ni" onclick="go('analytics')"><svg viewBox="0 0 16 16"><circle cx="8" cy="8" r="6"/><path d="M8 5v3l2 2"/></svg>Analytics</button>
+    <button class="ni" onclick="go('atribucion')"><svg viewBox="0 0 16 16"><path d="M2 14l3-8 3 4 2-6 4 10" stroke-linecap="round" stroke-linejoin="round"/></svg>Atribuci&oacute;n</button>
     <div class="nav-section">Gesti&oacute;n</div>
     <button class="ni" onclick="go('flujos')"><svg viewBox="0 0 16 16"><path d="M8 2v12M2 6l6-4 6 4M2 10l6 4 6-4"/></svg>Flujos &amp; Ajustes</button>
     <button class="ni" onclick="go('estadisticos')" id="ni-est"><svg viewBox="0 0 16 16" style="width:15px;height:15px;stroke:currentColor;fill:none;stroke-width:1.75"><path d="M1 13l4-8 3 5 2-3 3 6"/></svg>Estad&iacute;sticos</button>
@@ -275,7 +276,7 @@ const PRICE_DB={"AC":{"2026-01-01":194.88,"2026-01-02":194.01,"2026-01-05":194.7
 const METRICS_DB={"TLEVISACPO":{"ret":-4.5,"std":37.69,"maxdd":17.89,"sharpe":-0.39,"beta":-0.3,"corr":-0.151,"trend":"bajista","lastPrice":10.18,"firstPrice":10.66,"estilo":"Blend","bursatilidad":"Media"},"AMXB":{"ret":12.98,"std":29.98,"maxdd":8.6,"sharpe":2.08,"beta":0.34,"corr":0.22,"trend":"lateral","lastPrice":20.97,"firstPrice":18.56,"estilo":"Value","bursatilidad":"Alta"},"MEGACPO":{"ret":8.89,"std":34.36,"maxdd":15.31,"sharpe":1.35,"beta":0.37,"corr":0.21,"trend":"bajista","lastPrice":57.43,"firstPrice":52.74,"estilo":"Value","bursatilidad":"Media"},"ALSEA":{"ret":13.19,"std":27.05,"maxdd":7.98,"sharpe":2.31,"beta":-0.0,"corr":-0.002,"trend":"lateral","lastPrice":60.77,"firstPrice":53.69,"estilo":"Value","bursatilidad":"Media"},"LIVEPOLC1":{"ret":7.99,"std":22.68,"maxdd":8.49,"sharpe":1.72,"beta":-0.09,"corr":-0.077,"trend":"alcista","lastPrice":108.0,"firstPrice":100.01,"estilo":"Value","bursatilidad":"Media"},"NEMAKA":{"ret":-5.87,"std":21.9,"maxdd":12.09,"sharpe":-1.2,"beta":0.08,"corr":0.069,"trend":"lateral","lastPrice":3.37,"firstPrice":3.58,"estilo":"Blend","bursatilidad":"Media"},"WALMEX":{"ret":-0.52,"std":22.82,"maxdd":6.38,"sharpe":0.0,"beta":0.16,"corr":0.139,"trend":"bajista","lastPrice":55.87,"firstPrice":56.16,"estilo":"Blend","bursatilidad":"Alta"},"AC":{"ret":-1.1,"std":26.81,"maxdd":9.75,"sharpe":-0.07,"beta":0.37,"corr":0.267,"trend":"bajista","lastPrice":191.44,"firstPrice":193.57,"estilo":"Blend","bursatilidad":"Alta"},"ANB":{"ret":19.4,"std":78.33,"maxdd":4.43,"sharpe":8.58,"beta":1.92,"corr":0.316,"trend":"lateral","lastPrice":1400.0,"firstPrice":1172.5,"estilo":"Growth","bursatilidad":"Media"},"BIMBOA":{"ret":-2.23,"std":31.81,"maxdd":16.13,"sharpe":-0.18,"beta":0.3,"corr":0.181,"trend":"bajista","lastPrice":57.52,"firstPrice":58.83,"estilo":"Blend","bursatilidad":"Alta"},"CHDRAUIB":{"ret":-18.07,"std":22.57,"maxdd":19.43,"sharpe":-4.08,"beta":0.33,"corr":0.28,"trend":"bajista","lastPrice":101.38,"firstPrice":123.74,"estilo":"Blend","bursatilidad":"Alta"},"CUERVO":{"ret":-27.67,"std":33.0,"maxdd":34.39,"sharpe":-4.49,"beta":0.34,"corr":0.201,"trend":"bajista","lastPrice":15.11,"firstPrice":20.89,"estilo":"Blend","bursatilidad":"Media"},"FEMSAUBD":{"ret":0.48,"std":18.78,"maxdd":7.84,"sharpe":0.21,"beta":0.34,"corr":0.348,"trend":"bajista","lastPrice":182.01,"firstPrice":181.14,"estilo":"Value","bursatilidad":"Alta"},"FRAGUAB":{"ret":-8.81,"std":24.13,"maxdd":10.37,"sharpe":-1.7,"beta":0.12,"corr":0.092,"trend":"bajista","lastPrice":497.0,"firstPrice":545.0,"estilo":"Blend","bursatilidad":"Media"},"GRUMAB":{"ret":-0.59,"std":25.87,"maxdd":12.66,"sharpe":0.02,"beta":0.33,"corr":0.247,"trend":"lateral","lastPrice":308.37,"firstPrice":310.2,"estilo":"Blend","bursatilidad":"Alta"},"HERDEZ":{"ret":-3.57,"std":38.21,"maxdd":17.01,"sharpe":-0.27,"beta":0.08,"corr":0.038,"trend":"bajista","lastPrice":81.0,"firstPrice":84.0,"estilo":"Blend","bursatilidad":"Media"},"KIMBERA":{"ret":2.59,"std":27.8,"maxdd":10.57,"sharpe":0.57,"beta":0.19,"corr":0.13,"trend":"bajista","lastPrice":39.16,"firstPrice":38.17,"estilo":"Value","bursatilidad":"Alta"},"KOFUBL":{"ret":0.02,"std":28.35,"maxdd":13.65,"sharpe":0.14,"beta":0.28,"corr":0.188,"trend":"bajista","lastPrice":170.08,"firstPrice":170.04,"estilo":"Value","bursatilidad":"Alta"},"LACOMERUBC":{"ret":3.41,"std":20.15,"maxdd":3.64,"sharpe":0.89,"beta":0.14,"corr":0.131,"trend":"lateral","lastPrice":39.1,"firstPrice":37.81,"estilo":"Value","bursatilidad":"Media"},"VISTAA":{"ret":45.76,"std":49.79,"maxdd":12.96,"sharpe":3.93,"beta":0.32,"corr":0.123,"trend":"alcista","lastPrice":1290.0,"firstPrice":885.0,"estilo":"Value","bursatilidad":"Media"},"ACTINVRB":{"ret":-3.37,"std":15.84,"maxdd":5.49,"sharpe":-1.04,"beta":0.12,"corr":0.132,"trend":"bajista","lastPrice":21.5,"firstPrice":22.25,"estilo":"Blend","bursatilidad":"Media"},"BBAJIOO":{"ret":11.19,"std":35.72,"maxdd":15.2,"sharpe":1.59,"beta":0.59,"corr":0.318,"trend":"bajista","lastPrice":50.88,"firstPrice":45.76,"estilo":"Value","bursatilidad":"Alta"},"BBVA":{"ret":-14.3,"std":33.25,"maxdd":17.83,"sharpe":-2.04,"beta":-0.07,"corr":-0.043,"trend":"bajista","lastPrice":368.5,"firstPrice":430.0,"estilo":"Blend","bursatilidad":"Media"},"BOLSAA":{"ret":-2.35,"std":27.11,"maxdd":6.46,"sharpe":-0.28,"beta":0.24,"corr":0.171,"trend":"lateral","lastPrice":36.58,"firstPrice":37.46,"estilo":"Blend","bursatilidad":"Alta"},"GENTERA":{"ret":4.2,"std":33.51,"maxdd":14.05,"sharpe":0.75,"beta":0.43,"corr":0.244,"trend":"bajista","lastPrice":47.19,"firstPrice":45.29,"estilo":"Value","bursatilidad":"Alta"},"GFINBURO":{"ret":-1.82,"std":28.4,"maxdd":9.99,"sharpe":-0.17,"beta":0.45,"corr":0.303,"trend":"bajista","lastPrice":42.6,"firstPrice":43.39,"estilo":"Blend","bursatilidad":"Alta"},"GFNORTEO":{"ret":7.58,"std":32.88,"maxdd":11.75,"sharpe":1.22,"beta":0.49,"corr":0.289,"trend":"bajista","lastPrice":184.0,"firstPrice":171.04,"estilo":"Value","bursatilidad":"Alta"},"Q":{"ret":-12.77,"std":30.72,"maxdd":14.34,"sharpe":-1.96,"beta":0.1,"corr":0.061,"trend":"bajista","lastPrice":163.26,"firstPrice":187.17,"estilo":"Blend","bursatilidad":"Alta"},"RA":{"ret":1.18,"std":30.39,"maxdd":11.63,"sharpe":0.33,"beta":0.29,"corr":0.185,"trend":"bajista","lastPrice":144.31,"firstPrice":142.62,"estilo":"Value","bursatilidad":"Alta"},"LABB":{"ret":-8.98,"std":33.7,"maxdd":13.66,"sharpe":-1.16,"beta":0.1,"corr":0.058,"trend":"bajista","lastPrice":16.31,"firstPrice":17.92,"estilo":"Blend","bursatilidad":"Alta"},"MEDICAB":{"ret":4.24,"std":28.26,"maxdd":4.84,"sharpe":1.56,"beta":1.0,"corr":0.586,"trend":"alcista","lastPrice":61.5,"firstPrice":59.0,"estilo":"Blend","bursatilidad":"Media"},"AGUA":{"ret":1.8,"std":42.88,"maxdd":20.91,"sharpe":0.4,"beta":0.28,"corr":0.125,"trend":"bajista","lastPrice":11.88,"firstPrice":11.67,"estilo":"Value","bursatilidad":"Media"},"GCARSOA1":{"ret":4.23,"std":35.67,"maxdd":10.78,"sharpe":0.73,"beta":0.65,"corr":0.353,"trend":"bajista","lastPrice":121.91,"firstPrice":116.96,"estilo":"Value","bursatilidad":"Media"},"ASURB":{"ret":-1.02,"std":24.74,"maxdd":12.75,"sharpe":-0.08,"beta":0.44,"corr":0.345,"trend":"bajista","lastPrice":571.94,"firstPrice":577.85,"estilo":"Blend","bursatilidad":"Alta"},"GAPB":{"ret":-9.76,"std":35.43,"maxdd":21.59,"sharpe":-1.2,"beta":0.18,"corr":0.097,"trend":"bajista","lastPrice":421.0,"firstPrice":466.51,"estilo":"Blend","bursatilidad":"Alta"},"OMAB":{"ret":0.79,"std":27.91,"maxdd":17.9,"sharpe":0.27,"beta":0.16,"corr":0.113,"trend":"bajista","lastPrice":243.99,"firstPrice":242.08,"estilo":"Value","bursatilidad":"Alta"},"PINFRA":{"ret":3.84,"std":28.49,"maxdd":11.11,"sharpe":0.77,"beta":0.55,"corr":0.372,"trend":"bajista","lastPrice":274.22,"firstPrice":264.07,"estilo":"Value","bursatilidad":"Media"},"TRAXIONA":{"ret":-19.34,"std":28.87,"maxdd":20.1,"sharpe":-3.39,"beta":0.2,"corr":0.13,"trend":"bajista","lastPrice":11.72,"firstPrice":14.53,"estilo":"Blend","bursatilidad":"Media"},"VOLARA":{"ret":-24.09,"std":50.2,"maxdd":32.34,"sharpe":-2.35,"beta":-0.04,"corr":-0.016,"trend":"bajista","lastPrice":12.45,"firstPrice":16.4,"estilo":"Blend","bursatilidad":"Media"},"ALPEKA":{"ret":16.91,"std":41.63,"maxdd":17.62,"sharpe":1.99,"beta":-0.34,"corr":-0.157,"trend":"alcista","lastPrice":11.2,"firstPrice":9.58,"estilo":"Value","bursatilidad":"Media"},"CEMEXCPO":{"ret":-13.29,"std":35.5,"maxdd":20.72,"sharpe":-1.73,"beta":0.3,"corr":0.164,"trend":"bajista","lastPrice":17.94,"firstPrice":20.69,"estilo":"Blend","bursatilidad":"Alta"},"CMOCTEZ":{"ret":-2.68,"std":28.92,"maxdd":5.3,"sharpe":-0.68,"beta":-0.51,"corr":-0.278,"trend":"bajista","lastPrice":79.8,"firstPrice":82.0,"estilo":"Blend","bursatilidad":"Media"},"GCC":{"ret":-3.33,"std":31.46,"maxdd":14.79,"sharpe":-0.36,"beta":0.51,"corr":0.313,"trend":"bajista","lastPrice":174.31,"firstPrice":180.31,"estilo":"Blend","bursatilidad":"Media"},"GMEXICOB":{"ret":2.44,"std":48.42,"maxdd":21.07,"sharpe":0.48,"beta":0.58,"corr":0.232,"trend":"bajista","lastPrice":173.76,"firstPrice":169.62,"estilo":"Value","bursatilidad":"Alta"},"ORBIA":{"ret":22.74,"std":40.81,"maxdd":16.91,"sharpe":2.59,"beta":0.44,"corr":0.208,"trend":"bajista","lastPrice":19.11,"firstPrice":15.57,"estilo":"Value","bursatilidad":"Media"},"PEOLES":{"ret":-11.79,"std":62.44,"maxdd":34.63,"sharpe":-0.64,"beta":1.29,"corr":0.397,"trend":"bajista","lastPrice":800.97,"firstPrice":908.0,"estilo":"Growth","bursatilidad":"Alta"}};
 const FUNDAMENTALS_DB={"AMXB":{"pe":12.1,"ev_ebitda":5.8,"pb":2.9,"roe":24.1,"roa":5.2,"margen_neto":10.3,"deuda_ebitda":2.1,"beta_usd":0.62,"beta_inf":0.31,"beta_desemp":-0.18},"WALMEX":{"pe":24.3,"ev_ebitda":14.1,"pb":7.8,"roe":32.1,"roa":12.4,"margen_neto":4.8,"deuda_ebitda":0.4,"beta_usd":-0.22,"beta_inf":0.54,"beta_desemp":-0.41},"GFNORTEO":{"pe":9.4,"ev_ebitda":null,"pb":1.8,"roe":18.9,"roa":2.1,"margen_neto":28.4,"deuda_ebitda":null,"beta_usd":0.38,"beta_inf":0.62,"beta_desemp":-0.55},"FEMSAUBD":{"pe":17.8,"ev_ebitda":9.2,"pb":3.1,"roe":17.6,"roa":7.4,"margen_neto":8.1,"deuda_ebitda":1.8,"beta_usd":-0.15,"beta_inf":0.48,"beta_desemp":-0.32},"GMEXICOB":{"pe":11.2,"ev_ebitda":5.9,"pb":2.4,"roe":21.4,"roa":11.8,"margen_neto":26.3,"deuda_ebitda":0.9,"beta_usd":0.81,"beta_inf":0.22,"beta_desemp":-0.12},"GAPB":{"pe":19.4,"ev_ebitda":11.3,"pb":5.2,"roe":26.8,"roa":14.2,"margen_neto":38.4,"deuda_ebitda":1.2,"beta_usd":0.44,"beta_inf":0.19,"beta_desemp":-0.28},"OMAB":{"pe":16.8,"ev_ebitda":9.8,"pb":4.1,"roe":24.3,"roa":12.6,"margen_neto":36.1,"deuda_ebitda":1.4,"beta_usd":0.39,"beta_inf":0.21,"beta_desemp":-0.26},"ASURB":{"pe":18.2,"ev_ebitda":10.4,"pb":4.6,"roe":25.1,"roa":13.8,"margen_neto":40.2,"deuda_ebitda":0.8,"beta_usd":0.41,"beta_inf":0.17,"beta_desemp":-0.24},"AC":{"pe":20.1,"ev_ebitda":11.8,"pb":3.8,"roe":19.3,"roa":9.2,"margen_neto":9.4,"deuda_ebitda":1.6,"beta_usd":-0.12,"beta_inf":0.51,"beta_desemp":-0.38},"KOFUBL":{"pe":15.6,"ev_ebitda":8.7,"pb":3.3,"roe":21.8,"roa":10.1,"margen_neto":8.8,"deuda_ebitda":1.3,"beta_usd":-0.09,"beta_inf":0.49,"beta_desemp":-0.35},"KIMBERA":{"pe":22.4,"ev_ebitda":13.2,"pb":9.1,"roe":40.8,"roa":14.2,"margen_neto":11.2,"deuda_ebitda":1.1,"beta_usd":0.08,"beta_inf":0.44,"beta_desemp":-0.39},"BIMBOA":{"pe":26.3,"ev_ebitda":12.4,"pb":2.8,"roe":10.8,"roa":4.1,"margen_neto":3.2,"deuda_ebitda":2.4,"beta_usd":-0.18,"beta_inf":0.58,"beta_desemp":-0.44},"VESTA":{"pe":14.3,"ev_ebitda":16.2,"pb":1.9,"roe":13.2,"roa":8.4,"margen_neto":52.4,"deuda_ebitda":3.1,"beta_usd":0.72,"beta_inf":-0.08,"beta_desemp":-0.15},"BOLSAA":{"pe":18.9,"ev_ebitda":12.8,"pb":3.4,"roe":18.2,"roa":12.4,"margen_neto":42.1,"deuda_ebitda":0.2,"beta_usd":0.28,"beta_inf":0.31,"beta_desemp":-0.28},"BBAJIOO":{"pe":8.2,"ev_ebitda":null,"pb":1.4,"roe":16.4,"roa":2.0,"margen_neto":31.2,"deuda_ebitda":null,"beta_usd":0.31,"beta_inf":0.58,"beta_desemp":-0.52},"RA":{"pe":7.8,"ev_ebitda":null,"pb":1.2,"roe":17.2,"roa":2.2,"margen_neto":29.8,"deuda_ebitda":null,"beta_usd":0.24,"beta_inf":0.61,"beta_desemp":-0.51},"GENTERA":{"pe":9.1,"ev_ebitda":null,"pb":1.6,"roe":21.4,"roa":4.8,"margen_neto":18.4,"deuda_ebitda":null,"beta_usd":0.14,"beta_inf":0.38,"beta_desemp":-0.48},"TLEVISACPO":{"pe":null,"ev_ebitda":6.2,"pb":0.8,"roe":-4.2,"roa":-1.1,"margen_neto":-3.4,"deuda_ebitda":4.8,"beta_usd":0.42,"beta_inf":0.22,"beta_desemp":-0.18},"MEGACPO":{"pe":18.4,"ev_ebitda":7.9,"pb":2.6,"roe":14.2,"roa":6.8,"margen_neto":18.4,"deuda_ebitda":2.2,"beta_usd":0.38,"beta_inf":0.28,"beta_desemp":-0.22},"PINFRA":{"pe":14.2,"ev_ebitda":10.1,"pb":2.8,"roe":19.8,"roa":11.2,"margen_neto":44.2,"deuda_ebitda":2.8,"beta_usd":0.34,"beta_inf":0.18,"beta_desemp":-0.21},"GRUMAB":{"pe":15.8,"ev_ebitda":8.4,"pb":3.1,"roe":19.6,"roa":8.8,"margen_neto":6.4,"deuda_ebitda":1.4,"beta_usd":0.52,"beta_inf":0.32,"beta_desemp":-0.28},"GCC":{"pe":13.4,"ev_ebitda":7.8,"pb":2.4,"roe":18.4,"roa":10.2,"margen_neto":22.4,"deuda_ebitda":0.8,"beta_usd":0.58,"beta_inf":0.18,"beta_desemp":-0.14},"CHDRAUIB":{"pe":21.8,"ev_ebitda":9.4,"pb":3.2,"roe":14.8,"roa":5.4,"margen_neto":2.8,"deuda_ebitda":1.2,"beta_usd":-0.08,"beta_inf":0.52,"beta_desemp":-0.42},"CEMEXCPO":{"pe":null,"ev_ebitda":6.8,"pb":0.9,"roe":4.2,"roa":1.8,"margen_neto":4.4,"deuda_ebitda":3.8,"beta_usd":0.74,"beta_inf":0.14,"beta_desemp":-0.22},"PEOLES":{"pe":null,"ev_ebitda":4.2,"pb":0.7,"roe":-2.4,"roa":-0.8,"margen_neto":-2.1,"deuda_ebitda":5.2,"beta_usd":0.88,"beta_inf":0.08,"beta_desemp":0.04},"VISTAA":{"pe":8.4,"ev_ebitda":4.1,"pb":1.4,"roe":16.8,"roa":8.2,"margen_neto":28.4,"deuda_ebitda":1.4,"beta_usd":0.94,"beta_inf":0.08,"beta_desemp":0.02},"VOLARA":{"pe":null,"ev_ebitda":3.8,"pb":null,"roe":-18.4,"roa":-4.2,"margen_neto":-8.4,"deuda_ebitda":6.2,"beta_usd":0.42,"beta_inf":0.28,"beta_desemp":0.18},"ALSEA":{"pe":22.4,"ev_ebitda":8.2,"pb":2.8,"roe":12.4,"roa":2.8,"margen_neto":4.2,"deuda_ebitda":3.2,"beta_usd":-0.14,"beta_inf":0.48,"beta_desemp":-0.42},"ALPEKA":{"pe":14.8,"ev_ebitda":7.2,"pb":1.6,"roe":10.8,"roa":4.4,"margen_neto":6.8,"deuda_ebitda":2.4,"beta_usd":0.68,"beta_inf":0.14,"beta_desemp":-0.08},"ORBIA":{"pe":12.4,"ev_ebitda":6.4,"pb":1.8,"roe":14.4,"roa":6.2,"margen_neto":8.4,"deuda_ebitda":2.2,"beta_usd":0.62,"beta_inf":0.18,"beta_desemp":-0.12},"LABB":{"pe":18.4,"ev_ebitda":11.4,"pb":3.2,"roe":17.4,"roa":8.4,"margen_neto":14.4,"deuda_ebitda":1.2,"beta_usd":0.12,"beta_inf":0.42,"beta_desemp":-0.32},"GFINBURO":{"pe":11.8,"ev_ebitda":null,"pb":1.6,"roe":12.4,"roa":1.4,"margen_neto":24.8,"deuda_ebitda":null,"beta_usd":0.28,"beta_inf":0.44,"beta_desemp":-0.38},"GCARSOA1":{"pe":14.2,"ev_ebitda":8.8,"pb":1.4,"roe":9.8,"roa":4.4,"margen_neto":12.4,"deuda_ebitda":1.8,"beta_usd":0.44,"beta_inf":0.28,"beta_desemp":-0.22},"LACOMERUBC":{"pe":19.4,"ev_ebitda":10.8,"pb":2.8,"roe":14.4,"roa":6.8,"margen_neto":3.8,"deuda_ebitda":0.8,"beta_usd":-0.04,"beta_inf":0.48,"beta_desemp":-0.38},"CUERVO":{"pe":16.4,"ev_ebitda":9.4,"pb":2.4,"roe":14.8,"roa":8.4,"margen_neto":18.4,"deuda_ebitda":0.4,"beta_usd":0.22,"beta_inf":0.38,"beta_desemp":-0.28},"BBVA":{"pe":9.8,"ev_ebitda":null,"pb":2.1,"roe":19.4,"roa":2.4,"margen_neto":32.4,"deuda_ebitda":null,"beta_usd":0.42,"beta_inf":0.54,"beta_desemp":-0.48},"AGUA":{"pe":16.8,"ev_ebitda":9.8,"pb":2.2,"roe":13.2,"roa":6.4,"margen_neto":12.4,"deuda_ebitda":2.4,"beta_usd":0.14,"beta_inf":0.32,"beta_desemp":-0.28},"SIGMAFA":{"pe":11.8,"ev_ebitda":6.4,"pb":1.8,"roe":15.4,"roa":5.4,"margen_neto":6.4,"deuda_ebitda":2.4,"beta_usd":0.24,"beta_inf":0.44,"beta_desemp":-0.32}};
 const ALL_DATES=["2026-01-01", "2026-01-02", "2026-01-05", "2026-01-06", "2026-01-07", "2026-01-08", "2026-01-09", "2026-01-12", "2026-01-13", "2026-01-14", "2026-01-15", "2026-01-16", "2026-01-19", "2026-01-20", "2026-01-21", "2026-01-22", "2026-01-23", "2026-01-26", "2026-01-27", "2026-01-28", "2026-01-29", "2026-01-30", "2026-02-02", "2026-02-03", "2026-02-04", "2026-02-05", "2026-02-06", "2026-02-09", "2026-02-10", "2026-02-11", "2026-02-12", "2026-02-13", "2026-02-16", "2026-02-17", "2026-02-18", "2026-02-19", "2026-02-20", "2026-02-23", "2026-02-24", "2026-02-25", "2026-02-26", "2026-02-27", "2026-03-02", "2026-03-03", "2026-03-04", "2026-03-05", "2026-03-06", "2026-03-09", "2026-03-10", "2026-03-11", "2026-03-12", "2026-03-13", "2026-03-16", "2026-03-17", "2026-03-18", "2026-03-19", "2026-03-20", "2026-03-23", "2026-03-24", "2026-03-25", "2026-03-26", "2026-03-27", "2026-03-30", "2026-03-31", "2026-04-01", "2026-04-02", "2026-04-03", "2026-04-06", "2026-04-07", "2026-04-08", "2026-04-09", "2026-04-10", "2026-04-13"];
-const MEXTRAC_W={"GMEXICOB":11.9,"GFNORTEO":10.4379,"AMXB":10.4261,"FEMSAUBD":9.3109,"GAPB":9.1794,"WALMEX":8.562,"AC":7.604,"KOFUBL":6.978,"KIMBERA":3.8987,"OMAB":3.683,"ASURB":3.3793,"VESTA":2.7644,"BIMBOA":2.0977,"BBAJIOO":1.8014,"BOLSAA":1.746,"SIGMAFA":1.4861,"RA":0.9302,"Q":0.9265,"MEGACPO":0.7189,"PINFRA":0.64,"GRUMAB":0.4802,"GENTERA":0.3561,"TLEVISACPO":0.3536,"GCC":0.19,"CHDRAUIB":0.1296};
+const MEXTRAC_W={"WALMEX":10.05,"AC":7.58,"KOFUBL":6.39,"KIMBERA":3.77,"BIMBOA":2.17,"SIGMAFA":1.35,"GRUMAB":0.55,"CHDRAUIB":0.16,"ASURB":3.39,"GFNORTEO":10.0,"BBAJIOO":1.81,"BOLSAA":1.79,"RA":0.90,"Q":1.12,"GENTERA":0.36,"AMXB":10.62,"MEGACPO":0.61,"TLEVISACPO":0.41,"GMEXICOB":9.29,"GCC":0.20,"PINFRA":0.67,"VESTA":2.74,"GAPB":10.33,"OMAB":3.75,"FEMSAUBD":10.02};
 const UNIVERSO=[{"t":"MEXTRAC09","n":"ETF MEXTRAC 09","s":"ETF","b":"etf","isEtf":true},{"t":"TLEVISACPO","n":"Grupo Televisa SAB","s":"Communication Services","b":"media"},{"t":"AMXB","n":"America Movil SAB de CV","s":"Communication Services","b":"alta"},{"t":"MEGACPO","n":"Megacable Holdings SAB de CV","s":"Communication Services","b":"media"},{"t":"ALSEA","n":"Alsea","s":"Consumer Discretionary","b":"alta"},{"t":"LIVEPOLC1","n":"Liverpool","s":"Consumer Discretionary","b":"media"},{"t":"NEMAKA","n":"Nemak","s":"Consumer Discretionary","b":"media"},{"t":"WALMEX","n":"Wal-Mart de Mexico SAB de CV","s":"Consumer Staples","b":"alta"},{"t":"AC","n":"Arca Continental SAB de CV","s":"Consumer Staples","b":"alta"},{"t":"ANB","n":"AB InBev Mexico","s":"Consumer Staples","b":"media"},{"t":"BIMBOA","n":"Grupo Bimbo SAB de CV","s":"Consumer Staples","b":"alta"},{"t":"CHDRAUIB","n":"Grupo Comercial Chedraui SA de CV","s":"Consumer Staples","b":"alta"},{"t":"CUERVO","n":"Becle (Cuervo)","s":"Consumer Staples","b":"media"},{"t":"FEMSAUBD","n":"Fomento Economico Mexicano SAB de CV UBD","s":"Consumer Staples","b":"alta"},{"t":"FRAGUAB","n":"Corp. Fragua","s":"Consumer Staples","b":"media"},{"t":"GRUMAB","n":"Gruma SAB de CV","s":"Consumer Staples","b":"alta"},{"t":"HERDEZ","n":"Grupo Herdez","s":"Consumer Staples","b":"media"},{"t":"KIMBERA","n":"Kimberly-Clark de Mexico SAB de CV","s":"Consumer Staples","b":"alta"},{"t":"KOFUBL","n":"Coca-Cola Femsa SAB de CV","s":"Consumer Staples","b":"alta"},{"t":"LACOMERUBC","n":"La Comer","s":"Consumer Staples","b":"media"},{"t":"SIGMAFA","n":"Sigma Foods SAB de CV","s":"Consumer Staples","b":"media"},{"t":"VISTAA","n":"Vista Energy","s":"Energy","b":"media"},{"t":"ACTINVRB","n":"Actinver","s":"Financials","b":"media"},{"t":"BBAJIOO","n":"Banco del Bajio SA","s":"Financials","b":"alta"},{"t":"BBVA","n":"BBVA Mexico","s":"Financials","b":"media"},{"t":"BOLSAA","n":"Bolsa Mexicana de Valores SAB de CV","s":"Financials","b":"alta"},{"t":"GENTERA","n":"Gentera SAB de CV","s":"Financials","b":"alta"},{"t":"GFINBURO","n":"Grupo Fin. Inbursa","s":"Financials","b":"alta"},{"t":"GFNORTEO","n":"Grupo Financiero Banorte SAB de CV","s":"Financials","b":"alta"},{"t":"Q","n":"Qualitas Controladora SAB de CV","s":"Financials","b":"alta"},{"t":"RA","n":"Regional SAB de CV","s":"Financials","b":"alta"},{"t":"LABB","n":"Genomma Lab","s":"Health Care","b":"alta"},{"t":"MEDICAB","n":"Medica Sur","s":"Health Care","b":"media"},{"t":"AGUA","n":"Rotoplas","s":"Industrials","b":"media"},{"t":"GCARSOA1","n":"Grupo Carso","s":"Industrials","b":"media"},{"t":"ASURB","n":"Grupo Aeroportuario del Sureste SAB de CV","s":"Industrials","b":"alta"},{"t":"GAPB","n":"Grupo Aeroportuario del Pacifico SAB de CV","s":"Industrials","b":"alta"},{"t":"OMAB","n":"Grupo Aeroportuario del Centro Norte SAB de CV","s":"Industrials","b":"alta"},{"t":"PINFRA","n":"Promotora y Operadora de Infraestructura SAB de CV","s":"Industrials","b":"alta"},{"t":"TRAXIONA","n":"Traxion","s":"Industrials","b":"media"},{"t":"VOLARA","n":"Volaris","s":"Industrials","b":"media"},{"t":"ALPEKA","n":"Alpek","s":"Materials","b":"media"},{"t":"CEMEXCPO","n":"CEMEX","s":"Materials","b":"alta"},{"t":"CMOCTEZ","n":"Cementos Moctezuma","s":"Materials","b":"media"},{"t":"GCC","n":"GCC SAB de CV","s":"Materials","b":"media"},{"t":"GMEXICOB","n":"Grupo Mexico SAB de CV","s":"Materials","b":"alta"},{"t":"ORBIA","n":"Orbia","s":"Materials","b":"media"},{"t":"PEOLES","n":"Penoles","s":"Materials","b":"alta"},{"t":"VESTA","n":"Vesta","s":"Real Estate","b":"alta"}];
 // STATE - Updated with competition dates
 const KEY='ssot_rr_v1';
@@ -484,8 +485,8 @@ function calcMetrics(){
     }
     const mean=a=>a.reduce((s,v)=>s+v,0)/a.length;const vari=a=>{const m=mean(a);return a.reduce((s,v)=>s+(v-m)**2,0)/(a.length-1)};
     const cov=(a,b)=>{const ma=mean(a),mb=mean(b);return a.reduce((s,v,i)=>s+(v-ma)*(b[i]-mb),0)/(a.length-1)};
-    stdDev=Math.sqrt(vari(rd))*Math.sqrt(252);const act=rd.map((r,i)=>r-rb[i]);te=Math.sqrt(vari(act))*Math.sqrt(252);
-    const vb=vari(rb);beta=vb>0?cov(rd,rb)/vb:1;ir=te>0?(rendAcum-rendBench)/te:0;
+    stdDev=Math.sqrt(vari(rd))*Math.sqrt(252);const act=rd.map((r,i)=>r-rb[i]);const stdAct=Math.sqrt(Math.max(0,vari(act)));te=stdAct*Math.sqrt(252);
+    const vb=vari(rb);beta=vb>0?cov(rd,rb)/vb:1;ir=stdAct>0?mean(act)/stdAct*Math.sqrt(252):0;
     if(hist.length>=10){const s=[...rd].sort((a,b)=>a-b);varH=s[Math.floor(s.length*.05)]||0;}
     hitRatio=rd.length>0?rd.filter((_,i)=>rd[i]-rb[i]>0).length/rd.length*100:0;
   }
@@ -506,18 +507,19 @@ function sortTable(tid,col,type='str'){
 function th(label,tid,col,type='str'){return`<th onclick="sortTable('${tid}',${col},'${type}')">${label}</th>`;}
 
 // ROUTING - No universo page
-const PAGES=['dashboard','ordenes','posicion','rendimiento','riesgo','analytics','flujos','estadisticos','config'];
+const PAGES=['dashboard','ordenes','posicion','rendimiento','riesgo','analytics','atribucion','flujos','estadisticos','config'];
 let chartInst=[];
 function go(page){
   document.querySelectorAll('.ni').forEach((el,i)=>el.classList.toggle('active',i===PAGES.indexOf(page)));
-  const titles={dashboard:'Dashboard',ordenes:'Ordenes',posicion:'Posicion actual',rendimiento:'Rendimiento',riesgo:'Riesgo & Prospectivos',analytics:'Analytics',flujos:'Flujos & Ajustes de mercado',estadisticos:'Estadisticos & Medidas',config:'Configuracion'};
+  const titles={dashboard:'Dashboard',ordenes:'Ordenes',posicion:'Posicion actual',rendimiento:'Rendimiento',riesgo:'Riesgo & Prospectivos',analytics:'Analytics',atribucion:'Performance Attribution',flujos:'Flujos & Ajustes de mercado',estadisticos:'Estadisticos & Medidas',config:'Configuracion'};
   document.getElementById('tb-title').textContent=titles[page]||page;
   document.getElementById('tb-date').textContent=new Date().toLocaleDateString('es-MX',{weekday:'long',year:'numeric',month:'long',day:'numeric'});
   document.getElementById('side-cap').textContent=S.capitalInicial>0?fm(S.capitalInicial):'No configurado';
   chartInst.forEach(c=>{try{c.destroy();}catch(e){}});chartInst=[];
-  const renders={dashboard:pgDash,ordenes:pgOrdenes,posicion:pgPosicion,rendimiento:pgRendimiento,riesgo:pgRiesgo,analytics:pgAnalytics,flujos:pgFlujos,estadisticos:pgEstadisticos,config:pgConfig};
+  const renders={dashboard:pgDash,ordenes:pgOrdenes,posicion:pgPosicion,rendimiento:pgRendimiento,riesgo:pgRiesgo,analytics:pgAnalytics,atribucion:pgAtribucion,flujos:pgFlujos,estadisticos:pgEstadisticos,config:pgConfig};
   document.getElementById('content').innerHTML=(renders[page]||pgDash)();
   if(page==='analytics')setTimeout(initCharts,50);
+  if(page==='atribucion')setTimeout(initAtribucionCharts,50);
   if(page==='rendimiento')setTimeout(initRendChart,50);
 }
 
@@ -821,6 +823,10 @@ function pgAnalytics(){
     </div>
   </div>
   <div style="display:grid;grid-template-columns:1fr 1fr;gap:14px;margin-top:14px">
+    <div class="card" style="display:flex;flex-direction:column"><div class="sec-h"><div class="sec-h-bar" style="background:var(--purple)"></div><div class="sec-h-text">Exposicion real por emisora</div><span class="sec-h-sub">Incluye desglose MEXTRAC</span></div><div style="display:flex;align-items:center;gap:24px;padding:16px;flex:1"><div style="position:relative;width:200px;height:200px;flex-shrink:0"><canvas id="donut-real-holdings"></canvas></div><div id="donut-real-holdings-legend" style="flex:1;font-size:12px;display:flex;flex-direction:column;gap:5px;max-height:220px;overflow-y:auto"></div></div></div>
+    <div class="card" style="display:flex;flex-direction:column"><div class="sec-h"><div class="sec-h-bar" style="background:var(--purple)"></div><div class="sec-h-text">Distribucion real por sector</div><span class="sec-h-sub">MEXTRAC ponderado en sectores</span></div><div style="display:flex;align-items:center;gap:24px;padding:16px;flex:1"><div style="position:relative;width:200px;height:200px;flex-shrink:0"><canvas id="donut-real-sectors"></canvas></div><div id="donut-real-sectors-legend" style="flex:1;font-size:12px;display:flex;flex-direction:column;gap:5px"></div></div></div>
+  </div>
+  <div style="display:grid;grid-template-columns:1fr 1fr;gap:14px;margin-top:14px">
     <div class="card" style="display:flex;flex-direction:column"><div class="sec-h"><div class="sec-h-bar"></div><div class="sec-h-text">Composicion del fondo</div></div><div style="display:flex;align-items:center;gap:24px;padding:16px;flex:1"><div style="position:relative;width:200px;height:200px;flex-shrink:0"><canvas id="donut-holdings"></canvas></div><div id="donut-holdings-legend" style="flex:1;font-size:12px;display:flex;flex-direction:column;gap:6px"></div></div></div>
     <div class="card" style="display:flex;flex-direction:column"><div class="sec-h"><div class="sec-h-bar"></div><div class="sec-h-text">Distribucion por sector</div></div><div style="display:flex;align-items:center;gap:24px;padding:16px;flex:1"><div style="position:relative;width:200px;height:200px;flex-shrink:0"><canvas id="donut-sectors"></canvas></div><div id="donut-sectors-legend" style="flex:1;font-size:12px;display:flex;flex-direction:column;gap:6px"></div></div></div>
   </div>`;
@@ -834,7 +840,7 @@ function initCharts(){
   if(ctx2){const portB100=hist.map(h=>+(100*(1+h.rendAcum/100)).toFixed(3));const firstMexP=hist.find(h=>h.mexPrice!=null)?.mexPrice;const benchB100=hist.map(h=>h.mexPrice!=null&&firstMexP?+(100*h.mexPrice/firstMexP).toFixed(3):null);const optsB100=chartOpts('base100');optsB100.scales.y.ticks.callback=v=>`${v.toFixed(0)}`;optsB100.plugins.tooltip.callbacks={label:c=>`${c.dataset.label}: ${c.parsed.y.toFixed(2)} (${(c.parsed.y-100).toFixed(2)}%)`};const c=new Chart(ctx2,{type:'line',data:{labels,datasets:[{label:'Fondo',data:portB100,borderColor:'#027A48',backgroundColor:'rgba(2,122,72,.06)',borderWidth:2,pointRadius:0,tension:.3,fill:true},{label:'MEXTRAC',data:benchB100,borderColor:'#5B21B6',backgroundColor:'transparent',borderWidth:1.5,pointRadius:0,tension:.3,borderDash:[5,3],spanGaps:true}]},options:{...optsB100,layout:{padding:{right:70}}},plugins:[endLabelPlugin('base100')]});chartInst.push(c);}
   const ctx3=document.getElementById('pnl-chart');
   if(ctx3){const pnlData=hist.map((h,i)=>i===0?0:+(h.totalFondo-hist[i-1].totalFondo).toFixed(0));const c=new Chart(ctx3,{type:'bar',data:{labels,datasets:[{label:'P&L diario',data:pnlData,backgroundColor:pnlData.map(v=>v>=0?'rgba(2,122,72,.6)':'rgba(180,35,24,.6)'),borderRadius:2,borderWidth:0}]},options:chartOpts('$',false)});chartInst.push(c);}
-  renderTreemap();renderDonuts(m);
+  renderTreemap();renderDonuts(m);renderDecomposedDonuts(m);
 }
 
 function renderDonuts(m){
@@ -846,8 +852,8 @@ function renderDonuts(m){
   const ctx4=document.getElementById('donut-holdings');if(ctx4){Chart.getChart(ctx4)?.destroy();new Chart(ctx4,{type:'doughnut',data:{labels:holdLabels,datasets:[{data:holdData,backgroundColor:holdColors,borderWidth:2,borderColor:'#fff',hoverOffset:6}]},options:{responsive:true,maintainAspectRatio:true,cutout:'62%',plugins:{legend:{display:false},tooltip:{callbacks:{label:c=>`${c.label}: ${(c.parsed/total*100).toFixed(1)}% (${fm(c.parsed)})`}}}}});}
   const leg4=document.getElementById('donut-holdings-legend');if(leg4)leg4.innerHTML=holdLabels.map((l,i)=>`<div style="display:flex;align-items:center;gap:8px"><div style="width:10px;height:10px;border-radius:2px;background:${holdColors[i]};flex-shrink:0"></div><span style="color:var(--txt2)">${l}</span><span style="margin-left:auto;font-weight:600;color:var(--txt)">${(holdData[i]/total*100).toFixed(1)}%</span></div>`).join('');
   const sectorMap={};Object.entries(pos).forEach(([t,p])=>{const vm=p.titulos*p.precioActual;if(vm<=0)return;const sector=UNIVERSO.find(u=>u.t===t)?.s||'Otros';sectorMap[sector]=(sectorMap[sector]||0)+vm;});
-  if(m.efectivo>0)sectorMap['Efectivo']=(sectorMap['Efectivo']||0)+m.efectivo;
-  const sLabels=Object.keys(sectorMap).sort((a,b)=>sectorMap[b]-sectorMap[a]);const sData=sLabels.map(l=>+sectorMap[l].toFixed(0));const sColors=sLabels.map((_,i)=>i===sLabels.length-1&&sLabels[i]==='Efectivo'?'#98A2B3':COLORS[i%COLORS.length]);const sTotal=sData.reduce((s,v)=>s+v,0);
+  if(m.efectivo>0)sectorMap['CASH']=(sectorMap['CASH']||0)+m.efectivo;
+  const sLabels=Object.keys(sectorMap).sort((a,b)=>sectorMap[b]-sectorMap[a]);const sData=sLabels.map(l=>+sectorMap[l].toFixed(0));const sColors=sLabels.map((l,i)=>l==='CASH'?'#98A2B3':COLORS[i%COLORS.length]);const sTotal=sData.reduce((s,v)=>s+v,0);
   const ctx5=document.getElementById('donut-sectors');if(ctx5){Chart.getChart(ctx5)?.destroy();new Chart(ctx5,{type:'doughnut',data:{labels:sLabels,datasets:[{data:sData,backgroundColor:sColors,borderWidth:2,borderColor:'#fff',hoverOffset:6}]},options:{responsive:true,maintainAspectRatio:true,cutout:'62%',plugins:{legend:{display:false},tooltip:{callbacks:{label:c=>`${c.label}: ${(c.parsed/sTotal*100).toFixed(1)}% (${fm(c.parsed)})`}}}}});}
   const leg5=document.getElementById('donut-sectors-legend');if(leg5)leg5.innerHTML=sLabels.map((l,i)=>`<div style="display:flex;align-items:center;gap:8px"><div style="width:10px;height:10px;border-radius:2px;background:${sColors[i]};flex-shrink:0"></div><span style="color:var(--txt2)">${l}</span><span style="margin-left:auto;font-weight:600;color:var(--txt)">${(sData[i]/sTotal*100).toFixed(1)}%</span></div>`).join('');
 }
@@ -912,12 +918,10 @@ function pgConfig(){
     </div>
     <div style="display:flex;flex-direction:column;gap:13px">
       <div class="fg"><label class="fl">Capital inicial ($MXN)</label><input type="number" id="c-cap" value="${S.capitalInicial||''}" placeholder="Monto asignado por BBVA"></div>
-      <div class="fg"><label class="fl">Fecha de inicio de gestion activa (V0 &mdash; fase competitiva)</label>
+      <div class="fg"><label class="fl">Fecha inicio fase competitiva (V0)</label>
         <input type="date" id="c-fecha" value="${(S.fechaInicio||'2026-04-20').substring(0,10)}" onchange="updateBenchPreview(this.value)">
-        <div style="font-size:11px;color:var(--txt3);margin-top:3px">Primer lunes de fase competitiva (20 abril 2026) &mdash; todos los retornos se miden desde aqui</div></div>
-      <div class="fg"><label class="fl">Fecha entrega cartera inicial (semana ajuste)</label>
-        <input type="date" id="c-fecha-entrega" value="${(S.fechaEntrega||'2026-04-13').substring(0,10)}">
-        <div style="font-size:11px;color:var(--txt3);margin-top:3px">Dia que BBVA entrego la cartera (13 abril 2026) &mdash; ventas sin comision desde este dia hasta V0</div></div>
+        <div style="font-size:11px;color:var(--txt3);margin-top:3px">Las m&eacute;tricas corren <b>desde la primera orden registrada</b>. Si estableces V0, todas las m&eacute;tricas (fondo y benchmark) se reinician desde esta fecha &mdash; el benchmark captura el movimiento de cierre del viernes previo al lunes V0.</div></div>
+      <input type="hidden" id="c-fecha-entrega" value="${(S.fechaEntrega||'2026-04-13').substring(0,10)}">
       <div class="fg" style="background:var(--bg3);padding:10px 12px;border-radius:var(--r);border:1px solid var(--line)">
         <label class="fl">Precio MEXTRAC09 en fecha de inicio</label>
         <div style="font-size:13px;font-family:var(--mono);font-weight:600;color:var(--accent);margin-top:4px" id="bench-auto-display">
@@ -929,7 +933,10 @@ function pgConfig(){
         </div>
       </div>
       <div class="fg"><label class="fl">Comision default (%)</label><input type="number" id="c-com" value="${S.comisionDefault}" step="0.01"></div>
-      <button class="btn btn-p" id="cfg-save-btn" onclick="saveConfig()" style="align-self:flex-start">Guardar configuracion</button>
+      <div style="display:flex;gap:8px;flex-wrap:wrap">
+        <button class="btn btn-p" id="cfg-save-btn" onclick="saveConfig()" style="align-self:flex-start">Guardar configuracion</button>
+        <button class="btn btn-sm" onclick="exportToExcel()" style="align-self:flex-start;border-color:var(--grn);color:var(--grn)">&#128229; Exportar Excel</button>
+      </div>
     </div>
   </div>
   <div class="card" style="max-width:520px">
@@ -1149,6 +1156,372 @@ function pgEstadisticos(){
 }
 
 // INIT
+// ═══════════════════════════════════════════════════════════════════════════
+// PERFORMANCE ATTRIBUTION  (Brinson-Hood-Beebower)
+// ═══════════════════════════════════════════════════════════════════════════
+function pgAtribucion(){
+  const m=calcMetrics();
+  return`
+  <div class="card" style="max-width:900px">
+    <div class="sec-h"><div class="sec-h-bar" style="background:var(--purple)"></div><div class="sec-h-text">Performance Attribution &mdash; Brinson-Hood-Beebower</div>
+      <div style="margin-left:auto;display:flex;gap:8px;align-items:center">
+        <span style="font-size:11px;color:var(--txt3)">Periodo:</span>
+        <select id="attr-period" onchange="renderAtribucion()" style="width:auto;padding:4px 10px;font-size:12px">
+          <option value="acum">Acumulado (gestion)</option>
+          <option value="week">Semanal</option>
+          <option value="day">Diario (ultimo dia)</option>
+        </select>
+      </div>
+    </div>
+    <div class="a-info" style="margin-bottom:14px;font-size:12px">
+      <b>Atribucion de desempeno:</b> Descompone el retorno activo (fondo vs MEXTRAC) en tres efectos: Asignacion de Activos, Seleccion de Valores e Interaccion.
+    </div>
+    <div id="attr-summary-cards" class="sg4" style="margin-bottom:18px"></div>
+    <div id="attr-chart-container" style="min-height:220px;position:relative;margin-bottom:18px"><canvas id="attr-bar-chart" style="width:100%;height:220px"></canvas></div>
+    <div class="sec-h" style="margin-top:4px"><div class="sec-h-bar"></div><div class="sec-h-text">Desglose por sector</div></div>
+    <div class="tw"><table id="tbl-attr"><thead><tr>
+      <th>Sector</th>
+      <th title="Peso del sector en el fondo (ajustado MEXTRAC)">W Fondo</th>
+      <th title="Peso del sector en el benchmark MEXTRAC">W Bench</th>
+      <th title="Retorno del sector en el fondo">R Fondo</th>
+      <th title="Retorno del sector en el benchmark">R Bench</th>
+      <th title="(Wf - Wb) x (Rb - Rp)">Asset Alloc</th>
+      <th title="Wb x (Rf - Rb)">Stock Sel</th>
+      <th title="(Wf - Wb) x (Rf - Rb)">Interaccion</th>
+      <th title="Contribucion total al retorno activo">Total</th>
+    </tr></thead><tbody id="attr-tbody"></tbody></table></div>
+  </div>
+  <div class="card" style="max-width:900px">
+    <div class="sec-h"><div class="sec-h-bar" style="background:var(--grn)"></div><div class="sec-h-text">Seleccion de valores</div></div>
+    <div class="tw"><table id="tbl-attr2"><thead><tr>
+      <th>Ticker</th><th>Sector</th><th>W Fondo</th><th>W Bench</th><th>Retorno</th><th>R Bench sector</th><th>Contribucion seleccion</th>
+    </tr></thead><tbody id="attr-tbody2"></tbody></table></div>
+  </div>`;
+}
+
+function calcAtribucion(period){
+  const m=calcMetrics();const hist=m.hist;if(!hist.length)return null;
+  // Determine start/end based on period
+  let startH,endH;
+  if(period==='day'){startH=hist[Math.max(0,hist.length-2)];endH=hist[hist.length-1];}
+  else if(period==='week'){
+    const lastDate=new Date(hist[hist.length-1].date+'T00:00:00');
+    const dow=lastDate.getDay();const daysToMon=dow===0?6:dow-1;
+    const monDate=new Date(lastDate);monDate.setDate(monDate.getDate()-daysToMon);
+    const monStr=monDate.toISOString().split('T')[0];
+    let si=null;for(let i=hist.length-1;i>=0;i--){if(hist[i].date<monStr){si=hist[i];break;}}
+    startH=si||hist[0];endH=hist[hist.length-1];
+  }else{startH=hist[0];endH=hist[hist.length-1];}
+  
+  const rPort=startH.totalFondo>0?(endH.totalFondo-startH.totalFondo)/startH.totalFondo*100:0;
+  const rBench=startH.mexPrice&&endH.mexPrice&&startH.mexPrice>0?(endH.mexPrice-startH.mexPrice)/startH.mexPrice*100:0;
+  const activeRet=rPort-rBench;
+  
+  // Build position at startH date and endH date
+  const pos=m.pos;
+  const total=m.totalFondo;
+  if(total<=0)return null;
+
+  // Decompose MEXTRAC holdings into constituents for real exposure
+  const etfPos=pos['MEXTRAC09'];
+  const etfVal=etfPos?etfPos.titulos*etfPos.precioActual:0;
+  const etfPct=etfVal/total*100;
+  
+  // Build real sector weights for portfolio
+  const sectorW={};// sector -> % of fund (real)
+  const sectorR={};// sector -> return of portfolio's holdings in that sector
+  const sectorRB={};// sector -> return of benchmark in that sector
+  const sectorWB={};// sector -> weight in benchmark
+  
+  // Process direct non-ETF holdings
+  for(const t in pos){
+    if(t==='MEXTRAC09')continue;
+    const p=pos[t];const vm=p.titulos*p.precioActual;
+    if(vm<=0)continue;
+    const sec=UNIVERSO.find(u=>u.t===t)?.s||'Otros';
+    const wPct=vm/total*100;
+    sectorW[sec]=(sectorW[sec]||0)+wPct;
+    const pEnd=localPrice(t,endH.date)||p.precioActual;
+    const pStart=localPrice(t,startH.date)||pEnd;
+    const r=pStart>0?(pEnd-pStart)/pStart*100:0;
+    if(!sectorR[sec])sectorR[sec]={sum:0,w:0};
+    sectorR[sec].sum+=wPct*r;sectorR[sec].w+=wPct;
+  }
+  
+  // Decompose ETF into constituents
+  const totalMexW=Object.values(MEXTRAC_W).reduce((s,v)=>s+v,0);
+  for(const t in MEXTRAC_W){
+    const w=MEXTRAC_W[t]/totalMexW*100;// % within MEXTRAC
+    const effectiveW=etfPct*w/100;// % of total fund
+    const sec=UNIVERSO.find(u=>u.t===t)?.s||'Otros';
+    sectorW[sec]=(sectorW[sec]||0)+effectiveW;
+    const pEnd=localPrice(t,endH.date)||localPrice(t);
+    const pStart=localPrice(t,startH.date)||pEnd;
+    const r=pStart&&pEnd&&pStart>0?(pEnd-pStart)/pStart*100:0;
+    if(!sectorR[sec])sectorR[sec]={sum:0,w:0};
+    sectorR[sec].sum+=effectiveW*r;sectorR[sec].w+=effectiveW;
+  }
+  
+  // Cash
+  if(m.efectivo>0){
+    const cashW=m.efectivo/total*100;
+    sectorW['CASH']=(sectorW['CASH']||0)+cashW;
+    if(!sectorR['CASH'])sectorR['CASH']={sum:0,w:0};
+    sectorR['CASH'].w+=cashW;
+  }
+  
+  // Build benchmark sector weights from MEXTRAC_W
+  for(const t in MEXTRAC_W){
+    const wb=MEXTRAC_W[t]/totalMexW*100;
+    const sec=UNIVERSO.find(u=>u.t===t)?.s||'Otros';
+    sectorWB[sec]=(sectorWB[sec]||0)+wb;
+    const pEnd=localPrice(t,endH.date)||localPrice(t);
+    const pStart=localPrice(t,startH.date)||pEnd;
+    const r=pStart&&pEnd&&pStart>0?(pEnd-pStart)/pStart*100:0;
+    if(!sectorRB[sec])sectorRB[sec]={sum:0,w:0};
+    sectorRB[sec].sum+=wb*r;sectorRB[sec].w+=wb;
+  }
+  
+  // Compute BHB attribution per sector
+  const sectors=new Set([...Object.keys(sectorW),...Object.keys(sectorWB)]);
+  const rows=[];
+  let totAA=0,totSS=0,totInt=0,totTotal=0;
+  
+  for(const sec of sectors){
+    const wf=(sectorW[sec]||0)/100;
+    const wb=(sectorWB[sec]||0)/100;
+    const rfRaw=sectorR[sec]?sectorR[sec].sum/Math.max(sectorR[sec].w,0.0001):0;
+    const rbRaw=sectorRB[sec]?sectorRB[sec].sum/Math.max(sectorRB[sec].w,0.0001):0;
+    const rf=rfRaw;const rb=rbRaw;
+    const rp_total=rBench;// portfolio-level benchmark return
+    // BHB: weights are decimal (0-1), returns are in % → result in %
+    const aa=(wf-wb)*(rb-rBench);
+    const ss=wb*(rf-rb);
+    const inter=(wf-wb)*(rf-rb);
+    const total=aa+ss+inter;
+    totAA+=aa;totSS+=ss;totInt+=inter;totTotal+=total;
+    rows.push({sec,wf:wf*100,wb:wb*100,rf,rb,aa,ss,inter,total});
+  }
+  rows.sort((a,b)=>Math.abs(b.total)-Math.abs(a.total));
+  
+  // Per-ticker selection contribution
+  const tickerRows=[];
+  for(const t in pos){
+    if(t==='MEXTRAC09')continue;
+    const p=pos[t];const vm=p.titulos*p.precioActual;if(vm<=0)continue;
+    const wf=vm/total;
+    const wb=(MEXTRAC_W[t]||0)/totalMexW;
+    const sec=UNIVERSO.find(u=>u.t===t)?.s||'Otros';
+    const pEnd=localPrice(t,endH.date)||p.precioActual;const pStart=localPrice(t,startH.date)||pEnd;
+    const rf=pStart>0?(pEnd-pStart)/pStart*100:0;
+    const rbSec=sectorRB[sec]?sectorRB[sec].sum/Math.max(sectorRB[sec].w,0.0001):0;
+    const selContrib=wb*(rf-rbSec);
+    tickerRows.push({ticker:t,sec,wf:wf*100,wb:wb*100,rf,rbSec,selContrib});
+  }
+  tickerRows.sort((a,b)=>Math.abs(b.selContrib)-Math.abs(a.selContrib));
+  
+  return{rPort,rBench,activeRet,totAA,totSS,totInt,totTotal,rows,tickerRows};
+}
+
+function renderAtribucion(){
+  const period=document.getElementById('attr-period')?.value||'acum';
+  const d=calcAtribucion(period);
+  if(!d){
+    document.getElementById('attr-summary-cards').innerHTML='<div class="empty" style="grid-column:1/-1">Sin datos suficientes. Registra ordenes para ver la atribucion.</div>';
+    return;
+  }
+  const cc2=n=>n>0?'var(--grn)':n<0?'var(--red)':'var(--txt3)';
+  const pn=n=>n==null||isNaN(n)?'—':(n>=0?'+':'')+n.toFixed(2)+'%';
+  // Summary cards
+  document.getElementById('attr-summary-cards').innerHTML=`
+    ${stCard(pn(d.rPort),'Retorno fondo','Periodo seleccionado',d.rPort>=0?'stat-grn':'stat-red')}
+    ${stCard(pn(d.rBench),'Retorno benchmark','MEXTRAC09 mismo periodo',d.rBench>=0?'stat-grn':'stat-red')}
+    ${stCard(pn(d.activeRet),'Retorno activo','Fondo minus MEXTRAC',d.activeRet>=0?'stat-grn':'stat-red')}
+    ${stCard(pn(d.totAA),'Asset Allocation','Efecto asignacion sectorial',d.totAA>=0?'stat-grn':'stat-red')}
+  `;
+  // Bar chart
+  const ctx=document.getElementById('attr-bar-chart');
+  if(ctx){
+    Chart.getChart(ctx)?.destroy();
+    const labels=d.rows.map(r=>r.sec);
+    new Chart(ctx,{type:'bar',data:{labels,datasets:[
+      {label:'Asset Allocation',data:d.rows.map(r=>+r.aa.toFixed(3)),backgroundColor:'rgba(12,74,110,0.7)',borderRadius:3},
+      {label:'Stock Selection',data:d.rows.map(r=>+r.ss.toFixed(3)),backgroundColor:'rgba(2,122,72,0.7)',borderRadius:3},
+      {label:'Interaccion',data:d.rows.map(r=>+r.inter.toFixed(3)),backgroundColor:'rgba(91,33,182,0.55)',borderRadius:3}
+    ]},options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{labels:{font:{size:11}}},tooltip:{callbacks:{label:c=>`${c.dataset.label}: ${c.parsed.y>=0?'+':''}${c.parsed.y.toFixed(3)}%`}}},scales:{x:{ticks:{font:{size:10}},grid:{display:false}},y:{ticks:{callback:v=>`${v>=0?'+':''}${v.toFixed(2)}%`,font:{size:10}},grid:{color:'rgba(0,0,0,.04)'}}}}});
+    chartInst.push(Chart.getChart(ctx));
+  }
+  // Sector table
+  document.getElementById('attr-tbody').innerHTML=d.rows.map(r=>`<tr>
+    <td class="lbl">${r.sec}</td>
+    <td class="mono">${r.wf.toFixed(1)}%</td>
+    <td class="mono">${r.wb.toFixed(1)}%</td>
+    <td class="mono" style="color:${cc2(r.rf)}">${pn(r.rf)}</td>
+    <td class="mono" style="color:${cc2(r.rb)}">${pn(r.rb)}</td>
+    <td class="mono" style="color:${cc2(r.aa)}">${pn(r.aa)}</td>
+    <td class="mono" style="color:${cc2(r.ss)}">${pn(r.ss)}</td>
+    <td class="mono" style="color:${cc2(r.inter)}">${pn(r.inter)}</td>
+    <td class="mono" style="font-weight:700;color:${cc2(r.total)}">${pn(r.total)}</td>
+  </tr>`).join('')+`<tr style="border-top:2px solid var(--line2);font-weight:700">
+    <td class="lbl">TOTAL</td><td></td><td></td><td></td><td></td>
+    <td class="mono" style="color:${cc2(d.totAA)}">${pn(d.totAA)}</td>
+    <td class="mono" style="color:${cc2(d.totSS)}">${pn(d.totSS)}</td>
+    <td class="mono" style="color:${cc2(d.totInt)}">${pn(d.totInt)}</td>
+    <td class="mono" style="color:${cc2(d.totTotal)}">${pn(d.totTotal)}</td>
+  </tr>`;
+  // Ticker selection table
+  document.getElementById('attr-tbody2').innerHTML=d.tickerRows.slice(0,15).map(r=>`<tr>
+    <td class="lbl mono">${r.ticker}</td>
+    <td class="dim">${r.sec}</td>
+    <td class="mono">${r.wf.toFixed(1)}%</td>
+    <td class="mono">${r.wb.toFixed(2)}%</td>
+    <td class="mono" style="color:${cc2(r.rf)}">${pn(r.rf)}</td>
+    <td class="mono" style="color:${cc2(r.rbSec)}">${pn(r.rbSec)}</td>
+    <td class="mono" style="font-weight:700;color:${cc2(r.selContrib)}">${pn(r.selContrib)}</td>
+  </tr>`).join('');
+}
+
+function initAtribucionCharts(){renderAtribucion();}
+
+// ═══════════════════════════════════════════════════════════════════════════
+// DECOMPOSED DONUTS (real exposure with MEXTRAC breakdown)
+// ═══════════════════════════════════════════════════════════════════════════
+function renderDecomposedDonuts(m){
+  const COLORS=['#0C4A6E','#027A48','#5B21B6','#B42318','#92400E','#1D4ED8','#0F766E','#7C3AED','#BE185D','#065F46','#C2410C','#1E40AF','#6B21A8','#9A3412','#166534','#1e3a5f','#014d40'];
+  const pos=m.pos;const total=m.totalFondo;if(total<=0)return;
+  const etfPos=pos['MEXTRAC09'];const etfVal=etfPos?etfPos.titulos*etfPos.precioActual:0;
+  const etfPct=etfVal/total;
+  const totalMexW=Object.values(MEXTRAC_W).reduce((s,v)=>s+v,0);
+  
+  // Build real holding exposure map {ticker -> real $value}
+  const realMap={};
+  // Non-ETF direct holdings
+  for(const t in pos){
+    if(t==='MEXTRAC09')continue;
+    const vm=pos[t].titulos*pos[t].precioActual;if(vm>0)realMap[t]=(realMap[t]||0)+vm;
+  }
+  // Decompose ETF
+  for(const t in MEXTRAC_W){
+    const w=MEXTRAC_W[t]/totalMexW;
+    realMap[t]=(realMap[t]||0)+etfVal*w;
+  }
+  if(m.efectivo>0)realMap['CASH']=(realMap['CASH']||0)+m.efectivo;
+  
+  // Sort by value
+  const rEntries=Object.entries(realMap).sort((a,b)=>b[1]-a[1]);
+  const rLabels=rEntries.map(e=>e[0]);
+  const rData=rEntries.map(e=>+e[1].toFixed(0));
+  const rColors=rLabels.map((l,i)=>l==='CASH'?'#98A2B3':COLORS[i%COLORS.length]);
+  const rTotal=rData.reduce((s,v)=>s+v,0);
+  
+  const ctx4=document.getElementById('donut-real-holdings');
+  if(ctx4){Chart.getChart(ctx4)?.destroy();new Chart(ctx4,{type:'doughnut',data:{labels:rLabels,datasets:[{data:rData,backgroundColor:rColors,borderWidth:1.5,borderColor:'#fff',hoverOffset:5}]},options:{responsive:true,maintainAspectRatio:true,cutout:'65%',plugins:{legend:{display:false},tooltip:{callbacks:{label:c=>`${c.label}: ${(c.parsed/rTotal*100).toFixed(1)}% (${fm(c.parsed)})`}}}}});}
+  const leg4=document.getElementById('donut-real-holdings-legend');
+  if(leg4)leg4.innerHTML=rLabels.slice(0,14).map((l,i)=>`<div style="display:flex;align-items:center;gap:6px"><div style="width:8px;height:8px;border-radius:2px;background:${rColors[i]};flex-shrink:0"></div><span style="color:var(--txt2);font-size:11px">${l}</span><span style="margin-left:auto;font-weight:600;color:var(--txt);font-size:11px">${(rData[i]/rTotal*100).toFixed(1)}%</span></div>`).join('')+(rLabels.length>14?`<div style="color:var(--txt3);font-size:10px;margin-top:2px">+${rLabels.length-14} emisoras más...</div>`:'');
+  
+  // Real sector breakdown
+  const realSector={};
+  for(const [t,val] of rEntries){
+    const sec=t==='CASH'?'CASH':(UNIVERSO.find(u=>u.t===t)?.s||'Otros');
+    realSector[sec]=(realSector[sec]||0)+val;
+  }
+  const sEntries=Object.entries(realSector).sort((a,b)=>b[1]-a[1]);
+  const sLabels=sEntries.map(e=>e[0]);
+  const sData=sEntries.map(e=>+e[1].toFixed(0));
+  const sColors=sLabels.map((l,i)=>l==='CASH'?'#98A2B3':COLORS[i%COLORS.length]);
+  const sTotal=sData.reduce((s,v)=>s+v,0);
+  
+  const ctx5=document.getElementById('donut-real-sectors');
+  if(ctx5){Chart.getChart(ctx5)?.destroy();new Chart(ctx5,{type:'doughnut',data:{labels:sLabels,datasets:[{data:sData,backgroundColor:sColors,borderWidth:1.5,borderColor:'#fff',hoverOffset:5}]},options:{responsive:true,maintainAspectRatio:true,cutout:'65%',plugins:{legend:{display:false},tooltip:{callbacks:{label:c=>`${c.label}: ${(c.parsed/sTotal*100).toFixed(1)}% (${fm(c.parsed)})`}}}}});}
+  const leg5=document.getElementById('donut-real-sectors-legend');
+  if(leg5)leg5.innerHTML=sLabels.map((l,i)=>`<div style="display:flex;align-items:center;gap:6px"><div style="width:8px;height:8px;border-radius:2px;background:${sColors[i]};flex-shrink:0"></div><span style="color:var(--txt2)">${l}</span><span style="margin-left:auto;font-weight:600;color:var(--txt)">${(sData[i]/sTotal*100).toFixed(1)}%</span></div>`).join('');
+}
+
+// ═══════════════════════════════════════════════════════════════════════════
+// EXCEL EXPORT
+// ═══════════════════════════════════════════════════════════════════════════
+async function exportToExcel(){
+  const btn=event.target;btn.textContent='Generando...';btn.disabled=true;
+  try{
+    if(typeof XLSX==='undefined'){
+      await new Promise((res,rej)=>{const s=document.createElement('script');s.src='https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js';s.onload=res;s.onerror=rej;document.head.appendChild(s);});
+    }
+    const wb=XLSX.utils.book_new();
+    
+    // Sheet 1: Ordenes
+    const ordRows=[['Fecha','Tipo','Ticker','Titulos','Precio','Valor','Comision','IVA','Razon','Fase']];
+    for(const o of S.ordenes){
+      ordRows.push([o.fecha,o.tipo,o.ticker,o.titulos,o.precio,o.titulos*o.precio,o.comision||0,o.iva||0,o.razon||'',o.isEtf?'ETF':'Accion']);
+    }
+    XLSX.utils.book_append_sheet(wb,XLSX.utils.aoa_to_sheet(ordRows),'Ordenes');
+    
+    // Sheet 2: Posicion actual
+    const pos=buildPos();const m=calcMetrics();
+    const posRows=[['Ticker','Nombre','Sector','Titulos','Precio Costo','Precio Actual','Valor Mercado','P&L $','P&L %','% Fondo']];
+    for(const t in pos){
+      const p=pos[t];const vm=p.titulos*p.precioActual;const pp=p.costoTotal>0?p.costoTotal/p.titulos:0;
+      const pnl=vm-p.costoTotal;const pnlPct=p.costoTotal>0?pnl/p.costoTotal*100:0;
+      const uni=UNIVERSO.find(u=>u.t===t);
+      posRows.push([t,uni?.n||t,uni?.s||'ETF',p.titulos,+pp.toFixed(4),p.precioActual,+vm.toFixed(2),+pnl.toFixed(2),+pnlPct.toFixed(2),+(vm/m.totalFondo*100).toFixed(2)]);
+    }
+    if(m.efectivo>0)posRows.push(['CASH','Cash','CASH',1,m.efectivo,m.efectivo,+m.efectivo.toFixed(2),0,0,+(m.efectivo/m.totalFondo*100).toFixed(2)]);
+    XLSX.utils.book_append_sheet(wb,XLSX.utils.aoa_to_sheet(posRows),'Posicion');
+    
+    // Sheet 3: Historico de rendimiento
+    const hist=m.hist;
+    const histRows=[['Fecha','Valor Fondo','Efectivo','Valor Portafolio','Rend. Acum. Fondo %','Precio MEXTRAC','Rend. Bench %','Retorno Activo %']];
+    for(const h of hist){
+      histRows.push([h.date,+h.totalFondo.toFixed(2),+h.efectivo.toFixed(2),+h.portValue.toFixed(2),+h.rendAcum.toFixed(4),h.mexPrice||'',h.rendBench!=null?+h.rendBench.toFixed(4):'',h.retActivo!=null?+h.retActivo.toFixed(4):'']);
+    }
+    XLSX.utils.book_append_sheet(wb,XLSX.utils.aoa_to_sheet(histRows),'Rendimiento');
+    
+    // Sheet 4: Metricas
+    const metRows=[
+      ['Metrica','Valor','Descripcion'],
+      ['Capital Inicial',S.capitalInicial,'MXN asignado por BBVA'],
+      ['Valor Fondo',+m.totalFondo.toFixed(2),'Portafolio + efectivo actual'],
+      ['Rend. Acumulado %',+m.rendAcum.toFixed(4),'Desde fecha inicio gestion'],
+      ['Rend. Benchmark %',+m.rendBench.toFixed(4),'MEXTRAC09 mismo periodo'],
+      ['Retorno Activo %',+m.retActivo.toFixed(4),'Alpha generado'],
+      ['Desv. Estandar %',+m.stdDev.toFixed(4),'Anualizada'],
+      ['Tracking Error %',+m.te.toFixed(4),'Anualizado'],
+      ['Information Ratio',+m.ir.toFixed(4),'Retorno activo / TE'],
+      ['Beta vs MEXTRAC',+m.beta.toFixed(4),'Sensibilidad al mercado'],
+      ['Hit Ratio %',+m.hitRatio.toFixed(2),'Dias ganados al benchmark'],
+      ['VaR 5% diario %',+m.varH.toFixed(4),'Value at Risk historico 5%'],
+      ['Efectivo MXN',+m.efectivo.toFixed(2),'Capital no invertido'],
+      ['Rend. semanal fondo %',+m.rSem.toFixed(4),'Semana actual'],
+      ['Rend. semanal bench %',+m.rbSem.toFixed(4),'MEXTRAC semana actual'],
+    ];
+    XLSX.utils.book_append_sheet(wb,XLSX.utils.aoa_to_sheet(metRows),'Metricas');
+    
+    // Sheet 5: Attribution
+    const attrD=calcAtribucion('acum');
+    if(attrD){
+      const attrRows=[['Sector','W Fondo %','W Bench %','R Fondo %','R Bench %','Asset Allocation','Stock Selection','Interaccion','Total']];
+      for(const r of attrD.rows){
+        attrRows.push([r.sec,+r.wf.toFixed(2),+r.wb.toFixed(2),+r.rf.toFixed(4),+r.rb.toFixed(4),+r.aa.toFixed(4),+r.ss.toFixed(4),+r.inter.toFixed(4),+r.total.toFixed(4)]);
+      }
+      attrRows.push(['TOTAL','','','','',+attrD.totAA.toFixed(4),+attrD.totSS.toFixed(4),+attrD.totInt.toFixed(4),+attrD.totTotal.toFixed(4)]);
+      XLSX.utils.book_append_sheet(wb,XLSX.utils.aoa_to_sheet(attrRows),'Atribucion');
+    }
+    
+    // Sheet 6: Flujos
+    if(S.flujos&&S.flujos.length){
+      const flRows=[['Fecha','Tipo','Ticker','Monto/Factor','Notas']];
+      for(const f of S.flujos)flRows.push([f.fecha,f.tipo,f.ticker||'',f.monto,f.notas||'']);
+      XLSX.utils.book_append_sheet(wb,XLSX.utils.aoa_to_sheet(flRows),'Flujos');
+    }
+    
+    const date=new Date().toISOString().split('T')[0];
+    XLSX.writeFile(wb,`ResearchRockets_SSOT_${date}.xlsx`);
+    btn.textContent='✓ Exportado';setTimeout(()=>{btn.textContent='⬇ Exportar Excel';btn.disabled=false;},2500);
+  }catch(e){
+    console.error(e);btn.textContent='Error al exportar';btn.disabled=false;
+  }
+}
+
+
 go('dashboard');
 </script>
 </body>
