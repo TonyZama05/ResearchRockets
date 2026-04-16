@@ -1759,11 +1759,10 @@ function renderAtribucion(){
     <td class="mono" style="color:${cc2(d.totInt)}">${pn(d.totInt)}</td>
     <td class="mono" style="color:${cc2(d.totTotal)}">${pn(d.totTotal)}</td>
   </tr>
-  ${Math.abs(d.residual||0)>0.001?`<tr style="font-size:11px;color:var(--txt3)"><td colspan="8" style="font-style:italic;padding:4px 12px">Residuo por pesos fin de periodo</td><td class="mono" style="color:var(--txt3)">${pn(d.residual)}</td></tr>`:''}
   <tr style="background:var(--accent2);font-weight:700">
     <td class="lbl" style="color:var(--accent)">RETORNO ACTIVO</td><td></td><td></td><td></td><td></td><td></td><td></td><td></td>
     <td class="mono" style="color:${cc2(d.activeRet)};font-size:14px">${pn(d.activeRet)}</td>
-  </tr>\`;
+  </tr>`;
   // Ticker selection table
   document.getElementById('attr-tbody2').innerHTML=d.tickerRows.slice(0,15).map(r=>`<tr>
     <td class="lbl mono">${r.ticker}</td>
