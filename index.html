@@ -297,8 +297,7 @@ function startListener(){
       const activeText=activeEl?.textContent?.toLowerCase()||'';
       if(activeText.includes('config'))return;
       S={...S,...remote};_lastSavedHash=remoteStr;
-      const pages=['dashboard','ordenes','posicion','rendimiento','riesgo','analytics','flujos','estadisticos','config'];
-      const active=pages.find(p=>activeText.includes(p.slice(0,5)))||'dashboard';
+      const active=PAGES.find(p=>activeText.includes(p.slice(0,5)))||'dashboard';
       go(active);setTimeout(()=>initCharts&&initCharts(),200);
       setSyncStatus('ok','Actualizado por equipo · '+new Date().toLocaleTimeString('es-MX',{hour:'2-digit',minute:'2-digit'}));
     }
@@ -445,7 +444,7 @@ function calcWU(pos,totalFondo){
   }).sort((a,b)=>b.diff-a.diff);
 }
 
-function calcMetrics(){
+function calcMetrics(){try{
   const pos=buildPos();const valPort=portVal(pos);
   const costoTotalCompras=S.ordenes.filter(o=>o.tipo==='compra').reduce((s,o)=>s+o.titulos*o.precio+o.comision+o.iva,0);
   const ingresosVentas=S.ordenes.filter(o=>o.tipo==='venta').reduce((s,o)=>s+o.titulos*o.precio-(o.comision+o.iva),0);
@@ -474,7 +473,7 @@ function calcMetrics(){
       if(hist[i-1].totalFondo>0)rd.push((hist[i].totalFondo-hist[i-1].totalFondo)/hist[i-1].totalFondo*100);else rd.push(0);
       if(hist[i].rendBench!=null&&hist[i-1].rendBench!=null&&hist[i-1].mexPrice>0)rb.push((hist[i].mexPrice-hist[i-1].mexPrice)/hist[i-1].mexPrice*100);else rb.push(0);
     }
-    const mean=a=>a.reduce((s,v)=>s+v,0)/a.length;const vari=a=>{const m=mean(a);return a.reduce((s,v)=>s+(v-m)**2,0)/(a.length-1)};
+    const mean=a=>a.length?a.reduce((s,v)=>s+v,0)/a.length:0;const vari=a=>{if(a.length<2)return 0;const m=mean(a);return a.reduce((s,v)=>s+(v-m)**2,0)/(a.length-1)};
     const cov=(a,b)=>{const ma=mean(a),mb=mean(b);return a.reduce((s,v,i)=>s+(v-ma)*(b[i]-mb),0)/(a.length-1)};
     stdDev=Math.sqrt(vari(rd))*Math.sqrt(252);const act=rd.map((r,i)=>r-rb[i]);const stdAct=Math.sqrt(Math.max(0,vari(act)));te=stdAct*Math.sqrt(252);
     const vb=vari(rb);beta=vb>0?cov(rd,rb)/vb:1;ir=stdAct>0?mean(act)/stdAct*Math.sqrt(252):0;
@@ -483,7 +482,7 @@ function calcMetrics(){
   }
   const wu=calcWU(pos,totalFondo);const weekStart=hist.length>=5?hist[Math.max(0,hist.length-6)]:null;const weekEnd=hist.length?hist[hist.length-1]:null;
   return{pos,valPort,costoTotal,efectivo,totalFondo,divTotal,rendAcum,rendBench,retActivo:rendAcum-rendBench,rSem,rbSem,retActivoSem:rSem-rbSem,hitRatio,stdDev,te,beta,ir,varH,wu,hist,weekStart,weekEnd};
-}
+}catch(e){console.error('calcMetrics error:',e);const pos={},wu=[],hist=[];return{pos,valPort:0,costoTotal:0,efectivo:S.capitalInicial||0,totalFondo:S.capitalInicial||0,divTotal:0,rendAcum:0,rendBench:0,retActivo:0,rSem:0,rbSem:0,retActivoSem:0,hitRatio:0,stdDev:0,te:0,beta:1,ir:0,varH:0,wu,hist,weekStart:null,weekEnd:null};}}
 
 // SORT
 const sortState={};
@@ -508,7 +507,17 @@ function go(page){
   document.getElementById('side-cap').textContent=S.capitalInicial>0?fm(S.capitalInicial):'No configurado';
   chartInst.forEach(c=>{try{c.destroy();}catch(e){}});chartInst=[];
   const renders={dashboard:pgDash,ordenes:pgOrdenes,posicion:pgPosicion,rendimiento:pgRendimiento,riesgo:pgRiesgo,analytics:pgAnalytics,atribucion:pgAtribucion,flujos:pgFlujos,estadisticos:pgEstadisticos,config:pgConfig};
-  document.getElementById('content').innerHTML=(renders[page]||pgDash)();
+  try{
+    document.getElementById('content').innerHTML=(renders[page]||pgDash)();
+  }catch(err){
+    console.error('go('+page+') error:',err);
+    document.getElementById('content').innerHTML=`<div style="display:flex;align-items:center;justify-content:center;height:60vh;flex-direction:column;gap:14px;text-align:center">
+      <div style="font-size:36px;opacity:.15">&#9888;</div>
+      <div style="font-size:16px;font-weight:700;color:var(--red)">Error al renderizar la pagina</div>
+      <div style="font-family:var(--mono);font-size:12px;color:var(--txt2);max-width:500px;background:var(--bg3);padding:12px;border-radius:var(--r);text-align:left;word-break:break-all">${err.message}</div>
+      <button class="btn btn-sm" onclick="location.reload()">Recargar pagina</button>
+    </div>`;
+  }
   if(page==='analytics')setTimeout(initCharts,50);
   if(page==='atribucion')setTimeout(initAtribucionCharts,50);
   if(page==='rendimiento')setTimeout(initRendChart,50);
@@ -1158,12 +1167,11 @@ function guardarPreciosDia(){
     closeModal('m-precio-dia');
     const activeEl=document.querySelector('.ni.active');
     const activeText=activeEl?.textContent?.toLowerCase()||'';
-    const pages=['dashboard','ordenes','posicion','rendimiento','riesgo','analytics','atribucion','flujos','estadisticos','config'];
-    const active=pages.find(p=>activeText.includes(p.slice(0,5)))||'dashboard';
+    const active=PAGES.find(p=>activeText.includes(p.slice(0,5)))||'dashboard';
     go(active);
   },900);
 }
-async function openPrecioModal(){const pos=buildPos();const tickers=Object.keys(pos);if(!tickers.length){alert('No hay posiciones abiertas.');return;}const form=document.getElementById('p-form');form.innerHTML=tickers.map(t=>`<div style="display:flex;align-items:center;gap:9px"><label style="font-size:12px;font-weight:600;color:var(--accent);width:140px;flex-shrink:0">${UNIVERSO.find(e=>e.t===t)?.n||t}</label><input type="number" id="pp-${t.replace(/[\s*]/g,'_')}" value="${pos[t].precioActual}" step="0.0001" style="flex:1"><span id="pps-${t.replace(/[\s*]/g,'_')}" class="ps ps-load" style="min-width:64px;text-align:center">...</span></div>`).join('');await Promise.all([...tickers.map(async t=>{const key=t.replace(/[\s*]/g,'_');const res=await fetchPrice(t,null);const inp=document.getElementById('pp-'+key),sta=document.getElementById('pps-'+key);if(inp&&res){inp.value=res.price;if(sta)sta.outerHTML=`<span class="ps ps-ok" id="pps-${key}" style="min-width:64px;text-align:center">&#10003; ${res.src}</span>`;}else if(sta){sta.outerHTML=`<span class="ps ps-err" id="pps-${key}" style="min-width:64px;text-align:center">manual</span>`;}})]);document.getElementById('m-precios').classList.add('open');}
+function openPrecioModal(){openPreciosDia();} // redirects to Precios del día
 
 // MODAL FLUJO
 function openFlujoModal(){['fl-ticker','fl-monto','fl-titulos','fl-notas'].forEach(id=>document.getElementById(id).value='');document.getElementById('fl-fecha').value=today();document.getElementById('fl-alert').innerHTML='';document.getElementById('m-flujo').classList.add('open');}
