@@ -366,8 +366,17 @@ function normalizeS(){
   if(!S.fechaGestion||S.fechaGestion===''||S.fechaGestion==='2026-04-20'){
     S.fechaGestion=S.fechaInicio||'2026-04-13';
   }
-  // Ensure benchmarkInicial is a number
-  if(!S.benchmarkInicial||isNaN(S.benchmarkInicial))S.benchmarkInicial=66.94;
+  // Recompute benchmarkInicial dynamically from MEXTRAC09 price at fechaInicio
+  // (always recalculate so it stays in sync with any new prices loaded)
+  {
+    const fechaRef=S.fechaInicio||'2026-04-13';
+    const mexDB=Object.assign({},PRICE_DB['MEXTRAC09']||{},S.preciosOverlay&&S.preciosOverlay['MEXTRAC09']?S.preciosOverlay['MEXTRAC09']:{});
+    const mexDates=Object.keys(mexDB).sort();
+    let benchDate=null;
+    for(const d of mexDates){if(d<=fechaRef)benchDate=d;else break;}
+    if(benchDate){S.benchmarkInicial=mexDB[benchDate];}
+    else if(!S.benchmarkInicial||isNaN(S.benchmarkInicial)){S.benchmarkInicial=66.94;}
+  }
 }
 normalizeS();
 // Sync S.preciosOverlay into PRICE_DB on startup
@@ -476,22 +485,25 @@ function portVal(pos){return Object.values(pos).reduce((s,p)=>s+p.titulos*p.prec
 function buildHistorical(){
   const ord=S.ordenes||[];
   if(!ord.length)return[];
-  const firstOrderDate=ord.reduce((m,o)=>o.fecha<m?o.fecha:m,ord[0].fecha);
-  // metricsStart = fechaInicio if configured AND <= first available price date
   const allDates=getAllDates();
   const latestDate=allDates.length?allDates[allDates.length-1]:null;
-  let firstDate=firstOrderDate;
+
+  // If fechaInicio is configured, ALWAYS start from it (never before it)
+  // This ensures all metrics are anchored to the same reference date
+  let firstDate;
   if(S.fechaInicio){
-    const hasPricesFromV0=allDates.some(d=>d>=S.fechaInicio);
-    if(hasPricesFromV0)firstDate=S.fechaInicio<=firstOrderDate?S.fechaInicio:firstOrderDate;
-    else{
-      // fechaInicio is after latest prices - use min(firstOrderDate, latestDate)
-      if(latestDate)firstDate=firstOrderDate<=latestDate?firstOrderDate:latestDate;
-    }
+    firstDate=S.fechaInicio;
+    // Protect: if no prices exist at or after fechaInicio, fall back to latest available
+    const hasPricesAtOrAfter=allDates.some(d=>d>=S.fechaInicio);
+    if(!hasPricesAtOrAfter&&latestDate)firstDate=latestDate;
+  } else {
+    // No fechaInicio configured: start from first order date
+    firstDate=ord.reduce((m,o)=>o.fecha<m?o.fecha:m,ord[0].fecha);
   }
+
   if(!firstDate)return[];
   let dates=allDates.filter(d=>d>=firstDate);
-  // If no dates found (orders after latest price), add latest price date as virtual snapshot
+  // If no dates found, add latest price date as virtual snapshot
   if(dates.length===0&&latestDate){dates=[latestDate];}
   // Always ensure latest price date is included for current valuation
   if(latestDate&&!dates.includes(latestDate))dates.push(latestDate);
@@ -1190,7 +1202,7 @@ function parsePreciosPaste(raw,fallbackFecha){
     // Count cells that look like tickers vs dates vs numbers
     const tickerCells=cells.filter(c=>isTickerLike(c)&&!parseDate(c)&&isNaN(parseFloat(c.replace(/,/g,'.'))));
     const dateCells=cells.filter(c=>!!parseDate(c));
-    const numCells=cells.filter(c=>!isNaN(parseFloat(c.replace(/,/g,'.')))&&parseFloat(c.replace(/,/g,'.')>0));
+    const numCells=cells.filter(c=>!isNaN(parseFloat(c.replace(/,/g,'.')))&&parseFloat(c.replace(/,/g,'.'))>0);
     // If majority are ticker-like and no date/numbers → this is the header row
     if(tickerCells.length>=2&&dateCells.length===0&&numCells.length===0){
       headerRowIdx=i;
@@ -1293,6 +1305,14 @@ function guardarPreciosDia(){
   }
   for(const fecha of result.fechas){if(!ALL_DATES.includes(fecha))ALL_DATES.push(fecha);}
   ALL_DATES.sort();
+  // Recompute benchmarkInicial from MEXTRAC09 at fechaInicio (in case new MEXTRAC prices were loaded)
+  if(S.fechaInicio&&S.preciosOverlay&&S.preciosOverlay['MEXTRAC09']){
+    const mexDB=Object.assign({},PRICE_DB['MEXTRAC09']||{},S.preciosOverlay['MEXTRAC09']||{});
+    const mexDates=Object.keys(mexDB).sort();
+    let benchDate=null;
+    for(const d of mexDates){if(d<=S.fechaInicio)benchDate=d;else break;}
+    if(benchDate)S.benchmarkInicial=mexDB[benchDate];
+  }
   save(); // persist to localStorage + Firebase just like orders
   try{const cf=document.getElementById('c-fecha');if(cf)updateBenchPreview(cf.value);}catch(e){}
   // ── Show persistent success toast ─────────────────────────────────────────
@@ -1315,7 +1335,8 @@ function regFlujo(){const tipo=document.getElementById('fl-tipo').value;const fe
 function delFlujo(i){if(!confirm('Eliminar este flujo?'))return;S.flujos.splice(i,1);save();go('flujos');}
 
 // CONFIG FUNCTIONS
-function updateBenchPreview(fecha){if(!fecha)return;const mexDB={...(PRICE_DB['MEXTRAC09']||{}),...(S.preciosOverlay?.['MEXTRAC09']||{})};const mexDates=Object.keys(mexDB).sort();let benchDate=null;for(const d of mexDates){if(d<=fecha)benchDate=d;else break;}if(!benchDate&&mexDates.length)benchDate=mexDates[mexDates.length-1];const price=benchDate?mexDB[benchDate]:null;const el=document.getElementById('bench-auto-display');if(el){if(price){el.innerHTML=`$${price.toFixed(4)} <span style="font-size:11px;color:var(--txt3)">(${benchDate})</span>`;el.style.color='var(--accent)';}else{el.innerHTML='<span style="color:var(--red)">Sin precio disponible para esta fecha</span>';}}}
+function updateBenchPreview(fecha){if(!fecha)return;const mexDB={...(PRICE_DB['MEXTRAC09']||{}),...(S.preciosOverlay?.['MEXTRAC09']||{})};const mexDates=Object.keys(mexDB).sort();let benchDate=null;for(const d of mexDates){if(d<=fecha)benchDate=d;else break;}if(!benchDate&&mexDates.length)benchDate=mexDates[mexDates.length-1];const price=benchDate?mexDB[benchDate]:null;const el=document.getElementById('bench-auto-display');if(el){if(price){el.innerHTML=`$${price.toFixed(4)} <span style="font-size:11px;color:var(--txt3)">(${benchDate})</span>`;el.style.color='var(--accent)';// Also update S.benchmarkInicial live so user can see it reflected
+S.benchmarkInicial=price;}else{el.innerHTML='<span style="color:var(--red)">Sin precio disponible &mdash; carga precios para esta fecha primero</span>';el.style.color='var(--red)';}}}
 function saveConfig(){
   const cap=parseFloat(document.getElementById('c-cap').value);const fecha=document.getElementById('c-fecha').value;const com=parseFloat(document.getElementById('c-com').value)||0.30;
   if(!cap||cap<=0){alert('Capital invalido.');return;}if(!fecha){alert('Ingresa la fecha de inicio de gestion.');return;}
@@ -1348,6 +1369,14 @@ async function importExcelPrices(input){const status=document.getElementById('ex
   if(!S.preciosOverlay)S.preciosOverlay={};
   for(let r=2;r<rows.length;r++){const row=rows[r];const dateVal=row[1];if(!dateVal)continue;let dateStr;if(dateVal instanceof Date)dateStr=dateVal.toISOString().split('T')[0];else if(typeof dateVal==='string')dateStr=dateVal.substring(0,10);else continue;for(let c=2;c<headers.length;c++){const ticker=(headers[c]||'').toString().trim().replace(/^BMV:/,'').replace('&','&');const val=row[c];if(!ticker||val==null||val===''||isNaN(+val))continue;const precio=+parseFloat(val).toFixed(4);if(!PRICE_DB[ticker])PRICE_DB[ticker]={};PRICE_DB[ticker][dateStr]=precio;if(!S.preciosOverlay[ticker])S.preciosOverlay[ticker]={};S.preciosOverlay[ticker][dateStr]=precio;count++;dates.add(dateStr);}}
   for(const d of dates){if(!ALL_DATES.includes(d))ALL_DATES.push(d);}ALL_DATES.sort();
+  // Recompute benchmarkInicial from MEXTRAC09 at fechaInicio after loading new prices
+  if(S.fechaInicio){
+    const mexDB=Object.assign({},PRICE_DB['MEXTRAC09']||{},S.preciosOverlay&&S.preciosOverlay['MEXTRAC09']?S.preciosOverlay['MEXTRAC09']:{});
+    const mexDates=Object.keys(mexDB).sort();
+    let benchDate=null;
+    for(const d of mexDates){if(d<=S.fechaInicio)benchDate=d;else break;}
+    if(benchDate)S.benchmarkInicial=mexDB[benchDate];
+  }
   save(); // persist to localStorage + Firebase
   const sorted=[...dates].sort();status.innerHTML=`<span style="color:var(--grn)">&#10003; ${count} precios cargados &middot; ${dates.size} fechas &middot; ultimo: ${sorted[sorted.length-1]}</span>`;input.value='';go(document.querySelector('.ni.active')?.textContent?.toLowerCase().trim().split(' ')[0]||'dashboard');}catch(e){status.innerHTML=`<span style="color:var(--red)">&#10005; Error: ${e.message}</span>`;console.error(e);}}
 
