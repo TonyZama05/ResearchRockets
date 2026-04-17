@@ -724,10 +724,10 @@ function pgDash(){
       <div style="color:var(--txt3);font-size:13px;max-width:380px;line-height:1.7">La fecha de inicio configurada es <b>${m.fechaRef}</b>.<br>Las métricas comenzarán a registrarse automáticamente cuando llegue esa fecha.</div>
       <div style="font-size:13px;color:var(--txt2)">Capital asignado: <b>${fm(S.capitalInicial)}</b></div>
       <button class="btn btn-p" onclick="go('config')">Cambiar fecha &#8594;</button>
-    </div>\`;
+    </div>`;
   }
-  if(!S.capitalInicial&&!(S.ordenes&&S.ordenes.length))return\`<div style="display:flex;align-items:center;justify-content:center;height:55vh;flex-direction:column;gap:16px;text-align:center"><div style="font-size:48px;opacity:.1">&#9678;</div><div style="font-size:18px;font-weight:700;letter-spacing:-.02em">Research Rockets SSOT</div><div style="color:var(--txt3);font-size:13px;max-width:340px;line-height:1.7">Configura el capital inicial y el precio base del MEXTRAC09 para comenzar el seguimiento.</div><button class="btn btn-p" onclick="go('config')">Ir a Configuracion &#8594;</button></div>`;
-  const m=calcMetrics();const spark=m.hist.slice(-22).map(h=>h.totalFondo);const maxS=Math.max(...spark,1);
+  if(!S.capitalInicial&&!(S.ordenes&&S.ordenes.length))return`<div style="display:flex;align-items:center;justify-content:center;height:55vh;flex-direction:column;gap:16px;text-align:center"><div style="font-size:48px;opacity:.1">&#9678;</div><div style="font-size:18px;font-weight:700;letter-spacing:-.02em">Research Rockets SSOT</div><div style="color:var(--txt3);font-size:13px;max-width:340px;line-height:1.7">Configura el capital inicial y el precio base del MEXTRAC09 para comenzar el seguimiento.</div><button class="btn btn-p" onclick="go('config')">Ir a Configuracion &#8594;</button></div>`;
+  const spark=m.hist.slice(-22).map(h=>h.totalFondo);const maxS=Math.max(...spark,1);
   // For weekly display: use hist if available, otherwise use current values as single point
   const wStart=m.weekStart||{totalFondo:m.totalFondo};
   const wEnd=m.weekEnd||{totalFondo:m.totalFondo};
