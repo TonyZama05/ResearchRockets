@@ -510,24 +510,25 @@ function fundValueAt(date){
 function buildHistorical(){
   const ord=S.ordenes||[];
   if(!ord.length)return[];
+
+  // Block future fechaInicio — no history until the date arrives
+  const todayStr=new Date().toISOString().split('T')[0];
+  const fechaRef=S.fechaInicio||'2026-04-13';
+  if(fechaRef>todayStr)return[];
+
   const allDates=getAllDates();
   const latestDate=allDates.length?allDates[allDates.length-1]:null;
-
-  // Always anchor to fechaInicio — never before it
-  const fechaRef=S.fechaInicio||'2026-04-13';
   let firstDate=fechaRef;
-  // If no prices at/after fechaInicio, use latest available date
   if(!allDates.some(d=>d>=fechaRef)&&latestDate)firstDate=latestDate;
 
   if(!firstDate)return[];
-  // Filter: only valid YYYY-MM-DD strings at or after firstDate
   const validDate=d=>typeof d==='string'&&/^\d{4}-\d{2}-\d{2}$/.test(d);
   let dates=allDates.filter(d=>validDate(d)&&d>=firstDate);
   if(!dates.length&&latestDate&&validDate(latestDate))dates=[latestDate];
   if(latestDate&&validDate(latestDate)&&!dates.includes(latestDate))dates.push(latestDate);
   dates.sort();
 
-  // Anchors: fund value and MEXTRAC price at fechaInicio (V0 and mexStart)
+  // V0 = valor de mercado del portafolio AL CIERRE de firstDate (precios PRICE_DB)
   const V0snap=fundValueAt(firstDate);
   const V0=V0snap.totalFondo>0?V0snap.totalFondo:S.capitalInicial;
   const mexStart=localPrice('MEXTRAC09',firstDate);
@@ -536,7 +537,7 @@ function buildHistorical(){
   for(const date of dates){
     const snap=fundValueAt(date);
     const totalFondo=snap.totalFondo;
-    const rendAcum=V0>0?(totalFondo-V0)/V0*100:0;
+    const rendAcum=V0>0?(totalFondo-V0)/V0*100:0;  // precio de mercado vs capital asignado
     const mexP=localPrice('MEXTRAC09',date);
     const rendBench=(mexStart&&mexStart>0&&mexP!=null)?(mexP-mexStart)/mexStart*100:null;
     result.push({date,portValue:snap.portValue,totalFondo,efectivo:snap.efectivo,mexPrice:mexP,rendAcum,rendBench,retActivo:rendBench!=null?rendAcum-rendBench:null,V0});
@@ -565,6 +566,22 @@ function calcMetrics(){
 
   // ── anchor date ──────────────────────────────────────────────────────────
   const fechaRef=S.fechaInicio||'2026-04-13';
+
+  // ── si fechaInicio es futuro → devolver métricas vacías ──────────────────
+  const _cmToday=new Date().toISOString().split('T')[0];
+  if(fechaRef>_cmToday){
+    const _p=buildPos(),_vp=portVal(_p);
+    const _ct=(S.ordenes||[]).filter(o=>o.tipo==='compra').reduce((s,o)=>s+o.titulos*o.precio+(o.comision||0)+(o.iva||0),0);
+    const _iv=(S.ordenes||[]).filter(o=>o.tipo==='venta').reduce((s,o)=>s+o.titulos*o.precio-((o.comision||0)+(o.iva||0)),0);
+    const _div=(S.flujos||[]).filter(f=>f.tipo==='dividendo_efectivo').reduce((s,f)=>s+f.monto,0);
+    const _ef=Math.max(0,S.capitalInicial-_ct+_iv)+_div;
+    const _tf=_vp+_ef;
+    return{pos:_p,valPort:_vp,costoTotal:_ct,efectivo:_ef,totalFondo:_tf,divTotal:_div,
+      rendAcum:0,rendBench:null,retActivo:null,rSem:0,rbSem:0,retActivoSem:0,
+      hitRatio:0,stdDev:0,te:0,beta:1,ir:0,varH:0,wu:calcWU(_p,_tf),
+      hist:[],weekStart:null,weekEnd:null,
+      V0:S.capitalInicial,fechaRef,_futureDateWarning:true};
+  }
 
   // ── current portfolio state ──────────────────────────────────────────────
   const pos=buildPos();
@@ -666,17 +683,13 @@ function go(page){
   const titles={dashboard:'Dashboard',ordenes:'Ordenes',posicion:'Posicion actual',rendimiento:'Rendimiento',riesgo:'Riesgo & Prospectivos',analytics:'Analytics',atribucion:'Performance Attribution',flujos:'Flujos & Ajustes de mercado',estadisticos:'Estadisticos & Medidas',config:'Configuracion'};
   document.getElementById('tb-title').textContent=titles[page]||page;
   document.getElementById('tb-date').textContent=new Date().toLocaleDateString('es-MX',{weekday:'long',year:'numeric',month:'long',day:'numeric'});
-  // Sidebar: show V0 (fund value at fechaInicio) when orders exist, else capitalInicial
+  // Sidebar: siempre muestra el capital asignado (V0 fijo)
   {
-    const _sOrd=S.ordenes&&S.ordenes.length>0;
-    const _sV0snap=_sOrd?fundValueAt(S.fechaInicio||'2026-04-13'):null;
-    const _sV0=_sV0snap&&_sV0snap.totalFondo>0?_sV0snap.totalFondo:S.capitalInicial;
     const _sLabel=document.getElementById('side-cap-label');
     const _sSub=document.getElementById('side-cap-sub');
-    if(_sLabel)_sLabel.textContent=_sOrd?'Valor inicio':'Capital inicial';
-    document.getElementById('side-cap').textContent=_sV0>0?fm(_sV0):'No configurado';
-    if(_sSub&&_sOrd&&S.capitalInicial>0)_sSub.textContent='Asignado: '+fm(S.capitalInicial);
-    else if(_sSub)_sSub.textContent='';
+    if(_sLabel)_sLabel.textContent='Capital inicial';
+    document.getElementById('side-cap').textContent=S.capitalInicial>0?fm(S.capitalInicial):'No configurado';
+    if(_sSub)_sSub.textContent='';
   }
   chartInst.forEach(c=>{try{c.destroy();}catch(e){}});chartInst=[];
   const renders={dashboard:pgDash,ordenes:pgOrdenes,posicion:pgPosicion,rendimiento:pgRendimiento,riesgo:pgRiesgo,analytics:pgAnalytics,atribucion:pgAtribucion,flujos:pgFlujos,estadisticos:pgEstadisticos,config:pgConfig};
@@ -702,7 +715,18 @@ function go(page){
 
 // DASHBOARD
 function pgDash(){
-  if(!S.capitalInicial&&!(S.ordenes&&S.ordenes.length))return`<div style="display:flex;align-items:center;justify-content:center;height:55vh;flex-direction:column;gap:16px;text-align:center"><div style="font-size:48px;opacity:.1">&#9678;</div><div style="font-size:18px;font-weight:700;letter-spacing:-.02em">Research Rockets SSOT</div><div style="color:var(--txt3);font-size:13px;max-width:340px;line-height:1.7">Configura el capital inicial y el precio base del MEXTRAC09 para comenzar el seguimiento.</div><button class="btn btn-p" onclick="go('config')">Ir a Configuracion &#8594;</button></div>`;
+  // If fechaInicio is in the future, show a "pending" notice but still render
+  const m=calcMetrics();
+  if(m._futureDateWarning){
+    return`<div style="display:flex;align-items:center;justify-content:center;height:55vh;flex-direction:column;gap:16px;text-align:center">
+      <div style="font-size:48px;opacity:.1">&#128336;</div>
+      <div style="font-size:18px;font-weight:700;letter-spacing:-.02em">Período de métricas no iniciado</div>
+      <div style="color:var(--txt3);font-size:13px;max-width:380px;line-height:1.7">La fecha de inicio configurada es <b>${m.fechaRef}</b>.<br>Las métricas comenzarán a registrarse automáticamente cuando llegue esa fecha.</div>
+      <div style="font-size:13px;color:var(--txt2)">Capital asignado: <b>${fm(S.capitalInicial)}</b></div>
+      <button class="btn btn-p" onclick="go('config')">Cambiar fecha &#8594;</button>
+    </div>\`;
+  }
+  if(!S.capitalInicial&&!(S.ordenes&&S.ordenes.length))return\`<div style="display:flex;align-items:center;justify-content:center;height:55vh;flex-direction:column;gap:16px;text-align:center"><div style="font-size:48px;opacity:.1">&#9678;</div><div style="font-size:18px;font-weight:700;letter-spacing:-.02em">Research Rockets SSOT</div><div style="color:var(--txt3);font-size:13px;max-width:340px;line-height:1.7">Configura el capital inicial y el precio base del MEXTRAC09 para comenzar el seguimiento.</div><button class="btn btn-p" onclick="go('config')">Ir a Configuracion &#8594;</button></div>`;
   const m=calcMetrics();const spark=m.hist.slice(-22).map(h=>h.totalFondo);const maxS=Math.max(...spark,1);
   // For weekly display: use hist if available, otherwise use current values as single point
   const wStart=m.weekStart||{totalFondo:m.totalFondo};
@@ -714,7 +738,7 @@ function pgDash(){
   const rendBenchSub=m.rendBench!=null?'MEXTRAC: <span class="'+cc(m.rendBench)+'">'+fp(m.rendBench)+'</span>':'Cargando benchmark...';
   return`
   <div class="sg4">
-    ${stCard(fm(m.totalFondo),'Valor portafolio','Base '+m.fechaRef+' · '+fm(m.V0),'stat-blue')}
+    ${stCard(fm(m.totalFondo),'Valor portafolio',m._futureDateWarning?'Inicio: '+m.fechaRef+' (pendiente)':'V0 ('+m.fechaRef+'): '+fm(m.V0),'stat-blue')}
     ${stCard(rendAcumStr,'Rend. acumulado',rendBenchSub,m.rendAcum>=0?'stat-grn':'stat-red')}
     ${stCard(m.retActivo!=null?fp(m.retActivo):'&mdash;','Retorno activo acum.',m.retActivo!=null?'Alpha generado vs benchmark':'Sin precios benchmark','stat-acc')}
     ${stCard(hasHist?fp(m.retActivoSem):'&mdash;','Retorno activo semana',hasHist?'Fondo '+fp(m.rSem)+' &middot; Bench '+fp(m.rbSem):'Sin historial semanal',hasHist?(m.retActivoSem>=0?'stat-grn':'stat-red'):'stat-acc')}
@@ -1439,6 +1463,8 @@ function updateBenchPreview(fecha){if(!fecha)return;const mexDB={...(PRICE_DB['M
 function saveConfig(){
   const cap=parseFloat(document.getElementById('c-cap').value);const fecha=document.getElementById('c-fecha').value;const com=parseFloat(document.getElementById('c-com').value)||0.30;
   if(!cap||cap<=0){alert('Capital invalido.');return;}if(!fecha){alert('Ingresa la fecha de inicio de gestion.');return;}
+  const _todayLimit=new Date().toISOString().split('T')[0];
+  if(fecha>_todayLimit){alert('La fecha de inicio no puede ser en el futuro.\nLas métricas empezarán automáticamente cuando llegue esa fecha.');return;}
   const mexDB={...(PRICE_DB['MEXTRAC09']||{}),...(S.preciosOverlay?.['MEXTRAC09']||{})};const mexDates=Object.keys(mexDB).sort();let benchDate=null;for(const d of mexDates){if(d<=fecha)benchDate=d;else break;}
   // Fallback: use latest available MEXTRAC price if none found at/before fechaInicio
   if(!benchDate&&mexDates.length)benchDate=mexDates[mexDates.length-1];
@@ -1447,15 +1473,13 @@ function saveConfig(){
   S.fechaGestion=fecha;// fechaGestion same as fechaInicio - no separate adjustment week
   const fbJson=document.getElementById('c-firebase')?.value?.trim();if(fbJson){try{const cfg=JSON.parse(fbJson);if(cfg.apiKey){fbSave(cfg);initFirebase(cfg);}}catch(e){alert('JSON de Firebase invalido.');return;}}
   save();const btn=document.getElementById('cfg-save-btn');if(btn){const orig=btn.textContent;btn.textContent='&#10003; Guardado';btn.style.background='var(--grn)';btn.style.borderColor='var(--grn)';setTimeout(()=>{btn.textContent=orig;btn.style.background='';btn.style.borderColor='';},2000);}
-  // Update sidebar to reflect new V0
+  // Sidebar: capitalInicial (base de referencia)
   {
-    const _sv0=S.ordenes&&S.ordenes.length?fundValueAt(S.fechaInicio||'2026-04-13'):null;
-    const _sv0val=_sv0&&_sv0.totalFondo>0?_sv0.totalFondo:S.capitalInicial;
     const _sl=document.getElementById('side-cap-label');
-    if(_sl)_sl.textContent=S.ordenes&&S.ordenes.length?'Valor inicio':'Capital inicial';
-    document.getElementById('side-cap').textContent=fm(_sv0val);
+    if(_sl)_sl.textContent='Capital inicial';
+    document.getElementById('side-cap').textContent=fm(S.capitalInicial);
     const _ss=document.getElementById('side-cap-sub');
-    if(_ss)_ss.textContent=S.ordenes&&S.ordenes.length?'Asignado: '+fm(S.capitalInicial):'';
+    if(_ss)_ss.textContent='';
   }
   // Re-render current page with updated config
   const activeEl=document.querySelector('.ni.active');
