@@ -198,7 +198,7 @@ canvas{display:block;width:100%!important}
     </div>
     <div id="o-monto-row" class="frow">
       <div class="fg" id="o-monto-box"><label class="fl">Monto a invertir ($)</label><input type="number" id="o-monto" placeholder="Ej: 500,000" min="0" step="100" oninput="onMontoInput()"></div>
-      <div class="fg"><label class="fl">T&iacute;tulos <span style="font-size:10px;color:var(--txt3)">(auto-calculado)</span></label><input type="number" id="o-titulos" placeholder="&mdash;" min="1" oninput="onTitulosInput()"></div>
+      <div class="fg"><label class="fl">T&iacute;tulos <span style="font-size:10px;color:var(--txt3)">(auto-calculado)</span></label><input type="number" id="o-titulos" placeholder="&mdash;" min="1" oninput="onTítulosInput()"></div>
     </div>
     <div class="frow">
       <div class="fg"><label class="fl" style="display:flex;align-items:center;justify-content:space-between"><span>Precio operado ($) <span id="o-ps"></span></span><button type="button" onclick="loadPrice()" style="font-size:10px;padding:2px 8px;border:1px solid var(--line2);border-radius:var(--r);background:var(--bg3);color:var(--txt2);cursor:pointer">&#8635; Actualizar</button></label><input type="number" id="o-precio" placeholder="Cargando..." step="0.0001" oninput="calcRes()"></div>
@@ -229,9 +229,9 @@ canvas{display:block;width:100%!important}
 <div class="overlay" id="m-precio-dia">
   <div class="modal" style="width:520px;max-width:95vw">
     <div class="modal-h"><div class="modal-t">&#128229; Precios del d&iacute;a</div><button class="modal-x" onclick="closeModal('m-precio-dia')">&#10005;</button></div>
-    <div style="font-size:12px;color:var(--txt2);margin-bottom:12px">Pega los precios directamente desde Excel/Refinitiv. Soporta dos formatos:<br><span style="font-family:var(--mono);background:var(--bg3);padding:2px 6px;border-radius:4px;font-size:11px">[tab]MEXTRAC09[tab]AMXB... / Fecha[tab]precio[tab]precio...</span><br><span style="color:var(--txt3);font-size:11px">o vertical: TICKER[tab]PRECIO por l&iacute;nea. Los precios se guardan autom&aacute;ticamente.</span></div>
+    <div style="font-size:12px;color:var(--txt2);margin-bottom:12px">Pega los precios directamente desde Excel/Refinitiv. Soporta dos formatos y acepta fechas en <b>DD-MM-AAAA</b>, <b>DD/MM/AAAA</b> o <b>AAAA-MM-DD</b>:<br><span style="font-family:var(--mono);background:var(--bg3);padding:2px 6px;border-radius:4px;font-size:11px">[tab]MEXTRAC09[tab]AMXB... / Fecha[tab]precio[tab]precio...</span><br><span style="color:var(--txt3);font-size:11px">o vertical: TICKER[tab]PRECIO por l&iacute;nea. Los precios se guardan autom&aacute;ticamente.</span></div>
     <div id="pdia-fecha-row" style="display:flex;align-items:center;gap:10px;margin-bottom:10px"><label style="font-size:12px;font-weight:600;color:var(--txt2);flex-shrink:0">Fecha:</label><input type="date" id="pdia-fecha" style="flex:1;font-size:12px"></div>
-    <textarea id="pdia-data" rows="14" placeholder="[tab]MEXTRAC09[tab]AMXB[tab]ASURB...&#10;4/14/2026[tab]66.16[tab]22.7[tab]588.56...&#10;&#10;&#9; o vertical:&#10;AMXB&#9;22.46&#10;FEMSAUBD&#9;188.02" style="font-family:var(--mono);font-size:12px;resize:vertical;width:100%;box-sizing:border-box"></textarea>
+    <textarea id="pdia-data" rows="14" placeholder="[tab]MEXTRAC09[tab]AMXB[tab]ASURB...&#10;14-04-2026[tab]66.16[tab]22.7[tab]588.56...&#10;&#10;&#9; o vertical:&#10;AMXB&#9;22.46&#10;FEMSAUBD&#9;188.02" style="font-family:var(--mono);font-size:12px;resize:vertical;width:100%;box-sizing:border-box"></textarea>
     <div id="pdia-preview" style="font-size:11px;color:var(--txt3);margin-top:6px;min-height:18px"></div>
     <div id="pdia-debug" style="font-size:11px;font-family:var(--mono);color:var(--txt2);margin-top:4px;max-height:80px;overflow-y:auto;background:var(--bg3);border-radius:4px;padding:4px 8px;display:none"></div>
     <div id="pdia-alert" style="margin-top:6px"></div>
@@ -312,7 +312,7 @@ const PRICE_DB={
 };
 const METRICS_DB={"TLEVISACPO":{"ret":-4.5,"std":37.69,"maxdd":17.89,"sharpe":-0.39,"beta":-0.3,"corr":-0.151,"trend":"bajista","lastPrice":10.18,"firstPrice":10.66,"estilo":"Blend","bursatilidad":"Media"},"AMXB":{"ret":12.98,"std":29.98,"maxdd":8.6,"sharpe":2.08,"beta":0.34,"corr":0.22,"trend":"lateral","lastPrice":20.97,"firstPrice":18.56,"estilo":"Value","bursatilidad":"Alta"},"MEGACPO":{"ret":8.89,"std":34.36,"maxdd":15.31,"sharpe":1.35,"beta":0.37,"corr":0.21,"trend":"bajista","lastPrice":57.43,"firstPrice":52.74,"estilo":"Value","bursatilidad":"Media"},"ALSEA":{"ret":13.19,"std":27.05,"maxdd":7.98,"sharpe":2.31,"beta":-0.0,"corr":-0.002,"trend":"lateral","lastPrice":60.77,"firstPrice":53.69,"estilo":"Value","bursatilidad":"Media"},"LIVEPOLC1":{"ret":7.99,"std":22.68,"maxdd":8.49,"sharpe":1.72,"beta":-0.09,"corr":-0.077,"trend":"alcista","lastPrice":108.0,"firstPrice":100.01,"estilo":"Value","bursatilidad":"Media"},"NEMAKA":{"ret":-5.87,"std":21.9,"maxdd":12.09,"sharpe":-1.2,"beta":0.08,"corr":0.069,"trend":"lateral","lastPrice":3.37,"firstPrice":3.58,"estilo":"Blend","bursatilidad":"Media"},"WALMEX":{"ret":-0.52,"std":22.82,"maxdd":6.38,"sharpe":0.0,"beta":0.16,"corr":0.139,"trend":"bajista","lastPrice":55.87,"firstPrice":56.16,"estilo":"Blend","bursatilidad":"Alta"},"AC":{"ret":-1.1,"std":26.81,"maxdd":9.75,"sharpe":-0.07,"beta":0.37,"corr":0.267,"trend":"bajista","lastPrice":191.44,"firstPrice":193.57,"estilo":"Blend","bursatilidad":"Alta"},"ANB":{"ret":19.4,"std":78.33,"maxdd":4.43,"sharpe":8.58,"beta":1.92,"corr":0.316,"trend":"lateral","lastPrice":1400.0,"firstPrice":1172.5,"estilo":"Growth","bursatilidad":"Media"},"BIMBOA":{"ret":-2.23,"std":31.81,"maxdd":16.13,"sharpe":-0.18,"beta":0.3,"corr":0.181,"trend":"bajista","lastPrice":57.52,"firstPrice":58.83,"estilo":"Blend","bursatilidad":"Alta"},"CHDRAUIB":{"ret":-18.07,"std":22.57,"maxdd":19.43,"sharpe":-4.08,"beta":0.33,"corr":0.28,"trend":"bajista","lastPrice":101.38,"firstPrice":123.74,"estilo":"Blend","bursatilidad":"Alta"},"CUERVO":{"ret":-27.67,"std":33.0,"maxdd":34.39,"sharpe":-4.49,"beta":0.34,"corr":0.201,"trend":"bajista","lastPrice":15.11,"firstPrice":20.89,"estilo":"Blend","bursatilidad":"Media"},"FEMSAUBD":{"ret":0.48,"std":18.78,"maxdd":7.84,"sharpe":0.21,"beta":0.34,"corr":0.348,"trend":"bajista","lastPrice":182.01,"firstPrice":181.14,"estilo":"Value","bursatilidad":"Alta"},"FRAGUAB":{"ret":-8.81,"std":24.13,"maxdd":10.37,"sharpe":-1.7,"beta":0.12,"corr":0.092,"trend":"bajista","lastPrice":497.0,"firstPrice":545.0,"estilo":"Blend","bursatilidad":"Media"},"GRUMAB":{"ret":-0.59,"std":25.87,"maxdd":12.66,"sharpe":0.02,"beta":0.33,"corr":0.247,"trend":"lateral","lastPrice":308.37,"firstPrice":310.2,"estilo":"Blend","bursatilidad":"Alta"},"HERDEZ":{"ret":-3.57,"std":38.21,"maxdd":17.01,"sharpe":-0.27,"beta":0.08,"corr":0.038,"trend":"bajista","lastPrice":81.0,"firstPrice":84.0,"estilo":"Blend","bursatilidad":"Media"},"KIMBERA":{"ret":2.59,"std":27.8,"maxdd":10.57,"sharpe":0.57,"beta":0.19,"corr":0.13,"trend":"bajista","lastPrice":39.16,"firstPrice":38.17,"estilo":"Value","bursatilidad":"Alta"},"KOFUBL":{"ret":0.02,"std":28.35,"maxdd":13.65,"sharpe":0.14,"beta":0.28,"corr":0.188,"trend":"bajista","lastPrice":170.08,"firstPrice":170.04,"estilo":"Value","bursatilidad":"Alta"},"LACOMERUBC":{"ret":3.41,"std":20.15,"maxdd":3.64,"sharpe":0.89,"beta":0.14,"corr":0.131,"trend":"lateral","lastPrice":39.1,"firstPrice":37.81,"estilo":"Value","bursatilidad":"Media"},"VISTAA":{"ret":45.76,"std":49.79,"maxdd":12.96,"sharpe":3.93,"beta":0.32,"corr":0.123,"trend":"alcista","lastPrice":1290.0,"firstPrice":885.0,"estilo":"Value","bursatilidad":"Media"},"ACTINVRB":{"ret":-3.37,"std":15.84,"maxdd":5.49,"sharpe":-1.04,"beta":0.12,"corr":0.132,"trend":"bajista","lastPrice":21.5,"firstPrice":22.25,"estilo":"Blend","bursatilidad":"Media"},"BBAJIOO":{"ret":11.19,"std":35.72,"maxdd":15.2,"sharpe":1.59,"beta":0.59,"corr":0.318,"trend":"bajista","lastPrice":50.88,"firstPrice":45.76,"estilo":"Value","bursatilidad":"Alta"},"BBVA":{"ret":-14.3,"std":33.25,"maxdd":17.83,"sharpe":-2.04,"beta":-0.07,"corr":-0.043,"trend":"bajista","lastPrice":368.5,"firstPrice":430.0,"estilo":"Blend","bursatilidad":"Media"},"BOLSAA":{"ret":-2.35,"std":27.11,"maxdd":6.46,"sharpe":-0.28,"beta":0.24,"corr":0.171,"trend":"lateral","lastPrice":36.58,"firstPrice":37.46,"estilo":"Blend","bursatilidad":"Alta"},"GENTERA":{"ret":4.2,"std":33.51,"maxdd":14.05,"sharpe":0.75,"beta":0.43,"corr":0.244,"trend":"bajista","lastPrice":47.19,"firstPrice":45.29,"estilo":"Value","bursatilidad":"Alta"},"GFINBURO":{"ret":-1.82,"std":28.4,"maxdd":9.99,"sharpe":-0.17,"beta":0.45,"corr":0.303,"trend":"bajista","lastPrice":42.6,"firstPrice":43.39,"estilo":"Blend","bursatilidad":"Alta"},"GFNORTEO":{"ret":7.58,"std":32.88,"maxdd":11.75,"sharpe":1.22,"beta":0.49,"corr":0.289,"trend":"bajista","lastPrice":184.0,"firstPrice":171.04,"estilo":"Value","bursatilidad":"Alta"},"Q":{"ret":-12.77,"std":30.72,"maxdd":14.34,"sharpe":-1.96,"beta":0.1,"corr":0.061,"trend":"bajista","lastPrice":163.26,"firstPrice":187.17,"estilo":"Blend","bursatilidad":"Alta"},"RA":{"ret":1.18,"std":30.39,"maxdd":11.63,"sharpe":0.33,"beta":0.29,"corr":0.185,"trend":"bajista","lastPrice":144.31,"firstPrice":142.62,"estilo":"Value","bursatilidad":"Alta"},"LABB":{"ret":-8.98,"std":33.7,"maxdd":13.66,"sharpe":-1.16,"beta":0.1,"corr":0.058,"trend":"bajista","lastPrice":16.31,"firstPrice":17.92,"estilo":"Blend","bursatilidad":"Alta"},"MEDICAB":{"ret":4.24,"std":28.26,"maxdd":4.84,"sharpe":1.56,"beta":1.0,"corr":0.586,"trend":"alcista","lastPrice":61.5,"firstPrice":59.0,"estilo":"Blend","bursatilidad":"Media"},"AGUA":{"ret":1.8,"std":42.88,"maxdd":20.91,"sharpe":0.4,"beta":0.28,"corr":0.125,"trend":"bajista","lastPrice":11.88,"firstPrice":11.67,"estilo":"Value","bursatilidad":"Media"},"GCARSOA1":{"ret":4.23,"std":35.67,"maxdd":10.78,"sharpe":0.73,"beta":0.65,"corr":0.353,"trend":"bajista","lastPrice":121.91,"firstPrice":116.96,"estilo":"Value","bursatilidad":"Media"},"ASURB":{"ret":-1.02,"std":24.74,"maxdd":12.75,"sharpe":-0.08,"beta":0.44,"corr":0.345,"trend":"bajista","lastPrice":571.94,"firstPrice":577.85,"estilo":"Blend","bursatilidad":"Alta"},"GAPB":{"ret":-9.76,"std":35.43,"maxdd":21.59,"sharpe":-1.2,"beta":0.18,"corr":0.097,"trend":"bajista","lastPrice":421.0,"firstPrice":466.51,"estilo":"Blend","bursatilidad":"Alta"},"OMAB":{"ret":0.79,"std":27.91,"maxdd":17.9,"sharpe":0.27,"beta":0.16,"corr":0.113,"trend":"bajista","lastPrice":243.99,"firstPrice":242.08,"estilo":"Value","bursatilidad":"Alta"},"PINFRA":{"ret":3.84,"std":28.49,"maxdd":11.11,"sharpe":0.77,"beta":0.55,"corr":0.372,"trend":"bajista","lastPrice":274.22,"firstPrice":264.07,"estilo":"Value","bursatilidad":"Media"},"TRAXIONA":{"ret":-19.34,"std":28.87,"maxdd":20.1,"sharpe":-3.39,"beta":0.2,"corr":0.13,"trend":"bajista","lastPrice":11.72,"firstPrice":14.53,"estilo":"Blend","bursatilidad":"Media"},"VOLARA":{"ret":-24.09,"std":50.2,"maxdd":32.34,"sharpe":-2.35,"beta":-0.04,"corr":-0.016,"trend":"bajista","lastPrice":12.45,"firstPrice":16.4,"estilo":"Blend","bursatilidad":"Media"},"ALPEKA":{"ret":16.91,"std":41.63,"maxdd":17.62,"sharpe":1.99,"beta":-0.34,"corr":-0.157,"trend":"alcista","lastPrice":11.2,"firstPrice":9.58,"estilo":"Value","bursatilidad":"Media"},"CEMEXCPO":{"ret":-13.29,"std":35.5,"maxdd":20.72,"sharpe":-1.73,"beta":0.3,"corr":0.164,"trend":"bajista","lastPrice":17.94,"firstPrice":20.69,"estilo":"Blend","bursatilidad":"Alta"},"CMOCTEZ":{"ret":-2.68,"std":28.92,"maxdd":5.3,"sharpe":-0.68,"beta":-0.51,"corr":-0.278,"trend":"bajista","lastPrice":79.8,"firstPrice":82.0,"estilo":"Blend","bursatilidad":"Media"},"GCC":{"ret":-3.33,"std":31.46,"maxdd":14.79,"sharpe":-0.36,"beta":0.51,"corr":0.313,"trend":"bajista","lastPrice":174.31,"firstPrice":180.31,"estilo":"Blend","bursatilidad":"Media"},"GMEXICOB":{"ret":2.44,"std":48.42,"maxdd":21.07,"sharpe":0.48,"beta":0.58,"corr":0.232,"trend":"bajista","lastPrice":173.76,"firstPrice":169.62,"estilo":"Value","bursatilidad":"Alta"},"ORBIA":{"ret":22.74,"std":40.81,"maxdd":16.91,"sharpe":2.59,"beta":0.44,"corr":0.208,"trend":"bajista","lastPrice":19.11,"firstPrice":15.57,"estilo":"Value","bursatilidad":"Media"},"PEOLES":{"ret":-11.79,"std":62.44,"maxdd":34.63,"sharpe":-0.64,"beta":1.29,"corr":0.397,"trend":"bajista","lastPrice":800.97,"firstPrice":908.0,"estilo":"Growth","bursatilidad":"Alta"}};
 const FUNDAMENTALS_DB={"AMXB":{"pe":12.1,"ev_ebitda":5.8,"pb":2.9,"roe":24.1,"roa":5.2,"margen_neto":10.3,"deuda_ebitda":2.1,"beta_usd":0.62,"beta_inf":0.31,"beta_desemp":-0.18},"WALMEX":{"pe":24.3,"ev_ebitda":14.1,"pb":7.8,"roe":32.1,"roa":12.4,"margen_neto":4.8,"deuda_ebitda":0.4,"beta_usd":-0.22,"beta_inf":0.54,"beta_desemp":-0.41},"GFNORTEO":{"pe":9.4,"ev_ebitda":null,"pb":1.8,"roe":18.9,"roa":2.1,"margen_neto":28.4,"deuda_ebitda":null,"beta_usd":0.38,"beta_inf":0.62,"beta_desemp":-0.55},"FEMSAUBD":{"pe":17.8,"ev_ebitda":9.2,"pb":3.1,"roe":17.6,"roa":7.4,"margen_neto":8.1,"deuda_ebitda":1.8,"beta_usd":-0.15,"beta_inf":0.48,"beta_desemp":-0.32},"GMEXICOB":{"pe":11.2,"ev_ebitda":5.9,"pb":2.4,"roe":21.4,"roa":11.8,"margen_neto":26.3,"deuda_ebitda":0.9,"beta_usd":0.81,"beta_inf":0.22,"beta_desemp":-0.12},"GAPB":{"pe":19.4,"ev_ebitda":11.3,"pb":5.2,"roe":26.8,"roa":14.2,"margen_neto":38.4,"deuda_ebitda":1.2,"beta_usd":0.44,"beta_inf":0.19,"beta_desemp":-0.28},"OMAB":{"pe":16.8,"ev_ebitda":9.8,"pb":4.1,"roe":24.3,"roa":12.6,"margen_neto":36.1,"deuda_ebitda":1.4,"beta_usd":0.39,"beta_inf":0.21,"beta_desemp":-0.26},"ASURB":{"pe":18.2,"ev_ebitda":10.4,"pb":4.6,"roe":25.1,"roa":13.8,"margen_neto":40.2,"deuda_ebitda":0.8,"beta_usd":0.41,"beta_inf":0.17,"beta_desemp":-0.24},"AC":{"pe":20.1,"ev_ebitda":11.8,"pb":3.8,"roe":19.3,"roa":9.2,"margen_neto":9.4,"deuda_ebitda":1.6,"beta_usd":-0.12,"beta_inf":0.51,"beta_desemp":-0.38},"KOFUBL":{"pe":15.6,"ev_ebitda":8.7,"pb":3.3,"roe":21.8,"roa":10.1,"margen_neto":8.8,"deuda_ebitda":1.3,"beta_usd":-0.09,"beta_inf":0.49,"beta_desemp":-0.35},"KIMBERA":{"pe":22.4,"ev_ebitda":13.2,"pb":9.1,"roe":40.8,"roa":14.2,"margen_neto":11.2,"deuda_ebitda":1.1,"beta_usd":0.08,"beta_inf":0.44,"beta_desemp":-0.39},"BIMBOA":{"pe":26.3,"ev_ebitda":12.4,"pb":2.8,"roe":10.8,"roa":4.1,"margen_neto":3.2,"deuda_ebitda":2.4,"beta_usd":-0.18,"beta_inf":0.58,"beta_desemp":-0.44},"VESTA":{"pe":14.3,"ev_ebitda":16.2,"pb":1.9,"roe":13.2,"roa":8.4,"margen_neto":52.4,"deuda_ebitda":3.1,"beta_usd":0.72,"beta_inf":-0.08,"beta_desemp":-0.15},"BOLSAA":{"pe":18.9,"ev_ebitda":12.8,"pb":3.4,"roe":18.2,"roa":12.4,"margen_neto":42.1,"deuda_ebitda":0.2,"beta_usd":0.28,"beta_inf":0.31,"beta_desemp":-0.28},"BBAJIOO":{"pe":8.2,"ev_ebitda":null,"pb":1.4,"roe":16.4,"roa":2.0,"margen_neto":31.2,"deuda_ebitda":null,"beta_usd":0.31,"beta_inf":0.58,"beta_desemp":-0.52},"RA":{"pe":7.8,"ev_ebitda":null,"pb":1.2,"roe":17.2,"roa":2.2,"margen_neto":29.8,"deuda_ebitda":null,"beta_usd":0.24,"beta_inf":0.61,"beta_desemp":-0.51},"GENTERA":{"pe":9.1,"ev_ebitda":null,"pb":1.6,"roe":21.4,"roa":4.8,"margen_neto":18.4,"deuda_ebitda":null,"beta_usd":0.14,"beta_inf":0.38,"beta_desemp":-0.48},"TLEVISACPO":{"pe":null,"ev_ebitda":6.2,"pb":0.8,"roe":-4.2,"roa":-1.1,"margen_neto":-3.4,"deuda_ebitda":4.8,"beta_usd":0.42,"beta_inf":0.22,"beta_desemp":-0.18},"MEGACPO":{"pe":18.4,"ev_ebitda":7.9,"pb":2.6,"roe":14.2,"roa":6.8,"margen_neto":18.4,"deuda_ebitda":2.2,"beta_usd":0.38,"beta_inf":0.28,"beta_desemp":-0.22},"PINFRA":{"pe":14.2,"ev_ebitda":10.1,"pb":2.8,"roe":19.8,"roa":11.2,"margen_neto":44.2,"deuda_ebitda":2.8,"beta_usd":0.34,"beta_inf":0.18,"beta_desemp":-0.21},"GRUMAB":{"pe":15.8,"ev_ebitda":8.4,"pb":3.1,"roe":19.6,"roa":8.8,"margen_neto":6.4,"deuda_ebitda":1.4,"beta_usd":0.52,"beta_inf":0.32,"beta_desemp":-0.28},"GCC":{"pe":13.4,"ev_ebitda":7.8,"pb":2.4,"roe":18.4,"roa":10.2,"margen_neto":22.4,"deuda_ebitda":0.8,"beta_usd":0.58,"beta_inf":0.18,"beta_desemp":-0.14},"CHDRAUIB":{"pe":21.8,"ev_ebitda":9.4,"pb":3.2,"roe":14.8,"roa":5.4,"margen_neto":2.8,"deuda_ebitda":1.2,"beta_usd":-0.08,"beta_inf":0.52,"beta_desemp":-0.42},"CEMEXCPO":{"pe":null,"ev_ebitda":6.8,"pb":0.9,"roe":4.2,"roa":1.8,"margen_neto":4.4,"deuda_ebitda":3.8,"beta_usd":0.74,"beta_inf":0.14,"beta_desemp":-0.22},"PEOLES":{"pe":null,"ev_ebitda":4.2,"pb":0.7,"roe":-2.4,"roa":-0.8,"margen_neto":-2.1,"deuda_ebitda":5.2,"beta_usd":0.88,"beta_inf":0.08,"beta_desemp":0.04},"VISTAA":{"pe":8.4,"ev_ebitda":4.1,"pb":1.4,"roe":16.8,"roa":8.2,"margen_neto":28.4,"deuda_ebitda":1.4,"beta_usd":0.94,"beta_inf":0.08,"beta_desemp":0.02},"VOLARA":{"pe":null,"ev_ebitda":3.8,"pb":null,"roe":-18.4,"roa":-4.2,"margen_neto":-8.4,"deuda_ebitda":6.2,"beta_usd":0.42,"beta_inf":0.28,"beta_desemp":0.18},"ALSEA":{"pe":22.4,"ev_ebitda":8.2,"pb":2.8,"roe":12.4,"roa":2.8,"margen_neto":4.2,"deuda_ebitda":3.2,"beta_usd":-0.14,"beta_inf":0.48,"beta_desemp":-0.42},"ALPEKA":{"pe":14.8,"ev_ebitda":7.2,"pb":1.6,"roe":10.8,"roa":4.4,"margen_neto":6.8,"deuda_ebitda":2.4,"beta_usd":0.68,"beta_inf":0.14,"beta_desemp":-0.08},"ORBIA":{"pe":12.4,"ev_ebitda":6.4,"pb":1.8,"roe":14.4,"roa":6.2,"margen_neto":8.4,"deuda_ebitda":2.2,"beta_usd":0.62,"beta_inf":0.18,"beta_desemp":-0.12},"LABB":{"pe":18.4,"ev_ebitda":11.4,"pb":3.2,"roe":17.4,"roa":8.4,"margen_neto":14.4,"deuda_ebitda":1.2,"beta_usd":0.12,"beta_inf":0.42,"beta_desemp":-0.32},"GFINBURO":{"pe":11.8,"ev_ebitda":null,"pb":1.6,"roe":12.4,"roa":1.4,"margen_neto":24.8,"deuda_ebitda":null,"beta_usd":0.28,"beta_inf":0.44,"beta_desemp":-0.38},"GCARSOA1":{"pe":14.2,"ev_ebitda":8.8,"pb":1.4,"roe":9.8,"roa":4.4,"margen_neto":12.4,"deuda_ebitda":1.8,"beta_usd":0.44,"beta_inf":0.28,"beta_desemp":-0.22},"LACOMERUBC":{"pe":19.4,"ev_ebitda":10.8,"pb":2.8,"roe":14.4,"roa":6.8,"margen_neto":3.8,"deuda_ebitda":0.8,"beta_usd":-0.04,"beta_inf":0.48,"beta_desemp":-0.38},"CUERVO":{"pe":16.4,"ev_ebitda":9.4,"pb":2.4,"roe":14.8,"roa":8.4,"margen_neto":18.4,"deuda_ebitda":0.4,"beta_usd":0.22,"beta_inf":0.38,"beta_desemp":-0.28},"BBVA":{"pe":9.8,"ev_ebitda":null,"pb":2.1,"roe":19.4,"roa":2.4,"margen_neto":32.4,"deuda_ebitda":null,"beta_usd":0.42,"beta_inf":0.54,"beta_desemp":-0.48},"AGUA":{"pe":16.8,"ev_ebitda":9.8,"pb":2.2,"roe":13.2,"roa":6.4,"margen_neto":12.4,"deuda_ebitda":2.4,"beta_usd":0.14,"beta_inf":0.32,"beta_desemp":-0.28},"SIGMAFA":{"pe":11.8,"ev_ebitda":6.4,"pb":1.8,"roe":15.4,"roa":5.4,"margen_neto":6.4,"deuda_ebitda":2.4,"beta_usd":0.24,"beta_inf":0.44,"beta_desemp":-0.32}};
-const ALL_DATES=['2026-04-01','2026-04-06','2026-04-07','2026-04-08','2026-04-09','2026-04-10','2026-04-13','2026-04-14','2026-04-15'];
+let ALL_DATES=['2026-04-01','2026-04-06','2026-04-07','2026-04-08','2026-04-09','2026-04-10','2026-04-13','2026-04-14','2026-04-15'];
 const MEXTRAC_W={"WALMEX":10.05,"AC":7.58,"KOFUBL":6.39,"KIMBERA":3.77,"BIMBOA":2.17,"SIGMAFA":1.35,"GRUMAB":0.55,"CHDRAUIB":0.16,"ASURB":3.39,"GFNORTEO":10.0,"BBAJIOO":1.81,"BOLSAA":1.79,"RA":0.90,"Q":1.12,"GENTERA":0.36,"AMXB":10.62,"MEGACPO":0.61,"TLEVISACPO":0.41,"GMEXICOB":9.29,"GCC":0.20,"PINFRA":0.67,"VESTA":2.74,"GAPB":10.33,"OMAB":3.75,"FEMSAUBD":10.02};
 const UNIVERSO=[{"t":"MEXTRAC09","n":"ETF MEXTRAC 09","s":"ETF","b":"etf","isEtf":true},{"t":"TLEVISACPO","n":"Grupo Televisa SAB","s":"Communication Services","b":"media"},{"t":"AMXB","n":"America Movil SAB de CV","s":"Communication Services","b":"alta"},{"t":"MEGACPO","n":"Megacable Holdings SAB de CV","s":"Communication Services","b":"media"},{"t":"ALSEA","n":"Alsea","s":"Consumer Discretionary","b":"alta"},{"t":"LIVEPOLC1","n":"Liverpool","s":"Consumer Discretionary","b":"media"},{"t":"NEMAKA","n":"Nemak","s":"Consumer Discretionary","b":"media"},{"t":"WALMEX","n":"Wal-Mart de Mexico SAB de CV","s":"Consumer Staples","b":"alta"},{"t":"AC","n":"Arca Continental SAB de CV","s":"Consumer Staples","b":"alta"},{"t":"ANB","n":"AB InBev Mexico","s":"Consumer Staples","b":"media"},{"t":"BIMBOA","n":"Grupo Bimbo SAB de CV","s":"Consumer Staples","b":"alta"},{"t":"CHDRAUIB","n":"Grupo Comercial Chedraui SA de CV","s":"Consumer Staples","b":"alta"},{"t":"CUERVO","n":"Becle (Cuervo)","s":"Consumer Staples","b":"media"},{"t":"FEMSAUBD","n":"Fomento Economico Mexicano SAB de CV UBD","s":"Consumer Staples","b":"alta"},{"t":"FRAGUAB","n":"Corp. Fragua","s":"Consumer Staples","b":"media"},{"t":"GRUMAB","n":"Gruma SAB de CV","s":"Consumer Staples","b":"alta"},{"t":"HERDEZ","n":"Grupo Herdez","s":"Consumer Staples","b":"media"},{"t":"KIMBERA","n":"Kimberly-Clark de Mexico SAB de CV","s":"Consumer Staples","b":"alta"},{"t":"KOFUBL","n":"Coca-Cola Femsa SAB de CV","s":"Consumer Staples","b":"alta"},{"t":"LACOMERUBC","n":"La Comer","s":"Consumer Staples","b":"media"},{"t":"SIGMAFA","n":"Sigma Foods SAB de CV","s":"Consumer Staples","b":"media"},{"t":"VISTAA","n":"Vista Energy","s":"Energy","b":"media"},{"t":"ACTINVRB","n":"Actinver","s":"Financials","b":"media"},{"t":"BBAJIOO","n":"Banco del Bajio SA","s":"Financials","b":"alta"},{"t":"BBVA","n":"BBVA Mexico","s":"Financials","b":"media"},{"t":"BOLSAA","n":"Bolsa Mexicana de Valores SAB de CV","s":"Financials","b":"alta"},{"t":"GENTERA","n":"Gentera SAB de CV","s":"Financials","b":"alta"},{"t":"GFINBURO","n":"Grupo Fin. Inbursa","s":"Financials","b":"alta"},{"t":"GFNORTEO","n":"Grupo Financiero Banorte SAB de CV","s":"Financials","b":"alta"},{"t":"Q","n":"Qualitas Controladora SAB de CV","s":"Financials","b":"alta"},{"t":"RA","n":"Regional SAB de CV","s":"Financials","b":"alta"},{"t":"LABB","n":"Genomma Lab","s":"Health Care","b":"alta"},{"t":"MEDICAB","n":"Medica Sur","s":"Health Care","b":"media"},{"t":"AGUA","n":"Rotoplas","s":"Industrials","b":"media"},{"t":"GCARSOA1","n":"Grupo Carso","s":"Industrials","b":"media"},{"t":"ASURB","n":"Grupo Aeroportuario del Sureste SAB de CV","s":"Industrials","b":"alta"},{"t":"GAPB","n":"Grupo Aeroportuario del Pacifico SAB de CV","s":"Industrials","b":"alta"},{"t":"OMAB","n":"Grupo Aeroportuario del Centro Norte SAB de CV","s":"Industrials","b":"alta"},{"t":"PINFRA","n":"Promotora y Operadora de Infraestructura SAB de CV","s":"Industrials","b":"alta"},{"t":"TRAXIONA","n":"Traxion","s":"Industrials","b":"media"},{"t":"VOLARA","n":"Volaris","s":"Industrials","b":"media"},{"t":"ALPEKA","n":"Alpek","s":"Materials","b":"media"},{"t":"CEMEXCPO","n":"CEMEX","s":"Materials","b":"alta"},{"t":"CMOCTEZ","n":"Cementos Moctezuma","s":"Materials","b":"media"},{"t":"GCC","n":"GCC SAB de CV","s":"Materials","b":"media"},{"t":"GMEXICOB","n":"Grupo Mexico SAB de CV","s":"Materials","b":"alta"},{"t":"ORBIA","n":"Orbia","s":"Materials","b":"media"},{"t":"PEOLES","n":"Penoles","s":"Materials","b":"alta"},{"t":"VESTA","n":"Vesta","s":"Real Estate","b":"alta"}];
 // STATE - Updated with competition dates
@@ -402,6 +402,15 @@ function normalizeS(){
   if(!Array.isArray(S.snapshots))S.snapshots=[];
   if(!Array.isArray(S.ordenesProceso))S.ordenesProceso=[];
   if(!S.preciosOverlay||typeof S.preciosOverlay!=='object'||Array.isArray(S.preciosOverlay))S.preciosOverlay={};
+  for(const t in S.preciosOverlay){
+    const normalized={};
+    for(const rawDate in (S.preciosOverlay[t]||{})){
+      const norm=parseDate(rawDate);
+      if(!norm)continue;
+      normalized[norm]=S.preciosOverlay[t][rawDate];
+    }
+    S.preciosOverlay[t]=normalized;
+  }
   // Normalize fechaGestion: if it's ahead of fechaInicio or unset, use fechaInicio
   // This prevents stale Firebase values from breaking the adjustment-week logic
   if(!S.fechaGestion||S.fechaGestion===''||S.fechaGestion==='2026-04-20'){
@@ -424,12 +433,14 @@ normalizeS();
 if(S.preciosOverlay){
   for(const t in S.preciosOverlay){
     if(!PRICE_DB[t])PRICE_DB[t]={};
-    for(const d in S.preciosOverlay[t]){
-      PRICE_DB[t][d]=S.preciosOverlay[t][d];
+    for(const rawDate in S.preciosOverlay[t]){
+      const d=parseDate(rawDate);
+      if(!d)continue;
+      PRICE_DB[t][d]=S.preciosOverlay[t][rawDate];
       if(!ALL_DATES.includes(d))ALL_DATES.push(d);
     }
   }
-  ALL_DATES.sort();
+  ALL_DATES=[...new Set(ALL_DATES.map(d=>parseDate(d)).filter(Boolean))].sort();
 }
 
 // ── Toast notification ─────────────────────────────────────────────────────
@@ -462,12 +473,14 @@ const PRICE_OVERLAY_KEY='rr_price_day';
     const overlay=JSON.parse(saved);
     for(const ticker in overlay){
       if(!PRICE_DB[ticker])PRICE_DB[ticker]={};
-      for(const date in overlay[ticker]){
-        PRICE_DB[ticker][date]=overlay[ticker][date];
+      for(const rawDate in overlay[ticker]){
+        const date=parseDate(rawDate);
+        if(!date)continue;
+        PRICE_DB[ticker][date]=overlay[ticker][rawDate];
         if(!ALL_DATES.includes(date)){ALL_DATES.push(date);}
       }
     }
-    ALL_DATES.sort();
+    ALL_DATES=[...new Set(ALL_DATES.map(d=>parseDate(d)).filter(Boolean))].sort();
   }catch(e){console.warn('loadPriceOverlay error:',e);}
 })();
 function savePriceOverlay(ticker,date,precio){
@@ -485,7 +498,9 @@ function localPrice(t,date){
   const overlay=S.preciosOverlay&&S.preciosOverlay[t]?S.preciosOverlay[t]:{};
   const base=PRICE_DB[t]||{};
   // Merge: overlay prices override base prices for same dates
-  const db=Object.assign({},base,overlay);
+  const db={};
+  for(const [rawDate,price] of Object.entries(base)){const norm=parseDate(rawDate);if(norm)db[norm]=price;}
+  for(const [rawDate,price] of Object.entries(overlay)){const norm=parseDate(rawDate);if(norm)db[norm]=price;}
   if(!Object.keys(db).length)return null;
   if(date){
     if(db[date]!=null)return db[date];
@@ -498,8 +513,8 @@ function localPrice(t,date){
   return dates.length?db[dates[dates.length-1]]:null;
 }
 function getAllDates(){
-  const allDatesSet=new Set(ALL_DATES);
-  for(const t in PRICE_DB)Object.keys(PRICE_DB[t]).forEach(d=>allDatesSet.add(d));
+  const allDatesSet=new Set(ALL_DATES.map(d=>parseDate(d)).filter(Boolean));
+  for(const t in PRICE_DB)Object.keys(PRICE_DB[t]).forEach(d=>{const norm=parseDate(d);if(norm)allDatesSet.add(norm);});
   return[...allDatesSet].sort();
 }
 async function fetchPrice(t,date){const p=localPrice(t,date);if(p!=null)return{price:p,src:'Refinitiv'};return null;}
@@ -562,10 +577,10 @@ function buildHistorical(){
   if(!allDates.some(d=>d>=fechaRef)&&latestDate)firstDate=latestDate;
 
   if(!firstDate)return[];
-  const validDate=d=>typeof d==='string'&&/^\d{4}-\d{2}-\d{2}$/.test(d);
-  let dates=allDates.filter(d=>validDate(d)&&d>=firstDate);
-  if(!dates.length&&latestDate&&validDate(latestDate))dates=[latestDate];
-  if(latestDate&&validDate(latestDate)&&!dates.includes(latestDate))dates.push(latestDate);
+  const validDate=d=>!!parseDate(d);
+  let dates=[...new Set(allDates.map(d=>parseDate(d)).filter(d=>d&&d>=firstDate))];
+  if(!dates.length&&latestDate&&validDate(latestDate))dates=[parseDate(latestDate)];
+  if(latestDate&&validDate(latestDate)&&!dates.includes(parseDate(latestDate)))dates.push(parseDate(latestDate));
   dates.sort();
 
   // V0 = valor de mercado del portafolio AL CIERRE de firstDate (precios PRICE_DB)
@@ -595,6 +610,43 @@ function calcWU(pos,totalFondo){
     const bench=MEXTRAC_W[t]||0;
     return{ticker:t,direct,indirect,total,bench,diff:total-bench,name:UNIVERSO.find(e=>e.t===t)?.n||t};
   }).sort((a,b)=>b.diff-a.diff);
+}
+
+function buildWeeklySummary(hist){
+  const weeks=[];const weekMap={};
+  (hist||[]).forEach(h=>{
+    const d=parseISODate(h.date);if(!d)return;
+    const dow=d.getDay();const daysToMon=dow===0?6:dow-1;
+    const mon=new Date(d.getTime());mon.setDate(mon.getDate()-daysToMon);
+    const key=mon.toISOString().split('T')[0];
+    if(!weekMap[key])weekMap[key]=[];
+    weekMap[key].push(h);
+  });
+  const weekKeys=Object.keys(weekMap).sort();
+  weekKeys.forEach((key,wi)=>{
+    const wk=weekMap[key];
+    const fin=wk[wk.length-1];
+    const ini=wi>0?weekMap[weekKeys[wi-1]][weekMap[weekKeys[wi-1]].length-1]:wk[0];
+    const rF=ini&&ini.totalFondo>0?(fin.totalFondo-ini.totalFondo)/ini.totalFondo*100:0;
+    const rB=ini&&ini.mexPrice&&fin.mexPrice&&ini.mexPrice>0?(fin.mexPrice-ini.mexPrice)/ini.mexPrice*100:null;
+    weeks.push({ini:ini.date,fin:fin.date,valIni:ini.totalFondo,valFin:fin.totalFondo,rF,rB,rA:rB!=null?rF-rB:null});
+  });
+  return weeks;
+}
+
+function calcSectorWU(pos,totalFondo){
+  if(totalFondo<=0)return[];
+  const exposureByTicker=calcWU(pos,totalFondo);
+  const sectorMap={};
+  exposureByTicker.forEach(r=>{
+    const sector=UNIVERSO.find(e=>e.t===r.ticker)?.s||'Otros';
+    if(!sectorMap[sector])sectorMap[sector]={sector,direct:0,indirect:0,total:0,bench:0,diff:0};
+    sectorMap[sector].direct+=r.direct||0;
+    sectorMap[sector].indirect+=r.indirect||0;
+    sectorMap[sector].total+=r.total||0;
+    sectorMap[sector].bench+=r.bench||0;
+  });
+  return Object.values(sectorMap).map(r=>({...r,diff:r.total-r.bench})).sort((a,b)=>b.diff-a.diff);
 }
 
 function calcMetrics(){
@@ -652,23 +704,9 @@ function calcMetrics(){
   const hist=buildHistorical();
 
   // ── weekly returns ────────────────────────────────────────────────────────
-  let rSem=0,rbSem=0;
-  if(hist.length>=2){
-    const wEnd=hist[hist.length-1];
-    const wEndDate=parseISODate(wEnd.date);  // safe — returns null if invalid
-    if(wEndDate){
-      const dow=wEndDate.getDay();
-      const daysToMon=dow===0?6:dow-1;
-      const monDate=new Date(wEndDate.getTime());
-      monDate.setDate(monDate.getDate()-daysToMon);
-      const monStr=monDate.toISOString().split('T')[0];
-      let wStart=null;
-      for(let i=hist.length-1;i>=0;i--){if(hist[i].date<monStr){wStart=hist[i];break;}}
-      if(!wStart)wStart=hist[0];
-      if(wStart&&wStart.totalFondo>0)rSem=(wEnd.totalFondo-wStart.totalFondo)/wStart.totalFondo*100;
-      if(wStart&&wStart.mexPrice&&wEnd.mexPrice&&wStart.mexPrice>0)rbSem=(wEnd.mexPrice-wStart.mexPrice)/wStart.mexPrice*100;
-    }
-  }
+  const weeklySummary=buildWeeklySummary(hist);
+  const latestWeek=weeklySummary.length?weeklySummary[weeklySummary.length-1]:null;
+  let rSem=latestWeek?latestWeek.rF:0,rbSem=latestWeek&&latestWeek.rB!=null?latestWeek.rB:0;
 
   // ── risk metrics (require ≥3 data points) ────────────────────────────────
   let stdDevV=0,te=0,beta=1,ir=0,varH=0,hitRatio=0;
@@ -690,8 +728,8 @@ function calcMetrics(){
 
   // ── OW/UW vs MEXTRAC ─────────────────────────────────────────────────────
   const wu=calcWU(pos,totalFondo);
-  const weekStart=hist.length>=2?hist[0]:null;
-  const weekEnd=hist.length?hist[hist.length-1]:null;
+  const weekStart=latestWeek?{date:latestWeek.ini,totalFondo:latestWeek.valIni}:null;
+  const weekEnd=latestWeek?{date:latestWeek.fin,totalFondo:latestWeek.valFin}:null;
 
   return{
     pos,valPort,costoTotal,efectivo,totalFondo,divTotal,
@@ -720,7 +758,7 @@ const PAGES=['dashboard','ordenes','posicion','rendimiento','riesgo','analytics'
 let chartInst=[];
 function go(page){
   document.querySelectorAll('.ni').forEach((el,i)=>el.classList.toggle('active',i===PAGES.indexOf(page)));
-  const titles={dashboard:'Dashboard',ordenes:'Ordenes',posicion:'Posicion actual',rendimiento:'Rendimiento',riesgo:'Riesgo & Prospectivos',analytics:'Analytics',atribucion:'Performance Attribution',flujos:'Flujos & Ajustes de mercado',estadisticos:'Estadisticos & Medidas',config:'Configuracion'};
+  const titles={dashboard:'Dashboard',ordenes:'Ordenes',posicion:'Posicion actual',rendimiento:'Rendimiento',riesgo:'Riesgo & Prospectivos',analytics:'Analytics',atribucion:'Performance Attribution',flujos:'Flujos & Ajustes de mercado',estadisticos:'Estadisticos & Medidas',config:'Configuración'};
   document.getElementById('tb-title').textContent=titles[page]||page;
   document.getElementById('tb-date').textContent=new Date().toLocaleDateString('es-MX',{weekday:'long',year:'numeric',month:'long',day:'numeric'});
   // Sidebar: siempre muestra el capital asignado (V0 fijo)
@@ -766,7 +804,7 @@ function pgDash(){
       <button class="btn btn-p" onclick="go('config')">Cambiar fecha &#8594;</button>
     </div>`;
   }
-  if(!S.capitalInicial&&!(S.ordenes&&S.ordenes.length))return`<div style="display:flex;align-items:center;justify-content:center;height:55vh;flex-direction:column;gap:16px;text-align:center"><div style="font-size:48px;opacity:.1">&#9678;</div><div style="font-size:18px;font-weight:700;letter-spacing:-.02em">Research Rockets SSOT</div><div style="color:var(--txt3);font-size:13px;max-width:340px;line-height:1.7">Configura el capital inicial y el precio base del MEXTRAC09 para comenzar el seguimiento.</div><button class="btn btn-p" onclick="go('config')">Ir a Configuracion &#8594;</button></div>`;
+  if(!S.capitalInicial&&!(S.ordenes&&S.ordenes.length))return`<div style="display:flex;align-items:center;justify-content:center;height:55vh;flex-direction:column;gap:16px;text-align:center"><div style="font-size:48px;opacity:.1">&#9678;</div><div style="font-size:18px;font-weight:700;letter-spacing:-.02em">Research Rockets SSOT</div><div style="color:var(--txt3);font-size:13px;max-width:340px;line-height:1.7">Configura el capital inicial y el precio base del MEXTRAC09 para comenzar el seguimiento.</div><button class="btn btn-p" onclick="go('config')">Ir a Configuración &#8594;</button></div>`;
   const spark=m.hist.slice(-22).map(h=>h.totalFondo);const maxS=Math.max(...spark,1);
   // For weekly display: use hist if available, otherwise use current values as single point
   const wStart=m.weekStart||{totalFondo:m.totalFondo};
@@ -791,7 +829,7 @@ function pgDash(){
   </div>
   <div class="sg2">
     <div class="card">
-      <div class="sec-h"><div class="sec-h-bar"></div><div class="sec-h-text">Composicion del portafolio</div></div>
+      <div class="sec-h"><div class="sec-h-bar"></div><div class="sec-h-text">Composición del portafolio</div></div>
       ${cBar('Accionario (estrategia activa + ETF)',m.valPort/m.totalFondo*100,'var(--accent)')}
       ${cBar('Efectivo disponible',m.efectivo/m.totalFondo*100,'var(--blue)')}
       <div style="display:flex;justify-content:space-between;font-size:12px;color:var(--txt3);margin-top:10px"><span>Total fondo <b style="color:var(--txt);font-family:var(--mono)">${fm(m.totalFondo)}</b></span><span>Dividendos recibidos <b style="color:var(--grn);font-family:var(--mono)">+${fm(m.divTotal)}</b></span></div>
@@ -802,22 +840,26 @@ function pgDash(){
     </div>
   </div>
   <div class="card">
-    <div class="sec-h"><div class="sec-h-bar"></div><div class="sec-h-text">Overweights y Underweights vs MEXTRAC</div><span class="sec-h-sub">exposicion fondo &minus; peso MEXTRAC</span></div>
+    <div class="sec-h"><div class="sec-h-bar"></div><div class="sec-h-text">Overweights y Underweights vs MEXTRAC</div><span class="sec-h-sub">exposición fondo &minus; peso MEXTRAC</span></div>
     ${renderWaterfallWU(m.wu)}
   </div>
   <div class="card">
-    <div class="sec-h"><div class="sec-h-bar"></div><div class="sec-h-text">Desempeno ultima semana</div></div>
+    <div class="sec-h"><div class="sec-h-bar"></div><div class="sec-h-text">Overweights y Underweights sectoriales vs MEXTRAC</div><span class="sec-h-sub">exposición sectorial del fondo &minus; peso sectorial MEXTRAC</span></div>
+    ${renderWaterfallSectorWU(calcSectorWU(m.pos,m.totalFondo))}
+  </div>
+  <div class="card">
+    <div class="sec-h"><div class="sec-h-bar"></div><div class="sec-h-text">Desempeño última semana</div></div>
     <div class="sg4" style="gap:12px">
       ${miStat(fp(m.rSem),'Rend. fondo','Rend. absoluto semana',m.rSem>=0?'var(--grn)':'var(--red)')}
       ${miStat(f2(m.stdDev)+'%','Desv. estandar','Volatilidad anualizada',m.stdDev>25?'var(--red)':m.stdDev>15?'var(--amb)':'var(--grn)')}
-      ${miStat(f2(m.ir),'Razon de informacion','Retorno activo / TE',m.ir>0.5?'var(--grn)':m.ir>0?'var(--amb)':'var(--red)')}
+      ${miStat(f2(m.ir),'Razón de informacion','Retorno activo / TE',m.ir>0.5?'var(--grn)':m.ir>0?'var(--amb)':'var(--red)')}
       ${miStat(f2(m.hitRatio)+'%','Hit Ratio','Dias ganados al benchmark',m.hitRatio>=50?'var(--grn)':'var(--red)')}
       ${miStat(f2(m.beta),'Beta vs MEXTRAC','Sensibilidad al mercado',m.beta>1.2?'var(--red)':m.beta<0.8?'var(--amb)':'var(--grn)')}
     </div>
   </div>
   <div class="card">
     <div class="sec-h"><div class="sec-h-bar"></div><div class="sec-h-text">Ordenes recientes</div><button class="btn btn-sm" onclick="go('ordenes')" style="margin-left:auto">Ver todas &rarr;</button></div>
-    <div class="tw"><table><thead><tr><th>Fecha</th><th>Tipo</th><th>Ticker</th><th>Titulos</th><th>Precio</th><th>Valor</th><th>Com+IVA</th><th>% Portafolio</th><th>Razon</th></tr></thead><tbody>
+    <div class="tw"><table><thead><tr><th>Fecha</th><th>Tipo</th><th>Ticker</th><th>Títulos</th><th>Precio</th><th>Valor</th><th>Com+IVA</th><th>% Portafolio</th><th>Razón</th></tr></thead><tbody>
     ${(S.ordenes||[]).slice().reverse().slice(0,6).map(o=>{const pct=S.capitalInicial>0?o.titulos*o.precio/S.capitalInicial*100:0;return`<tr><td class="mono">${o.fecha}</td><td><span class="pill ${o.tipo==='compra'?'p-buy':'p-sell'}">${o.tipo}</span>${o.isEtf?' <span class="pill p-etf">ETF</span>':''}</td><td class="lbl">${UNIVERSO.find(e=>e.t===o.ticker)?.n||o.ticker}</td><td class="mono">${o.titulos.toLocaleString()}</td><td class="mono">$${f2(o.precio,4)}</td><td class="mono">${fm(o.titulos*o.precio)}</td><td class="r mono">${o.comision+o.iva>0?'-'+fm(o.comision+o.iva):'$0'}</td><td class="mono">${pct.toFixed(1)}%</td><td class="dim">${o.razon||'&mdash;'}</td></tr>`;}).join('')||'<tr><td colspan="9" class="empty">Sin ordenes registradas</td></tr>'}
     </tbody></table></div>
   </div>`;
@@ -842,6 +884,23 @@ function renderWaterfallWU(wu){
   return`<div style="display:flex;flex-direction:column"><div style="display:flex;align-items:center;gap:0;padding:4px 0 8px;border-bottom:2px solid var(--line2);margin-bottom:4px"><div style="width:280px;font-size:10px;color:var(--txt3);text-align:right;padding-right:10px;font-weight:600">EMPRESA</div><div style="flex:1;font-size:10px;color:var(--red);font-weight:600;text-align:center">&larr; UNDER</div><div style="width:70px;text-align:center;font-size:10px;color:var(--txt3);font-weight:600">DIFF %</div><div style="flex:1;font-size:10px;color:var(--grn);font-weight:600;text-align:center">OVER &rarr;</div></div>${rows}</div>`;
 }
 
+function renderWaterfallSectorWU(wu){
+  const items=(wu||[]).filter(r=>Math.abs(r.diff)>=0.01).sort((a,b)=>b.diff-a.diff);
+  if(!items.length)return'<div class="empty">Sin posiciones &mdash; registra una orden para ver overweights/underweights sectoriales</div>';
+  const maxAbs=Math.max(...items.map(r=>Math.abs(r.diff)),1);
+  const rows=items.map(r=>{
+    const isOver=r.diff>0,isNeutral=r.diff<=0&&r.diff>-1;
+    const pct=(Math.abs(r.diff)/maxAbs*100).toFixed(2);
+    const color=isOver?'var(--grn)':isNeutral?'var(--txt3)':'var(--red)';
+    const barColor=isOver?'var(--grn)':isNeutral?'#B0B7C3':'var(--red)';
+    const sign=isOver?'+':'';
+    const underBar=isOver?`<div style="flex:1"></div>`:`<div style="flex:1;display:flex;align-items:center;justify-content:flex-end"><div style="width:${pct}%;height:12px;background:${barColor};border-radius:3px 0 0 3px;opacity:.85"></div></div>`;
+    const overBar=isOver?`<div style="flex:1;display:flex;align-items:center;justify-content:flex-start"><div style="width:${pct}%;height:12px;background:${barColor};border-radius:0 3px 3px 0;opacity:.85"></div></div>`:`<div style="flex:1"></div>`;
+    return`<div style="display:flex;align-items:center;gap:0;padding:3px 0;border-bottom:1px solid var(--line)"><div style="width:280px;font-size:11px;font-weight:600;color:var(--txt);text-align:right;padding-right:10px;flex-shrink:0;white-space:nowrap" title="${r.sector}">${r.sector}</div>${underBar}<div style="width:70px;flex-shrink:0;display:flex;align-items:center;justify-content:center;position:relative"><div style="position:absolute;left:50%;top:0;bottom:0;width:2px;background:var(--line2);transform:translateX(-50%)"></div><div style="font-family:var(--mono);font-size:11px;font-weight:700;color:${color};background:var(--bg2);padding:0 4px;position:relative;z-index:1">${sign}${r.diff.toFixed(2)}%</div></div>${overBar}</div>`;
+  }).join('');
+  return`<div style="display:flex;flex-direction:column"><div style="display:flex;align-items:center;gap:0;padding:4px 0 8px;border-bottom:2px solid var(--line2);margin-bottom:4px"><div style="width:280px;font-size:10px;color:var(--txt3);text-align:right;padding-right:10px;font-weight:600">SECTOR</div><div style="flex:1;font-size:10px;color:var(--red);font-weight:600;text-align:center">&larr; UNDER</div><div style="width:70px;text-align:center;font-size:10px;color:var(--txt3);font-weight:600">DIFF %</div><div style="flex:1;font-size:10px;color:var(--grn);font-weight:600;text-align:center">OVER &rarr;</div></div>${rows}</div>`;
+}
+
 
 // ORDENES
 function pgOrdenes(){
@@ -861,8 +920,8 @@ function pgOrdenes(){
       <div class="sec-h"><div class="sec-h-bar"></div><div class="sec-h-text">Todas las operaciones</div></div>
       <div class="tw"><table id="tbl-ord"><thead><tr>
         ${th('Fecha','tbl-ord',0,'str')}${th('Tipo','tbl-ord',1,'str')}${th('Empresa','tbl-ord',2,'str')}
-        ${th('Titulos','tbl-ord',3,'num')}${th('Precio op.','tbl-ord',4,'num')}${th('Valor','tbl-ord',5,'num')}
-        ${th('Comision','tbl-ord',6,'num')}${th('IVA','tbl-ord',7,'num')}${th('% Fondo','tbl-ord',8,'num')}${th('Razon','tbl-ord',9,'str')}<th></th>
+        ${th('Títulos','tbl-ord',3,'num')}${th('Precio op.','tbl-ord',4,'num')}${th('Valor','tbl-ord',5,'num')}
+        ${th('Comisión','tbl-ord',6,'num')}${th('IVA','tbl-ord',7,'num')}${th('% Fondo','tbl-ord',8,'num')}${th('Razón','tbl-ord',9,'str')}<th></th>
       </tr></thead><tbody>
       ${(S.ordenes||[]).slice().reverse().map((o,i)=>{
         const ri=(S.ordenes||[]).length-1-i;const pct=S.capitalInicial>0?o.titulos*o.precio/S.capitalInicial*100:0;
@@ -875,7 +934,7 @@ function pgOrdenes(){
     <div class="card">
       <div class="sec-h"><div class="sec-h-bar" style="background:var(--amb)"></div><div class="sec-h-text">Posiciones abiertas</div><span class="sec-h-sub">Compras sin cerrar</span></div>
       <div class="tw"><table id="tbl-abiertas"><thead><tr>
-        ${th('Empresa','tbl-abiertas',0,'str')}${th('Fecha compra','tbl-abiertas',1,'str')}${th('Titulos','tbl-abiertas',2,'num')}${th('Precio compra','tbl-abiertas',3,'num')}${th('Precio actual','tbl-abiertas',4,'num')}${th('Costo','tbl-abiertas',5,'num')}${th('Val. mercado','tbl-abiertas',6,'num')}${th('% Portafolio','tbl-abiertas',7,'num')}${th('P&amp;L ($)','tbl-abiertas',8,'num')}${th('Rend. %','tbl-abiertas',9,'num')}${th('Rend. activo','tbl-abiertas',10,'num')}
+        ${th('Empresa','tbl-abiertas',0,'str')}${th('Fecha compra','tbl-abiertas',1,'str')}${th('Títulos','tbl-abiertas',2,'num')}${th('Precio compra','tbl-abiertas',3,'num')}${th('Precio actual','tbl-abiertas',4,'num')}${th('Costo','tbl-abiertas',5,'num')}${th('Val. mercado','tbl-abiertas',6,'num')}${th('% Portafolio','tbl-abiertas',7,'num')}${th('P&amp;L ($)','tbl-abiertas',8,'num')}${th('Rend. %','tbl-abiertas',9,'num')}${th('Rend. activo','tbl-abiertas',10,'num')}
       </tr></thead><tbody>
       ${trades.abiertas.map(t=>{const pct=m.totalFondo>0?t.valorMercado/m.totalFondo*100:0;const benchRet=m.rendBench||0;const retActivo=t.rend-benchRet;return`<tr><td class="lbl">${UNIVERSO.find(e=>e.t===t.ticker)?.n||t.ticker}</td><td class="mono">${t.fechaCompra}</td><td data-val="${t.titulos}" class="mono">${t.titulos.toLocaleString()}</td><td data-val="${t.precioCompra}" class="mono">$${f2(t.precioCompra,4)}</td><td data-val="${t.precioActual}" class="mono">$${f2(t.precioActual,4)}</td><td data-val="${t.costo}" class="mono">${fm(t.costo)}</td><td data-val="${t.valorMercado}" class="mono">${fm(t.valorMercado)}</td><td data-val="${pct}" class="mono">${pct.toFixed(1)}%</td><td data-val="${t.pnl}" class="${cc(t.pnl)} mono">${fm(t.pnl)}</td><td data-val="${t.rend}" class="${cc(t.rend)} mono">${fp(t.rend)}</td><td data-val="${retActivo}" class="${cc(retActivo)} mono">${fp(retActivo)}</td></tr>`;}).join('')||'<tr><td colspan="11" class="empty">Sin posiciones abiertas</td></tr>'}
       </tbody></table></div>
@@ -885,7 +944,7 @@ function pgOrdenes(){
     <div class="card">
       <div class="sec-h"><div class="sec-h-bar" style="background:var(--txt3)"></div><div class="sec-h-text">Operaciones cerradas</div><span class="sec-h-sub">P&amp;L realizado</span></div>
       <div class="tw"><table id="tbl-cerradas"><thead><tr>
-        ${th('Empresa','tbl-cerradas',0,'str')}${th('Compra','tbl-cerradas',1,'str')}${th('Venta','tbl-cerradas',2,'str')}${th('Titulos','tbl-cerradas',3,'num')}${th('P. compra','tbl-cerradas',4,'num')}${th('P. venta','tbl-cerradas',5,'num')}${th('P&amp;L ($)','tbl-cerradas',6,'num')}${th('Rend. %','tbl-cerradas',7,'num')}${th('% que represento','tbl-cerradas',8,'num')}
+        ${th('Empresa','tbl-cerradas',0,'str')}${th('Compra','tbl-cerradas',1,'str')}${th('Venta','tbl-cerradas',2,'str')}${th('Títulos','tbl-cerradas',3,'num')}${th('P. compra','tbl-cerradas',4,'num')}${th('P. venta','tbl-cerradas',5,'num')}${th('P&amp;L ($)','tbl-cerradas',6,'num')}${th('Rend. %','tbl-cerradas',7,'num')}${th('% que represento','tbl-cerradas',8,'num')}
       </tr></thead><tbody>
       ${trades.cerradas.map(t=>`<tr><td class="lbl">${UNIVERSO.find(e=>e.t===t.ticker)?.n||t.ticker}</td><td class="mono">${t.fechaCompra}</td><td class="mono">${t.fechaVenta}</td><td data-val="${t.titulos}" class="mono">${t.titulos.toLocaleString()}</td><td data-val="${t.precioCompra}" class="mono">$${f2(t.precioCompra,4)}</td><td data-val="${t.precioVenta}" class="mono">$${f2(t.precioVenta,4)}</td><td data-val="${t.pnl}" class="${cc(t.pnl)} mono">${fm(t.pnl)}</td><td data-val="${t.rend}" class="${cc(t.rend)} mono">${fp(t.rend)}</td><td data-val="${t.pctPortafolio}" class="mono">${f2(t.pctPortafolio,1)}%</td></tr>`).join('')||'<tr><td colspan="9" class="empty">Sin operaciones cerradas</td></tr>'}
       </tbody></table></div>
@@ -934,13 +993,13 @@ function pgPosicion(){
   <div class="card">
     <div class="sec-h"><div class="sec-h-bar"></div><div class="sec-h-text">Holdings actuales</div></div>
     <div class="tw"><table id="tbl-pos"><thead><tr>
-      ${th('Ticker','tbl-pos',0,'str')}${th('Nombre','tbl-pos',1,'str')}${th('Titulos','tbl-pos',2,'num')}${th('Precio prom.','tbl-pos',3,'num')}${th('Precio actual','tbl-pos',4,'num')}${th('Val. mercado','tbl-pos',5,'num')}${th('% Fondo','tbl-pos',6,'num')}${th('% MEXTRAC','tbl-pos',7,'num')}${th('Diferencia','tbl-pos',8,'num')}${th('Rend. %','tbl-pos',9,'num')}${th('P&amp;L ($)','tbl-pos',10,'num')}
+      ${th('Ticker','tbl-pos',0,'str')}${th('Nombre','tbl-pos',1,'str')}${th('Títulos','tbl-pos',2,'num')}${th('Precio prom.','tbl-pos',3,'num')}${th('Precio actual','tbl-pos',4,'num')}${th('Val. mercado','tbl-pos',5,'num')}${th('% Fondo','tbl-pos',6,'num')}${th('% MEXTRAC','tbl-pos',7,'num')}${th('Diferencia','tbl-pos',8,'num')}${th('Rend. %','tbl-pos',9,'num')}${th('P&amp;L ($)','tbl-pos',10,'num')}
     </tr></thead><tbody>
     ${Object.entries(m.pos).map(([t,p])=>{const vm=p.titulos*p.precioActual;const pctF=vm/m.totalFondo*100;const pctB=MEXTRAC_W[t]||0;const pp=p.costoTotal>0?p.costoTotal/p.titulos:0;const rend=pp>0?(p.precioActual-pp)/pp*100:0;const pnl=(p.precioActual-pp)*p.titulos;const nm=UNIVERSO.find(e=>e.t===t)?.n||t;return`<tr><td class="lbl">${t}${p.isEtf?' <span class="pill p-etf" style="font-size:9px">ETF</span>':''}</td><td class="dim">${nm}</td><td data-val="${p.titulos}" class="mono">${p.titulos.toLocaleString()}</td><td data-val="${pp}" class="mono">$${f2(pp,4)}</td><td data-val="${p.precioActual}" class="mono">$${f2(p.precioActual,4)}</td><td data-val="${vm}" class="mono">${fm(vm)}</td><td data-val="${pctF}" class="mono">${pctF.toFixed(1)}%</td><td data-val="${pctB}" class="d mono">${pctB>0?pctB.toFixed(2)+'%':'&mdash;'}</td><td data-val="${pctF-pctB}" class="${cc(pctF-pctB)} mono">${(pctF-pctB)>=0?'+':''}${(pctF-pctB).toFixed(1)}%</td><td data-val="${rend}" class="${cc(rend)} mono">${fp(rend)}</td><td data-val="${pnl}" class="${cc(pnl)} mono">${fm(pnl)}</td></tr>`;}).join('')||'<tr><td colspan="11" class="empty">Sin posiciones abiertas</td></tr>'}
     </tbody><tfoot>${(()=>{const cashPct=m.totalFondo>0?m.efectivo/m.totalFondo*100:0;return`<tr style="border-top:2px solid var(--line2);font-weight:600;background:var(--bg3)"><td class="lbl">CASH</td><td class="dim">Efectivo disponible</td><td class="mono">&mdash;</td><td class="mono">&mdash;</td><td class="mono">&mdash;</td><td data-val="${m.efectivo}" class="mono">${fm(m.efectivo)}</td><td data-val="${cashPct}" class="b mono">${cashPct.toFixed(1)}%</td><td class="d mono">&mdash;</td><td class="d mono">&mdash;</td><td class="d mono">&mdash;</td><td class="d mono">&mdash;</td></tr>`;})()}</tfoot></table></div>
   </div>
   <div class="card">
-    <div class="sec-h"><div class="sec-h-bar"></div><div class="sec-h-text">Exposicion efectiva por componente MEXTRAC</div></div>
+    <div class="sec-h"><div class="sec-h-bar"></div><div class="sec-h-text">Exposición efectiva por componente MEXTRAC</div></div>
     <div class="tw"><table id="tbl-exp"><thead><tr>
       ${th('Ticker','tbl-exp',0,'str')}${th('Nombre','tbl-exp',1,'str')}${th('% Directo','tbl-exp',2,'num')}${th('% via ETF','tbl-exp',3,'num')}${th('% Total exposicion','tbl-exp',4,'num')}${th('% Benchmark','tbl-exp',5,'num')}${th('Diferencia','tbl-exp',6,'num')}
     </tr></thead><tbody>
@@ -952,24 +1011,17 @@ function pgPosicion(){
 // RENDIMIENTO
 function pgRendimiento(){
   const m=calcMetrics();const hist=m.hist;
-  const weeks=[];const weekMap={};
-  hist.forEach(h=>{
-    const d=parseISODate(h.date);if(!d)return;
-    const dow=d.getDay();const daysToMon=dow===0?6:dow-1;
-    const mon=new Date(d.getTime());mon.setDate(mon.getDate()-daysToMon);
-    const key=mon.toISOString().split('T')[0];
-    if(!weekMap[key])weekMap[key]=[];weekMap[key].push(h);
-  });
-  const weekKeys=Object.keys(weekMap).sort();
-  weekKeys.forEach((key,wi)=>{const wk=weekMap[key];const fin=wk[wk.length-1];let ini=null;if(wi>0){const prevWk=weekMap[weekKeys[wi-1]];ini=prevWk[prevWk.length-1];}else{ini=wk[0];}
-    const rF=ini.totalFondo>0?(fin.totalFondo-ini.totalFondo)/ini.totalFondo*100:0;const rB=ini.mexPrice&&fin.mexPrice&&ini.mexPrice>0?(fin.mexPrice-ini.mexPrice)/ini.mexPrice*100:null;
-    weeks.push({ini:ini.date,fin:fin.date,valIni:ini.totalFondo,valFin:fin.totalFondo,rF,rB,rA:rB!=null?rF-rB:null});});
+  const weeks=buildWeeklySummary(hist);
+  const latestWeek=weeks.length?weeks[weeks.length-1]:null;
+  const rSem=latestWeek?latestWeek.rF:0;
+  const rbSem=latestWeek&&latestWeek.rB!=null?latestWeek.rB:0;
+  const retActivoSem=latestWeek&&latestWeek.rA!=null?latestWeek.rA:0;
   return`
   <div class="sg4">
-    ${stCard(fp(m.rSem),'Rend. semana fondo','','stat-grn')}
-    ${stCard(fp(m.rbSem),'Rend. semana MEXTRAC','','stat-acc')}
-    ${stCard(fp(m.retActivoSem),'Retorno activo semana','Alpha semanal',m.retActivoSem>=0?'stat-grn':'stat-red')}
-    ${stCard(fp(m.retActivo),'Retorno activo acum.','Desde inicio gestion',m.retActivo>=0?'stat-grn':'stat-red')}
+    ${stCard(fp(rSem),'Rend. semana fondo',latestWeek?`${latestWeek.ini} → ${latestWeek.fin}`:'','stat-grn')}
+    ${stCard(fp(rbSem),'Rend. semana MEXTRAC',latestWeek?`${latestWeek.ini} → ${latestWeek.fin}`:'','stat-acc')}
+    ${stCard(fp(retActivoSem),'Retorno activo semana','Alpha semanal',retActivoSem>=0?'stat-grn':'stat-red')}
+    ${stCard(fp(m.retActivo),'Retorno activo acum.','Desde inicio gestión',m.retActivo>=0?'stat-grn':'stat-red')}
   </div>
   <div class="card">
     <div class="sec-h"><div class="sec-h-bar"></div><div class="sec-h-text">Evolucion diaria desde primera orden</div></div>
@@ -1022,16 +1074,16 @@ function pgRiesgo(){
   const prospBeta=prospRets.length>1?betaCalc(prospRets.map(r=>r.portRet),prospRets.map(r=>r.benchRet)):1;
   return`
   <div class="sg2">
-    <div class="card"><div class="sec-h"><div class="sec-h-bar"></div><div class="sec-h-text">Medidas absolutas &mdash; historicas</div></div>
+    <div class="card"><div class="sec-h"><div class="sec-h-bar"></div><div class="sec-h-text">Medidas absolutas &mdash; históricas</div></div>
       ${rskRow('Desv. estandar (anualizada)',e?f2(m.stdDev)+'%':'&mdash;','Volatilidad del portafolio',m.stdDev>25?'var(--red)':m.stdDev>15?'var(--amb)':'var(--grn)')}
-      ${rskRow('VaR historico 95% (diario)',m.hist.length>=10?f2(m.varH)+'%':'&mdash;','Percentil 5% de retornos historicos','var(--red)')}
+      ${rskRow('VaR histórico 95% (diario)',m.hist.length>=10?f2(m.varH)+'%':'&mdash;','Percentil 5% de retornos históricos','var(--red)')}
       ${rskRow('VaR parametrico 95% (diario)',e?'-'+f2(vp)+'%':'&mdash;','Z=1.645 x sigma diaria','var(--red)')}
       ${rskRow('Rendimiento promedio diario',e?f2(mean(m.hist.slice(1).map((h,i)=>m.hist[i].totalFondo>0?(h.totalFondo-m.hist[i].totalFondo)/m.hist[i].totalFondo*100:0)),4)+'%':'&mdash;','Media aritmetica diaria','var(--txt2)')}
     </div>
-    <div class="card"><div class="sec-h"><div class="sec-h-bar"></div><div class="sec-h-text">Medidas relativas &mdash; historicas</div></div>
+    <div class="card"><div class="sec-h"><div class="sec-h-bar"></div><div class="sec-h-text">Medidas relativas &mdash; históricas</div></div>
       ${rskRow('Beta vs MEXTRAC',e?f2(m.beta):'&mdash;','Sensibilidad al mercado',m.beta>1.2?'var(--red)':m.beta<0.8?'var(--amb)':'var(--grn)')}
       ${rskRow('Tracking error (anualizado)',e?f2(m.te)+'%':'&mdash;','Desv. estandar retorno activo','var(--txt2)')}
-      ${rskRow('Razon de informacion (IR)',e?f2(m.ir):'&mdash;','Retorno activo / Tracking error',m.ir>0.5?'var(--grn)':m.ir>0?'var(--amb)':'var(--red)')}
+      ${rskRow('Razón de informacion (IR)',e?f2(m.ir):'&mdash;','Retorno activo / Tracking error',m.ir>0.5?'var(--grn)':m.ir>0?'var(--amb)':'var(--red)')}
       ${rskRow('Alfa (retorno activo acum.)',e?fp(m.retActivo):'&mdash;','Alpha generado vs benchmark',m.retActivo>=0?'var(--grn)':'var(--red)')}
     </div>
   </div>
@@ -1077,12 +1129,12 @@ function pgAnalytics(){
     </div>
   </div>
   <div style="display:grid;grid-template-columns:1fr 1fr;gap:14px;margin-top:14px">
-    <div class="card" style="display:flex;flex-direction:column"><div class="sec-h"><div class="sec-h-bar" style="background:var(--purple)"></div><div class="sec-h-text">Exposicion real por emisora</div><span class="sec-h-sub">Incluye desglose MEXTRAC</span></div><div style="display:flex;align-items:center;gap:24px;padding:16px;flex:1"><div style="position:relative;width:200px;height:200px;flex-shrink:0"><canvas id="donut-real-holdings"></canvas></div><div id="donut-real-holdings-legend" style="flex:1;font-size:12px;display:flex;flex-direction:column;gap:5px;max-height:220px;overflow-y:auto"></div></div></div>
-    <div class="card" style="display:flex;flex-direction:column"><div class="sec-h"><div class="sec-h-bar" style="background:var(--purple)"></div><div class="sec-h-text">Distribucion real por sector</div><span class="sec-h-sub">MEXTRAC ponderado en sectores</span></div><div style="display:flex;align-items:center;gap:24px;padding:16px;flex:1"><div style="position:relative;width:200px;height:200px;flex-shrink:0"><canvas id="donut-real-sectors"></canvas></div><div id="donut-real-sectors-legend" style="flex:1;font-size:12px;display:flex;flex-direction:column;gap:5px"></div></div></div>
+    <div class="card" style="display:flex;flex-direction:column"><div class="sec-h"><div class="sec-h-bar" style="background:var(--purple)"></div><div class="sec-h-text">Exposición real por emisora</div><span class="sec-h-sub">Incluye desglose MEXTRAC</span></div><div style="display:flex;align-items:center;gap:24px;padding:16px;flex:1"><div style="position:relative;width:200px;height:200px;flex-shrink:0"><canvas id="donut-real-holdings"></canvas></div><div id="donut-real-holdings-legend" style="flex:1;font-size:12px;display:flex;flex-direction:column;gap:5px;max-height:220px;overflow-y:auto"></div></div></div>
+    <div class="card" style="display:flex;flex-direction:column"><div class="sec-h"><div class="sec-h-bar" style="background:var(--purple)"></div><div class="sec-h-text">Distribución real por sector</div><span class="sec-h-sub">MEXTRAC ponderado en sectores</span></div><div style="display:flex;align-items:center;gap:24px;padding:16px;flex:1"><div style="position:relative;width:200px;height:200px;flex-shrink:0"><canvas id="donut-real-sectors"></canvas></div><div id="donut-real-sectors-legend" style="flex:1;font-size:12px;display:flex;flex-direction:column;gap:5px"></div></div></div>
   </div>
   <div style="display:grid;grid-template-columns:1fr 1fr;gap:14px;margin-top:14px">
-    <div class="card" style="display:flex;flex-direction:column"><div class="sec-h"><div class="sec-h-bar"></div><div class="sec-h-text">Composicion del fondo</div></div><div style="display:flex;align-items:center;gap:24px;padding:16px;flex:1"><div style="position:relative;width:200px;height:200px;flex-shrink:0"><canvas id="donut-holdings"></canvas></div><div id="donut-holdings-legend" style="flex:1;font-size:12px;display:flex;flex-direction:column;gap:6px"></div></div></div>
-    <div class="card" style="display:flex;flex-direction:column"><div class="sec-h"><div class="sec-h-bar"></div><div class="sec-h-text">Distribucion por sector</div></div><div style="display:flex;align-items:center;gap:24px;padding:16px;flex:1"><div style="position:relative;width:200px;height:200px;flex-shrink:0"><canvas id="donut-sectors"></canvas></div><div id="donut-sectors-legend" style="flex:1;font-size:12px;display:flex;flex-direction:column;gap:6px"></div></div></div>
+    <div class="card" style="display:flex;flex-direction:column"><div class="sec-h"><div class="sec-h-bar"></div><div class="sec-h-text">Composición del fondo</div></div><div style="display:flex;align-items:center;gap:24px;padding:16px;flex:1"><div style="position:relative;width:200px;height:200px;flex-shrink:0"><canvas id="donut-holdings"></canvas></div><div id="donut-holdings-legend" style="flex:1;font-size:12px;display:flex;flex-direction:column;gap:5px;max-height:220px;overflow-y:auto"></div></div></div>
+    <div class="card" style="display:flex;flex-direction:column"><div class="sec-h"><div class="sec-h-bar"></div><div class="sec-h-text">Distribución por sector</div></div><div style="display:flex;align-items:center;gap:24px;padding:16px;flex:1"><div style="position:relative;width:200px;height:200px;flex-shrink:0"><canvas id="donut-sectors"></canvas></div><div id="donut-sectors-legend" style="flex:1;font-size:12px;display:flex;flex-direction:column;gap:6px"></div></div></div>
   </div>`;
 }
 
@@ -1107,9 +1159,10 @@ function initCharts(){
 
 function renderDonuts(m){
   const COLORS=['#0C4A6E','#027A48','#5B21B6','#B42318','#92400E','#1D4ED8','#0F766E','#7C3AED','#BE185D','#065F46','#C2410C','#1E40AF','#6B21A8','#9A3412','#166534'];
-  const pos=m.pos;const holdLabels=[],holdData=[],holdColors=[];let ci=0;
-  Object.entries(pos).forEach(([t,p])=>{const vm=p.titulos*p.precioActual;if(vm>0){holdLabels.push(t);holdData.push(+vm.toFixed(0));holdColors.push(COLORS[ci%COLORS.length]);ci++;}});
-  if(m.efectivo>0){holdLabels.push('CASH');holdData.push(+m.efectivo.toFixed(0));holdColors.push('#98A2B3');}
+  const pos=m.pos;
+  const holdEntries=Object.entries(pos).map(([t,p])=>({label:t,value:+(p.titulos*p.precioActual).toFixed(0)})).filter(x=>x.value>0).sort((a,b)=>b.value-a.value);
+  if(m.efectivo>0)holdEntries.push({label:'CASH',value:+m.efectivo.toFixed(0),isCash:true});
+  const holdLabels=holdEntries.map(x=>x.label),holdData=holdEntries.map(x=>x.value),holdColors=holdEntries.map((x,i)=>x.isCash?'#98A2B3':COLORS[i%COLORS.length]);
   const total=holdData.reduce((s,v)=>s+v,0);
   const ctx4=document.getElementById('donut-holdings');if(ctx4){Chart.getChart(ctx4)?.destroy();new Chart(ctx4,{type:'doughnut',data:{labels:holdLabels,datasets:[{data:holdData,backgroundColor:holdColors,borderWidth:2,borderColor:'#fff',hoverOffset:6}]},options:{responsive:true,maintainAspectRatio:true,cutout:'62%',plugins:{legend:{display:false},tooltip:{callbacks:{label:c=>`${c.label}: ${(c.parsed/total*100).toFixed(1)}% (${fm(c.parsed)})`}}}}});}
   const leg4=document.getElementById('donut-holdings-legend');if(leg4)leg4.innerHTML=holdLabels.map((l,i)=>`<div style="display:flex;align-items:center;gap:8px"><div style="width:10px;height:10px;border-radius:2px;background:${holdColors[i]};flex-shrink:0"></div><span style="color:var(--txt2)">${l}</span><span style="margin-left:auto;font-weight:600;color:var(--txt)">${(holdData[i]/total*100).toFixed(1)}%</span></div>`).join('');
@@ -1197,7 +1250,7 @@ function pgConfig(){
         <div style="font-size:11px;color:var(--txt3);margin-top:6px" id="mex-nav-reciente">Cargando historial de precios...</div>
         </div>
       </div>
-      <div class="fg"><label class="fl">Comision default (%)</label><input type="number" id="c-com" value="${S.comisionDefault}" step="0.01"></div>
+      <div class="fg"><label class="fl">Comisión default (%)</label><input type="number" id="c-com" value="${S.comisionDefault}" step="0.01"></div>
       <div style="display:flex;gap:8px;flex-wrap:wrap">
         <button class="btn btn-p" id="cfg-save-btn" onclick="saveConfig()" style="align-self:flex-start">Guardar configuracion</button>
         <button class="btn btn-sm" onclick="exportToExcel()" style="align-self:flex-start;border-color:var(--grn);color:var(--grn)">&#128229; Exportar Excel</button>
@@ -1208,7 +1261,7 @@ function pgConfig(){
     <div class="sec-h"><div class="sec-h-bar" style="background:var(--blue)"></div><div class="sec-h-text">Sincronizacion en equipo &mdash; Firebase</div></div>
     <div style="background:var(--grn2);border:1px solid var(--grn3);border-radius:var(--r2);padding:14px 16px;margin-bottom:14px">
       <div style="font-weight:600;color:var(--grn);margin-bottom:6px;font-size:13px">&#128194; Cargar precios desde Excel (Refinitiv)</div>
-      <div style="font-size:12px;color:var(--txt2);margin-bottom:10px">Exporta tu Excel de Refinitiv con la hoja de precios historicos y cargalo aqui para actualizar el PRICE_DB.</div>
+      <div style="font-size:12px;color:var(--txt2);margin-bottom:10px">Exporta tu Excel de Refinitiv con la hoja de precios históricos y cargalo aqui para actualizar el PRICE_DB.</div>
       <input type="file" id="excel-file-input" accept=".xlsx,.xls" style="display:none" onchange="importExcelPrices(this)">
       <button class="btn btn-p btn-sm" onclick="document.getElementById('excel-file-input').click()">&#128194; Cargar Excel Refinitiv</button>
       <span id="excel-import-status" style="margin-left:10px;font-size:12px;color:var(--txt2)"></span>
@@ -1238,7 +1291,7 @@ function pgConfig(){
       ${cfgRow('Entrega de cartera','13 abril 2026')}
       ${cfgRow('Inicio fase competitiva','20 abril 2026')}
       ${cfgRow('NAV MEXTRAC base (' + (S.fechaInicio||'--') + ')','$' + (()=>{const p=localPrice('MEXTRAC09',S.fechaInicio||'2026-04-13');return p?p.toFixed(4):'--';})())}
-      ${cfgRow('Comision configurada',S.comisionDefault+'% + IVA 16%')}
+      ${cfgRow('Comisión configurada',S.comisionDefault+'% + IVA 16%')}
       ${cfgRow('Precios base (Refinitiv)',(()=>{const d=getAllDates();return d.length+' dias &middot; '+d[0]+' &rarr; '+d[d.length-1];})())}
       ${cfgRow('Ultimo precio cargado',getAllDates().slice(-1)[0]||'&mdash;')}
     </div>
@@ -1264,12 +1317,12 @@ function calcRes(){const t=parseInt(document.getElementById('o-titulos').value);
 
 // MODAL ORDEN HELPERS
 function getEfectivoActual(){const costoComp=(S.ordenes||[]).filter(o=>o.tipo==='compra').reduce((s,o)=>s+o.titulos*o.precio+o.comision+o.iva,0);const ingVentas=(S.ordenes||[]).filter(o=>o.tipo==='venta').reduce((s,o)=>s+o.titulos*o.precio-(o.comision+o.iva),0);const divs=(S.flujos||[]).filter(f=>f.tipo==='dividendo_efectivo').reduce((s,f)=>s+f.monto,0);return Math.max(0,S.capitalInicial-costoComp+ingVentas+divs);}
-function getTitulosActuales(ticker){const pos=buildPos();return pos[ticker]?.titulos||0;}
-function updatePoderBar(){const tipo=document.getElementById('o-tipo').value;const ticker=document.getElementById('o-emisora').value.trim().toUpperCase();const efectivo=getEfectivoActual();const label=document.getElementById('o-poder-label');const val=document.getElementById('o-poder-val');const bar=document.getElementById('o-poder-bar');if(tipo==='compra'){label.textContent='DISPONIBLE PARA COMPRAR';val.textContent='$'+efectivo.toLocaleString('es-MX',{minimumFractionDigits:2,maximumFractionDigits:2});const pct=S.capitalInicial>0?Math.min(efectivo/S.capitalInicial,1):1;bar.style.width=(pct*100)+'%';bar.style.background=pct>0.5?'var(--grn)':pct>0.2?'var(--amb)':'var(--red)';}else{const tits=ticker?getTitulosActuales(ticker):0;const precio=parseFloat(document.getElementById('o-precio').value)||0;label.textContent=`POSICION DISPONIBLE (${ticker||'&mdash;'})`;val.textContent=tits>0?tits.toLocaleString('es-MX')+' titulos':'Sin posicion';bar.style.width=tits>0?'100%':'0%';bar.style.background='var(--accent)';}}
-function onTipoChange(){const tipo=document.getElementById('o-tipo').value;const montoBox=document.getElementById('o-monto-box');const titulosInput=document.getElementById('o-titulos');if(tipo==='venta'){montoBox.style.display='none';titulosInput.placeholder='Titulos a vender';const fecha=document.getElementById('o-fecha').value;const fechaV0=S.fechaGestion||S.fechaInicio;if(S.fechaEntrega&&fechaV0&&fecha>=S.fechaEntrega&&fecha<fechaV0){document.getElementById('o-com').value=0;document.getElementById('o-com').style.background='var(--grn2)';}}else{montoBox.style.display='';titulosInput.placeholder='Auto-calculado';document.getElementById('o-com').value=S.comisionDefault||0.30;document.getElementById('o-com').style.background='';}updatePoderBar();}
+function getTítulosActuales(ticker){const pos=buildPos();return pos[ticker]?.titulos||0;}
+function updatePoderBar(){const tipo=document.getElementById('o-tipo').value;const ticker=document.getElementById('o-emisora').value.trim().toUpperCase();const efectivo=getEfectivoActual();const label=document.getElementById('o-poder-label');const val=document.getElementById('o-poder-val');const bar=document.getElementById('o-poder-bar');if(tipo==='compra'){label.textContent='DISPONIBLE PARA COMPRAR';val.textContent='$'+efectivo.toLocaleString('es-MX',{minimumFractionDigits:2,maximumFractionDigits:2});const pct=S.capitalInicial>0?Math.min(efectivo/S.capitalInicial,1):1;bar.style.width=(pct*100)+'%';bar.style.background=pct>0.5?'var(--grn)':pct>0.2?'var(--amb)':'var(--red)';}else{const tits=ticker?getTítulosActuales(ticker):0;const precio=parseFloat(document.getElementById('o-precio').value)||0;label.textContent=`POSICION DISPONIBLE (${ticker||'&mdash;'})`;val.textContent=tits>0?tits.toLocaleString('es-MX')+' titulos':'Sin posicion';bar.style.width=tits>0?'100%':'0%';bar.style.background='var(--accent)';}}
+function onTipoChange(){const tipo=document.getElementById('o-tipo').value;const montoBox=document.getElementById('o-monto-box');const titulosInput=document.getElementById('o-titulos');if(tipo==='venta'){montoBox.style.display='none';titulosInput.placeholder='Títulos a vender';const fecha=document.getElementById('o-fecha').value;const fechaV0=S.fechaGestion||S.fechaInicio;if(S.fechaEntrega&&fechaV0&&fecha>=S.fechaEntrega&&fecha<fechaV0){document.getElementById('o-com').value=0;document.getElementById('o-com').style.background='var(--grn2)';}}else{montoBox.style.display='';titulosInput.placeholder='Auto-calculado';document.getElementById('o-com').value=S.comisionDefault||0.30;document.getElementById('o-com').style.background='';}updatePoderBar();}
 function onMontoInput(){const monto=parseFloat(document.getElementById('o-monto').value)||0;const precio=parseFloat(document.getElementById('o-precio').value)||0;if(monto>0&&precio>0){const titulos=Math.floor(monto/precio);document.getElementById('o-titulos').value=titulos>0?titulos:'';}else{document.getElementById('o-titulos').value='';}calcRes();}
-function onTitulosInput(){const titulos=parseInt(document.getElementById('o-titulos').value)||0;const precio=parseFloat(document.getElementById('o-precio').value)||0;if(titulos>0&&precio>0)document.getElementById('o-monto').value=(titulos*precio).toFixed(2);calcRes();}
-function setPct(pct){const tipo=document.getElementById('o-tipo').value;const precio=parseFloat(document.getElementById('o-precio').value)||0;if(precio<=0){document.getElementById('m-alert').innerHTML='<div class="alert a-err">Selecciona una emisora y espera a que cargue el precio.</div>';return;}if(tipo==='compra'){const efectivo=getEfectivoActual();const monto=efectivo*pct;const titulos=Math.floor(monto/precio);document.getElementById('o-monto').value=monto.toFixed(2);document.getElementById('o-titulos').value=titulos>0?titulos:'';}else{const ticker=document.getElementById('o-emisora').value.trim().toUpperCase();const titsDisp=getTitulosActuales(ticker);const titulos=Math.floor(titsDisp*pct);document.getElementById('o-titulos').value=titulos>0?titulos:'';}calcRes();}
+function onTítulosInput(){const titulos=parseInt(document.getElementById('o-titulos').value)||0;const precio=parseFloat(document.getElementById('o-precio').value)||0;if(titulos>0&&precio>0)document.getElementById('o-monto').value=(titulos*precio).toFixed(2);calcRes();}
+function setPct(pct){const tipo=document.getElementById('o-tipo').value;const precio=parseFloat(document.getElementById('o-precio').value)||0;if(precio<=0){document.getElementById('m-alert').innerHTML='<div class="alert a-err">Selecciona una emisora y espera a que cargue el precio.</div>';return;}if(tipo==='compra'){const efectivo=getEfectivoActual();const monto=efectivo*pct;const titulos=Math.floor(monto/precio);document.getElementById('o-monto').value=monto.toFixed(2);document.getElementById('o-titulos').value=titulos>0?titulos:'';}else{const ticker=document.getElementById('o-emisora').value.trim().toUpperCase();const titsDisp=getTítulosActuales(ticker);const titulos=Math.floor(titsDisp*pct);document.getElementById('o-titulos').value=titulos>0?titulos:'';}calcRes();}
 function openOrdenModal(){document.getElementById('o-fecha').value=today();document.getElementById('o-com').value=S.comisionDefault;['o-emisora','o-titulos','o-precio','o-razon'].forEach(id=>document.getElementById(id).value='');document.getElementById('o-info').textContent='';document.getElementById('o-resumen').style.display='none';document.getElementById('o-ps').innerHTML='';document.getElementById('m-alert').innerHTML='';document.getElementById('m-orden').classList.add('open');}
 function regOrden(){
   const tipo=document.getElementById('o-tipo').value;const fecha=document.getElementById('o-fecha').value;const ticker=document.getElementById('o-emisora').value.trim().toUpperCase();const titulos=parseInt(document.getElementById('o-titulos').value);const precio=parseFloat(document.getElementById('o-precio').value);const comPct=parseFloat(document.getElementById('o-com').value)/100;const razon=document.getElementById('o-razon').value.trim();const al=document.getElementById('m-alert');
@@ -1286,7 +1339,7 @@ function delOrden(i){if(!confirm('Eliminar esta orden?'))return;S.ordenes.splice
 function renderOPSection(op){
   if(!op.length)return'';
   const rows=op.map(function(o){const pill=o.tipo==='compra'?'<span class="pill p-buy">COMPRA</span>':'<span class="pill p-sell">VENTA</span>';const nm=(UNIVERSO.find(function(e){return e.t===o.ticker;})||{}).n||o.ticker;return['<tr>','<td class="mono">'+o.fecha+'</td>','<td>'+pill+'</td>','<td class="lbl">'+nm+'</td>','<td class="mono">'+o.titulos.toLocaleString('es-MX')+'</td>','<td class="mono">$'+f2(o.precio,4)+'</td>','<td class="mono">'+fm(o.titulos*o.precio)+'</td>','<td class="dim" style="font-size:11px">'+(o.razon||'&mdash;')+'</td>','<td><div style="display:flex;gap:6px">','<button class="btn btn-sm" style="border-color:var(--grn);color:var(--grn)" onclick="openEjecutarOP(&quot;'+o.id+'&quot;)">&#10003; Ejecutar</button>','<button class="btn btn-sm" onclick="openEditarOP(&quot;'+o.id+'&quot;)">&#9998; Editar</button>','<button class="btn btn-sm" style="border-color:var(--red);color:var(--red)" onclick="cancelarOP(&quot;'+o.id+'&quot;)">&#10005; Cancelar</button>','</div></td>','</tr>'].join('');}).join('');
-  return['<div class="card" style="border-left:4px solid var(--amb)">','<div class="sec-h">','<div class="sec-h-bar" style="background:var(--amb)"></div>','<div class="sec-h-text">Ordenes en proceso <span style="background:var(--amb);color:#fff;border-radius:10px;padding:1px 8px;font-size:11px;margin-left:6px">'+op.length+'</span></div>','<span class="sec-h-sub">Pendientes de ejecucion &mdash; no afectan posiciones</span>','</div>','<div class="tw"><table><thead><tr><th>Fecha</th><th>Tipo</th><th>Ticker</th><th>Titulos</th><th>Precio ref.</th><th>Monto est.</th><th>Razon</th><th>Acciones</th></tr></thead><tbody>'+rows+'</tbody></table></div>','</div>'].join('');
+  return['<div class="card" style="border-left:4px solid var(--amb)">','<div class="sec-h">','<div class="sec-h-bar" style="background:var(--amb)"></div>','<div class="sec-h-text">Ordenes en proceso <span style="background:var(--amb);color:#fff;border-radius:10px;padding:1px 8px;font-size:11px;margin-left:6px">'+op.length+'</span></div>','<span class="sec-h-sub">Pendientes de ejecucion &mdash; no afectan posiciones</span>','</div>','<div class="tw"><table><thead><tr><th>Fecha</th><th>Tipo</th><th>Ticker</th><th>Títulos</th><th>Precio ref.</th><th>Monto est.</th><th>Razón</th><th>Acciones</th></tr></thead><tbody>'+rows+'</tbody></table></div>','</div>'].join('');
 }
 function getOP(id){return(S.ordenesProceso||[]).find(o=>o.id===id);}
 function cancelarOP(id){if(!confirm('Cancelar esta orden?'))return;const op=getOP(id);if(!op)return;op.estado='cancelada';save();go('ordenes');}
@@ -1301,7 +1354,7 @@ function openEditarOP(id){
   document.getElementById('op-edit-footer').innerHTML=`<button class="btn" onclick="closeModal('m-op-edit')">Cancelar</button><button class="btn" onclick="addEjecucion('${id}')" style="border-color:var(--blue);color:var(--blue)">+ Agregar tramo</button><button class="btn btn-p" onclick="guardarEjecucionesOP('${id}')">Confirmar ejecucion</button>`;
   document.getElementById('m-op-edit').classList.add('open');
 }
-function renderEjecucionesEditor(op){const body=document.getElementById('op-edit-body');const totalEjec=(op.ejecuciones||[]).reduce((s,e)=>s+(+e.titulos||0),0);const restante=op.titulos-totalEjec;body.innerHTML=`<div style="margin-bottom:10px;font-size:12px;color:var(--txt2)">Titulos solicitados: <b>${op.titulos.toLocaleString('es-MX')}</b> &middot; Ejecutados: <b style="color:${totalEjec===op.titulos?'var(--grn)':'var(--amb)'}">${totalEjec.toLocaleString('es-MX')}</b> &middot; Pendiente: <b style="color:${restante===0?'var(--grn)':'var(--red)'}">${restante.toLocaleString('es-MX')}</b></div><table style="width:100%;font-size:12px"><thead><tr><th style="text-align:left;padding:4px 8px;color:var(--txt3);font-weight:600">Titulos</th><th style="text-align:left;padding:4px 8px;color:var(--txt3);font-weight:600">Precio</th><th style="text-align:left;padding:4px 8px;color:var(--txt3);font-weight:600">Fecha</th><th></th></tr></thead><tbody id="ejec-rows">${(op.ejecuciones||[]).map((e,i)=>`<tr><td style="padding:4px 8px"><input type="number" id="ejec-t-${i}" value="${e.titulos}" min="1" style="width:90px"></td><td style="padding:4px 8px"><input type="number" id="ejec-p-${i}" value="${e.precio}" step="0.0001" min="0" style="width:100px"></td><td style="padding:4px 8px"><input type="date" id="ejec-f-${i}" value="${e.fecha||op.fecha}" style="width:130px"></td><td style="padding:4px 8px">${op.ejecuciones.length>1?`<button class="btn btn-sm" style="color:var(--red);border-color:var(--red)" onclick="removeEjecucion(${i})">&#10005;</button>`:''}</td></tr>`).join('')}</tbody></table>`;}
+function renderEjecucionesEditor(op){const body=document.getElementById('op-edit-body');const totalEjec=(op.ejecuciones||[]).reduce((s,e)=>s+(+e.titulos||0),0);const restante=op.titulos-totalEjec;body.innerHTML=`<div style="margin-bottom:10px;font-size:12px;color:var(--txt2)">Títulos solicitados: <b>${op.titulos.toLocaleString('es-MX')}</b> &middot; Ejecutados: <b style="color:${totalEjec===op.titulos?'var(--grn)':'var(--amb)'}">${totalEjec.toLocaleString('es-MX')}</b> &middot; Pendiente: <b style="color:${restante===0?'var(--grn)':'var(--red)'}">${restante.toLocaleString('es-MX')}</b></div><table style="width:100%;font-size:12px"><thead><tr><th style="text-align:left;padding:4px 8px;color:var(--txt3);font-weight:600">Títulos</th><th style="text-align:left;padding:4px 8px;color:var(--txt3);font-weight:600">Precio</th><th style="text-align:left;padding:4px 8px;color:var(--txt3);font-weight:600">Fecha</th><th></th></tr></thead><tbody id="ejec-rows">${(op.ejecuciones||[]).map((e,i)=>`<tr><td style="padding:4px 8px"><input type="number" id="ejec-t-${i}" value="${e.titulos}" min="1" style="width:90px"></td><td style="padding:4px 8px"><input type="number" id="ejec-p-${i}" value="${e.precio}" step="0.0001" min="0" style="width:100px"></td><td style="padding:4px 8px"><input type="date" id="ejec-f-${i}" value="${e.fecha||op.fecha}" style="width:130px"></td><td style="padding:4px 8px">${op.ejecuciones.length>1?`<button class="btn btn-sm" style="color:var(--red);border-color:var(--red)" onclick="removeEjecucion(${i})">&#10005;</button>`:''}</td></tr>`).join('')}</tbody></table>`;}
 function addEjecucion(id){const op=getOP(id);if(!op)return;syncEjecuciones(op);op.ejecuciones.push({titulos:'',precio:'',fecha:op.fecha});renderEjecucionesEditor(op);document.getElementById('op-edit-footer').innerHTML=`<button class="btn" onclick="closeModal('m-op-edit')">Cancelar</button><button class="btn" onclick="addEjecucion('${id}')" style="border-color:var(--blue);color:var(--blue)">+ Agregar tramo</button><button class="btn btn-p" onclick="guardarEjecucionesOP('${id}')">Confirmar ejecucion</button>`;}
 function removeEjecucion(idx){const op=(S.ordenesProceso||[]).find(o=>o.estado==='proceso'&&o.ejecuciones&&o.ejecuciones.length>idx);if(!op)return;syncEjecuciones(op);op.ejecuciones.splice(idx,1);renderEjecucionesEditor(op);}
 function syncEjecuciones(op){(op.ejecuciones||[]).forEach((_,i)=>{op.ejecuciones[i].titulos=parseInt(document.getElementById('ejec-t-'+i)?.value)||0;op.ejecuciones[i].precio=parseFloat(document.getElementById('ejec-p-'+i)?.value)||0;op.ejecuciones[i].fecha=document.getElementById('ejec-f-'+i)?.value||op.fecha;});}
@@ -1316,14 +1369,42 @@ function confirmarOP(id){
 async function openPreciosDia(){const d=new Date().toISOString().split('T')[0];document.getElementById('pdia-fecha').value=d;document.getElementById('pdia-data').value='';document.getElementById('pdia-preview').innerHTML='';document.getElementById('pdia-alert').innerHTML='';document.getElementById('m-precio-dia').classList.add('open');document.getElementById('pdia-data').oninput=previewPreciosDia;}
 
 // ── Parser universal de precios ──────────────────────────────────────────────
+function isValidYMD(y,m,d){
+  const yy=Number(y),mm=Number(m),dd=Number(d);
+  if(!Number.isInteger(yy)||!Number.isInteger(mm)||!Number.isInteger(dd))return false;
+  if(mm<1||mm>12||dd<1||dd>31)return false;
+  const dt=new Date(Date.UTC(yy,mm-1,dd));
+  return dt.getUTCFullYear()===yy&&dt.getUTCMonth()+1===mm&&dt.getUTCDate()===dd;
+}
+function toISODate(y,m,d){
+  return `${String(y).padStart(4,'0')}-${String(m).padStart(2,'0')}-${String(d).padStart(2,'0')}`;
+}
 function parseDate(s){
   if(!s)return null;
-  s=s.trim();
-  if(/^\d{4}-\d{2}-\d{2}$/.test(s))return s;
-  const m=s.match(/^(\d{1,2})\/(\d{1,2})\/(\d{4})$/);
-  if(m)return`${m[3]}-${m[1].padStart(2,'0')}-${m[2].padStart(2,'0')}`;
-  const m2=s.match(/^(\d{1,2})-(\d{1,2})-(\d{4})$/);
-  if(m2)return`${m2[3]}-${m2[1].padStart(2,'0')}-${m2[2].padStart(2,'0')}`;
+  s=String(s).trim();
+  let m=s.match(/^(\d{4})-(\d{2})-(\d{2})$/);
+  if(m){
+    const y=+m[1],a=+m[2],b=+m[3];
+    if(isValidYMD(y,a,b))return toISODate(y,a,b);
+    if(a>12&&b<=12&&isValidYMD(y,b,a))return toISODate(y,b,a);
+    return null;
+  }
+  m=s.match(/^(\d{1,2})-(\d{1,2})-(\d{4})$/);
+  if(m){
+    const d=+m[1],mo=+m[2],y=+m[3];
+    if(isValidYMD(y,mo,d))return toISODate(y,mo,d);
+    if(isValidYMD(y,d,mo))return toISODate(y,d,mo);
+    return null;
+  }
+  m=s.match(/^(\d{1,2})\/(\d{1,2})\/(\d{4})$/);
+  if(m){
+    const a=+m[1],b=+m[2],y=+m[3];
+    if(a>12&&isValidYMD(y,b,a))return toISODate(y,b,a);
+    if(b>12&&isValidYMD(y,a,b))return toISODate(y,a,b);
+    if(isValidYMD(y,b,a))return toISODate(y,b,a);
+    if(isValidYMD(y,a,b))return toISODate(y,a,b);
+    return null;
+  }
   return null;
 }
 
@@ -1455,7 +1536,7 @@ function guardarPreciosDia(){
     }
   }
   for(const fecha of result.fechas){if(!ALL_DATES.includes(fecha))ALL_DATES.push(fecha);}
-  ALL_DATES.sort();
+  ALL_DATES=[...new Set(ALL_DATES.map(d=>parseDate(d)).filter(Boolean))].sort();
   // Recompute benchmarkInicial from MEXTRAC09 at fechaInicio (in case new MEXTRAC prices were loaded)
   if(S.fechaInicio&&S.preciosOverlay&&S.preciosOverlay['MEXTRAC09']){
     const mexDB=Object.assign({},PRICE_DB['MEXTRAC09']||{},S.preciosOverlay['MEXTRAC09']||{});
@@ -1475,7 +1556,7 @@ function guardarPreciosDia(){
       const allDts2=Object.keys(mexDB2).sort();
       if(allDts2.length){
         const last5=allDts2.slice(-5).reverse();
-        navEl.innerHTML='<div style="margin-bottom:4px;font-weight:600;color:var(--txt2)">Ultimos precios MEXTRAC09 cargados:</div><div style="line-height:2">'+last5.map((d,i)=>`<span style="display:inline-flex;align-items:center;gap:6px;margin-right:10px"><b style="font-family:var(--mono);color:${i===0?'var(--accent)':'var(--txt)'}">${d}</b><span style="color:${i===0?'var(--accent)':'var(--txt2)'}">$${mexDB2[d].toFixed(4)}</span>${i===0?' <span style="background:var(--accent);color:#fff;font-size:9px;padding:1px 5px;border-radius:3px">RECIENTE</span>':''}</span>`).join('')+'</div>';
+        navEl.innerHTML='<div style="margin-bottom:4px;font-weight:600;color:var(--txt2)">Últimos precios MEXTRAC09 cargados:</div><div style="line-height:2">'+last5.map((d,i)=>`<span style="display:inline-flex;align-items:center;gap:6px;margin-right:10px"><b style="font-family:var(--mono);color:${i===0?'var(--accent)':'var(--txt)'}">${d}</b><span style="color:${i===0?'var(--accent)':'var(--txt2)'}">$${mexDB2[d].toFixed(4)}</span>${i===0?' <span style="background:var(--accent);color:#fff;font-size:9px;padding:1px 5px;border-radius:3px">RECIENTE</span>':''}</span>`).join('')+'</div>';
       }
     }
   }catch(e){}
@@ -1502,7 +1583,7 @@ function delFlujo(i){if(!confirm('Eliminar este flujo?'))return;S.flujos.splice(
 function updateBenchPreview(fecha){if(!fecha)return;const mexDB={...(PRICE_DB['MEXTRAC09']||{}),...(S.preciosOverlay?.['MEXTRAC09']||{})};const mexDates=Object.keys(mexDB).sort();let benchDate=null;for(const d of mexDates){if(d<=fecha)benchDate=d;else break;}if(!benchDate&&mexDates.length)benchDate=mexDates[mexDates.length-1];const price=benchDate?mexDB[benchDate]:null;const el=document.getElementById('bench-auto-display');if(el){if(price){el.innerHTML=`$${price.toFixed(4)} <span style="font-size:11px;color:var(--txt3)">(${benchDate})</span>`;el.style.color='var(--accent)';S.benchmarkInicial=price;}else{el.innerHTML='<span style="color:var(--red)">Sin precio disponible &mdash; carga precios para esta fecha primero</span>';el.style.color='var(--red)';}}}
 function saveConfig(){
   const cap=parseFloat(document.getElementById('c-cap').value);const fecha=document.getElementById('c-fecha').value;const com=parseFloat(document.getElementById('c-com').value)||0.30;
-  if(!cap||cap<=0){alert('Capital invalido.');return;}if(!fecha){alert('Ingresa la fecha de inicio de gestion.');return;}
+  if(!cap||cap<=0){alert('Capital invalido.');return;}if(!fecha){alert('Ingresa la fecha de inicio de gestión.');return;}
   const _todayLimit=new Date().toISOString().split('T')[0];
   if(fecha>_todayLimit){alert('La fecha de inicio no puede ser en el futuro.\nLas métricas empezarán automáticamente cuando llegue esa fecha.');return;}
   const mexDB={...(PRICE_DB['MEXTRAC09']||{}),...(S.preciosOverlay?.['MEXTRAC09']||{})};const mexDates=Object.keys(mexDB).sort();let benchDate=null;for(const d of mexDates){if(d<=fecha)benchDate=d;else break;}
@@ -1572,11 +1653,11 @@ function pgEstadisticos(){
   <div class="card">
     <div class="sec-h"><div class="sec-h-bar" style="background:var(--accent)"></div><div class="sec-h-text">Medidas absolutas &mdash; Historicas</div></div>
     <div class="sg3" style="gap:12px">
-      ${miStat(e?fp(m.rendAcum):'&mdash;','Rend. acumulado portafolio','Desde inicio gestion',m.rendAcum>=0?'var(--grn)':'var(--red)')}
+      ${miStat(e?fp(m.rendAcum):'&mdash;','Rend. acumulado portafolio','Desde inicio gestión',m.rendAcum>=0?'var(--grn)':'var(--red)')}
       ${miStat(e?fp(irtLast):'&mdash;','IRT modificado','Incl. dividendos reinvertidos',irtLast>=0?'var(--grn)':'var(--red)')}
       ${miStat(e?f2(m.stdDev)+'%':'&mdash;','Desv. estandar (anual.)','Volatilidad absoluta',m.stdDev>25?'var(--red)':m.stdDev>15?'var(--amb)':'var(--grn)')}
       ${miStat(e?f2(sharpe):'&mdash;','Retorno ajustado por riesgo','Sharpe ratio (sin tasa libre)',sharpe>1?'var(--grn)':sharpe>0?'var(--amb)':'var(--red)')}
-      ${miStat(e?f2(m.varH)+'%':'&mdash;','VaR historico 95% diario','Percentil 5% retornos hist.','var(--red)')}
+      ${miStat(e?f2(m.varH)+'%':'&mdash;','VaR histórico 95% diario','Percentil 5% retornos hist.','var(--red)')}
       ${miStat(e?('-'+f2(m.stdDev/Math.sqrt(252)*1.645))+'%':'&mdash;','VaR parametrico 95% diario','Z=1.645 x sigma diaria','var(--red)')}
     </div>
   </div>
@@ -1584,11 +1665,11 @@ function pgEstadisticos(){
     <div class="sec-h"><div class="sec-h-bar" style="background:var(--purple)"></div><div class="sec-h-text">Medidas relativas &mdash; Historicas</div></div>
     <div class="sg3" style="gap:12px">
       ${miStat(e?fp(m.retActivo):'&mdash;','Retorno activo acumulado','Alpha generado vs MEXTRAC',m.retActivo>=0?'var(--grn)':'var(--red)')}
-      ${miStat(e?fp(m.retActivoSem):'&mdash;','Retorno activo semanal','Alpha ultima semana',m.retActivoSem>=0?'var(--grn)':'var(--red)')}
+      ${miStat(e?fp(m.retActivoSem):'&mdash;','Retorno activo semanal','Alpha última semana',m.retActivoSem>=0?'var(--grn)':'var(--red)')}
       ${miStat(e?f2(m.te)+'%':'&mdash;','Tracking error (anual.)','Desv. estandar retorno activo','var(--txt2)')}
-      ${miStat(e?f2(m.ir):'&mdash;','Razon de informacion','Ret. activo / Tracking error',m.ir>0.5?'var(--grn)':m.ir>0?'var(--amb)':'var(--red)')}
+      ${miStat(e?f2(m.ir):'&mdash;','Razón de informacion','Ret. activo / Tracking error',m.ir>0.5?'var(--grn)':m.ir>0?'var(--amb)':'var(--red)')}
       ${miStat(e?f2(m.hitRatio)+'%':'&mdash;','Hit Ratio','Dias ganados al benchmark',m.hitRatio>=50?'var(--grn)':'var(--red)')}
-      ${miStat(e?f2(m.beta):'&mdash;','Beta historico','vs MEXTRAC',m.beta>1.2?'var(--red)':m.beta<0.8?'var(--amb)':'var(--grn)')}
+      ${miStat(e?f2(m.beta):'&mdash;','Beta histórico','vs MEXTRAC',m.beta>1.2?'var(--red)':m.beta<0.8?'var(--amb)':'var(--grn)')}
       ${miStat(m.rendBench!=null?fp(m.rendBench):'&mdash;','Rend. MEXTRAC acum.','Desde '+m.fechaRef+' a hoy',m.rendBench!=null&&m.rendBench>=0?'var(--grn)':'var(--red)')}
     </div>
   </div>
@@ -1596,12 +1677,12 @@ function pgEstadisticos(){
     <div class="sec-h"><div class="sec-h-bar" style="background:var(--amb)"></div><div class="sec-h-text">Medidas prospectivas &mdash; Con posicion actual</div></div>
     <div class="sg3" style="gap:12px">
       ${miStat(prospStdAnn!=null?f2(prospStdAnn)+'%':'&mdash;','Desv. estandar prospectiva','Con composicion actual',prospStdAnn&&prospStdAnn>25?'var(--red)':prospStdAnn&&prospStdAnn>15?'var(--amb)':'var(--grn)')}
-      ${miStat(prospVarH!=null?f2(prospVarH)+'%':'&mdash;','VaR historico prospectivo','Percentil 5% con posicion actual','var(--red)')}
+      ${miStat(prospVarH!=null?f2(prospVarH)+'%':'&mdash;','VaR histórico prospectivo','Percentil 5% con posicion actual','var(--red)')}
       ${miStat(prospVarP!=null?f2(prospVarP)+'%':'&mdash;','VaR parametrico prospectivo','Con sigma prospectiva','var(--red)')}
     </div>
   </div>
   <div class="card">
-    <div class="sec-h"><div class="sec-h-bar"></div><div class="sec-h-text">Composicion del portafolio &mdash; Semana anterior vs. actual</div></div>
+    <div class="sec-h"><div class="sec-h-bar"></div><div class="sec-h-text">Composición del portafolio &mdash; Semana anterior vs. actual</div></div>
     <div class="tw"><table><thead><tr><th>Componente</th><th>Valor sem. ant.</th><th>% sem. ant.</th><th>Valor actual</th><th>% actual</th><th>Variacion (pp)</th></tr></thead><tbody>${compRows}</tbody></table></div>
     ${comp.prev&&comp.curr?`<div style="display:flex;gap:16px;margin-top:10px;font-size:12px;color:var(--txt3)"><span>Semana anterior: <b style="color:var(--txt)">${comp.prev.date}</b></span><span>Actual: <b style="color:var(--txt)">${comp.curr.date}</b></span></div>`:''}
   </div>`;
@@ -1623,7 +1704,7 @@ function pgAtribucion(){
       <div style="display:flex;gap:8px;align-items:center;flex-shrink:0">
         <span style="font-size:11px;color:var(--txt3)">Periodo:</span>
         <select id="attr-period" onchange="renderAtribucion()" style="width:auto;padding:4px 10px;font-size:12px">
-          <option value="acum">Acumulado (gestion)</option>
+          <option value="acum">Acumulado (gestión)</option>
           <option value="week">Semanal</option>
           <option value="day">Diario (ultimo dia)</option>
         </select>
@@ -1804,7 +1885,7 @@ function renderAtribucion(){
   // Summary cards
   document.getElementById('attr-summary-cards').innerHTML=`
     ${stCard(pn(d.rPort),'Retorno fondo','Periodo seleccionado',d.rPort>=0?'stat-grn':'stat-red')}
-    ${stCard(pn(d.rBench),'Retorno benchmark','MEXTRAC09 mismo periodo',d.rBench>=0?'stat-grn':'stat-red')}
+    ${stCard(pn(d.rBench),'Retorno benchmark','MEXTRAC09 mismo período',d.rBench>=0?'stat-grn':'stat-red')}
     ${stCard(pn(d.activeRet),'Retorno activo','Fondo minus MEXTRAC',d.activeRet>=0?'stat-grn':'stat-red')}
     ${stCard(pn(d.totAA),'Asset Allocation','Efecto asignacion sectorial',d.totAA>=0?'stat-grn':'stat-red')}
   `;
@@ -1914,15 +1995,17 @@ function renderDecomposedDonuts(m){
 // EXCEL EXPORT
 // ═══════════════════════════════════════════════════════════════════════════
 async function exportToExcel(){
-  const btn=event.target;btn.textContent='Generando...';btn.disabled=true;
+  const btn=event&&event.target?event.target:null;
+  if(btn){btn.textContent='Generando...';btn.disabled=true;}
   try{
     if(typeof XLSX==='undefined'){
       await new Promise((res,rej)=>{const s=document.createElement('script');s.src='https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js';s.onload=res;s.onerror=rej;document.head.appendChild(s);});
     }
     const wb=XLSX.utils.book_new();
+    const ord=S.ordenes||[];
     
-    // Sheet 1: Ordenes
-    const ordRows=[['Fecha','Tipo','Ticker','Titulos','Precio','Valor','Comision','IVA','Razon','Fase']];
+    // Sheet 1: Órdenes
+    const ordRows=[['Fecha','Tipo','Ticker','Títulos','Precio','Valor','Comisión','IVA','Razón','Fase']];
     for(const o of ord){
       ordRows.push([o.fecha,o.tipo,o.ticker,o.titulos,o.precio,o.titulos*o.precio,o.comision||0,o.iva||0,o.razon||'',o.isEtf?'ETF':'Accion']);
     }
@@ -1930,7 +2013,7 @@ async function exportToExcel(){
     
     // Sheet 2: Posicion actual
     const pos=buildPos();const m=calcMetrics();
-    const posRows=[['Ticker','Nombre','Sector','Titulos','Precio Costo','Precio Actual','Valor Mercado','P&L $','P&L %','% Fondo']];
+    const posRows=[['Ticker','Nombre','Sector','Títulos','Precio Costo','Precio Actual','Valor Mercado','P&L $','P&L %','% Fondo']];
     for(const t in pos){
       const p=pos[t];const vm=p.titulos*p.precioActual;const pp=p.costoTotal>0?p.costoTotal/p.titulos:0;
       // Rend% from fechaInicio price (same anchor as portfolio metrics)
@@ -1957,15 +2040,15 @@ async function exportToExcel(){
       ['Metrica','Valor','Descripcion'],
       ['Capital Inicial',S.capitalInicial,'MXN asignado por BBVA'],
       ['Valor Fondo',+m.totalFondo.toFixed(2),'Portafolio + efectivo actual'],
-      ['Rend. Acumulado %',+m.rendAcum.toFixed(4),'Desde fecha inicio gestion'],
-      ['Rend. Benchmark %',+m.rendBench.toFixed(4),'MEXTRAC09 mismo periodo'],
-      ['Retorno Activo %',+m.retActivo.toFixed(4),'Alpha generado'],
+      ['Rend. Acumulado %',+m.rendAcum.toFixed(4),'Desde fecha inicio gestión'],
+      ['Rend. Benchmark %',m.rendBench!=null?+m.rendBench.toFixed(4):'','MEXTRAC09 mismo período'],
+      ['Retorno Activo %',m.retActivo!=null?+m.retActivo.toFixed(4):'','Alpha generado'],
       ['Desv. Estandar %',+m.stdDev.toFixed(4),'Anualizada'],
       ['Tracking Error %',+m.te.toFixed(4),'Anualizado'],
       ['Information Ratio',+m.ir.toFixed(4),'Retorno activo / TE'],
       ['Beta vs MEXTRAC',+m.beta.toFixed(4),'Sensibilidad al mercado'],
       ['Hit Ratio %',+m.hitRatio.toFixed(2),'Dias ganados al benchmark'],
-      ['VaR 5% diario %',+m.varH.toFixed(4),'Value at Risk historico 5%'],
+      ['VaR 5% diario %',+m.varH.toFixed(4),'Value at Risk histórico 5%'],
       ['Efectivo MXN',+m.efectivo.toFixed(2),'Capital no invertido'],
       ['Rend. semanal fondo %',+m.rSem.toFixed(4),'Semana actual'],
       ['Rend. semanal bench %',+m.rbSem.toFixed(4),'MEXTRAC semana actual'],
@@ -1992,9 +2075,9 @@ async function exportToExcel(){
     
     const date=new Date().toISOString().split('T')[0];
     XLSX.writeFile(wb,`ResearchRockets_SSOT_${date}.xlsx`);
-    btn.textContent='✓ Exportado';setTimeout(()=>{btn.textContent='⬇ Exportar Excel';btn.disabled=false;},2500);
+    if(btn){btn.textContent='✓ Exportado';setTimeout(()=>{btn.textContent='⬇ Exportar Excel';btn.disabled=false;},2500);}
   }catch(e){
-    console.error(e);btn.textContent='Error al exportar';btn.disabled=false;
+    console.error(e);if(btn){btn.textContent='Error al exportar';btn.disabled=false;}
   }
 }
 
