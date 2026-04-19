@@ -1773,15 +1773,16 @@ function pgAtribucion(){
   </div>`;
 }
 
+
 function calcAtribucion(period){
   const m=calcMetrics();
   const hist=m.hist||[];
   if(hist.length<2)return null;
 
-  let startH=null,endH=null;
+  let startIdx=0,endIdx=hist.length-1;
   if(period==='day'){
-    startH=hist[Math.max(0,hist.length-2)];
-    endH=hist[hist.length-1];
+    startIdx=Math.max(0,hist.length-2);
+    endIdx=hist.length-1;
   }else if(period==='week'){
     const _ld=parseISODate(hist[hist.length-1].date);
     if(_ld){
@@ -1790,133 +1791,223 @@ function calcAtribucion(period){
       const monDate=new Date(_ld.getTime());
       monDate.setDate(monDate.getDate()-daysToMon);
       const monStr=monDate.toISOString().split('T')[0];
-      let si=null;
+      let si=0;
       for(let i=hist.length-1;i>=0;i--){
-        if(hist[i].date<monStr){si=hist[i];break;}
+        if(hist[i].date<monStr){si=i;break;}
       }
-      startH=si||hist[0];
-    }else startH=hist[0];
-    endH=hist[hist.length-1];
+      startIdx=si;
+    }else startIdx=0;
+    endIdx=hist.length-1;
   }else{
-    startH=hist[0];
-    endH=hist[hist.length-1];
+    startIdx=0;
+    endIdx=hist.length-1;
   }
+  if(endIdx<=startIdx)return null;
+
+  const startH=hist[startIdx];
+  const endH=hist[endIdx];
   if(!startH||!endH)return null;
 
-  const rPort=startH.totalFondo>0?(endH.totalFondo-startH.totalFondo)/startH.totalFondo*100:0;
-  const rBench=(startH.mexPrice&&endH.mexPrice&&startH.mexPrice>0)?(endH.mexPrice-startH.mexPrice)/startH.mexPrice*100:0;
-  const activeRet=rPort-rBench;
+  const rpTot=(startH.totalFondo>0&&endH.totalFondo!=null)?(endH.totalFondo/startH.totalFondo)-1:0;
+  const rbTot=(startH.mexPrice&&endH.mexPrice&&startH.mexPrice>0)?(endH.mexPrice/startH.mexPrice)-1:0;
+  const activeTot=rpTot-rbTot;
 
-  const posStart=buildPosAt(startH.date);
-  const snapStart=fundValueAt(startH.date);
-  const totalStart=snapStart.totalFondo;
-  if(totalStart<=0)return null;
+  const carinoFactor=(rp,rb)=>{
+    if(!Number.isFinite(rp)||!Number.isFinite(rb)) return 1;
+    if(Math.abs(rp-rb)<1e-12) return 1/(1+rp);
+    const num=Math.log(1+rp)-Math.log(1+rb);
+    const den=rp-rb;
+    return den===0?1:(num/den);
+  };
+  const K=carinoFactor(rpTot,rbTot);
 
-  const etfPosStart=posStart['MEXTRAC09'];
-  const etfValStart=etfPosStart?etfPosStart.titulos*(localPrice('MEXTRAC09',startH.date)||etfPosStart.precioActual||0):0;
-  const etfPctStart=totalStart>0?etfValStart/totalStart*100:0;
+  const buildStepAttribution=(startDate,endDate,rbStep)=>{
+    const posStart=buildPosAt(startDate);
+    const snapStart=fundValueAt(startDate);
+    const totalStart=snapStart.totalFondo||0;
+    if(totalStart<=0)return {rows:[],tickerRows:[]};
 
-  const sectorW={};
-  const sectorR={};
-  const sectorWB={};
-  const sectorRB={};
-  const totalMexW=Object.values(MEXTRAC_W).reduce((s,v)=>s+v,0);
+    const totalMexW=Object.values(MEXTRAC_W).reduce((s,v)=>s+v,0);
+    const sectorW={};
+    const sectorR={};
+    const sectorWB={};
+    const sectorRB={};
 
-  for(const t in posStart){
-    if(t==='MEXTRAC09')continue;
-    const p0=localPrice(t,startH.date);
-    const p1=localPrice(t,endH.date);
-    if(p0==null||p0<=0)continue;
-    const vm0=posStart[t].titulos*p0;
-    if(vm0<=0)continue;
-    const sec=UNIVERSO.find(u=>u.t===t)?.s||'Otros';
-    const wPct=vm0/totalStart*100;
-    const r=p1!=null?(p1-p0)/p0*100:0;
-    sectorW[sec]=(sectorW[sec]||0)+wPct;
-    if(!sectorR[sec])sectorR[sec]={sum:0,w:0};
-    sectorR[sec].sum+=wPct*r;
-    sectorR[sec].w+=wPct;
+    const etfPosStart=posStart['MEXTRAC09'];
+    const etfValStart=etfPosStart?etfPosStart.titulos*(localPrice('MEXTRAC09',startDate)||etfPosStart.precioActual||0):0;
+    const etfPctStart=totalStart>0?etfValStart/totalStart:0;
+
+    for(const t in posStart){
+      if(t==='MEXTRAC09')continue;
+      const p0=localPrice(t,startDate);
+      const p1=localPrice(t,endDate);
+      if(p0==null||p0<=0)continue;
+      const vm0=posStart[t].titulos*p0;
+      if(vm0<=0)continue;
+      const sec=UNIVERSO.find(u=>u.t===t)?.s||'Otros';
+      const w=vm0/totalStart;
+      const r=(p1!=null&&p0>0)?(p1/p0)-1:0;
+      sectorW[sec]=(sectorW[sec]||0)+w;
+      if(!sectorR[sec])sectorR[sec]={sum:0,w:0};
+      sectorR[sec].sum+=w*r;
+      sectorR[sec].w+=w;
+    }
+
+    for(const t in MEXTRAC_W){
+      const benchInsideW=(MEXTRAC_W[t]||0)/totalMexW;
+      const effectiveW=etfPctStart*benchInsideW;
+      if(effectiveW<=0)continue;
+      const p0=localPrice(t,startDate);
+      const p1=localPrice(t,endDate);
+      const sec=UNIVERSO.find(u=>u.t===t)?.s||'Otros';
+      const r=(p0!=null&&p1!=null&&p0>0)?(p1/p0)-1:0;
+      sectorW[sec]=(sectorW[sec]||0)+effectiveW;
+      if(!sectorR[sec])sectorR[sec]={sum:0,w:0};
+      sectorR[sec].sum+=effectiveW*r;
+      sectorR[sec].w+=effectiveW;
+    }
+
+    if(snapStart.efectivo>0){
+      const cashW=snapStart.efectivo/totalStart;
+      sectorW['CASH']=(sectorW['CASH']||0)+cashW;
+      if(!sectorR['CASH'])sectorR['CASH']={sum:0,w:0};
+      sectorR['CASH'].sum+=0;
+      sectorR['CASH'].w+=cashW;
+    }
+
+    for(const t in MEXTRAC_W){
+      const wb=(MEXTRAC_W[t]||0)/totalMexW;
+      const sec=UNIVERSO.find(u=>u.t===t)?.s||'Otros';
+      const p0=localPrice(t,startDate);
+      const p1=localPrice(t,endDate);
+      const r=(p0!=null&&p1!=null&&p0>0)?(p1/p0)-1:0;
+      sectorWB[sec]=(sectorWB[sec]||0)+wb;
+      if(!sectorRB[sec])sectorRB[sec]={sum:0,w:0};
+      sectorRB[sec].sum+=wb*r;
+      sectorRB[sec].w+=wb;
+    }
+
+    if(!sectorWB['CASH'])sectorWB['CASH']=0;
+    if(!sectorRB['CASH'])sectorRB['CASH']={sum:0,w:0};
+
+    const sectors=[...new Set([...Object.keys(sectorW),...Object.keys(sectorWB)])];
+    const rows=[];
+
+    for(const sec of sectors){
+      const wf=sectorW[sec]||0;
+      const wb=sectorWB[sec]||0;
+      const rf=(sectorR[sec]&&sectorR[sec].w>0)?sectorR[sec].sum/sectorR[sec].w:0;
+      const rb=(sectorRB[sec]&&sectorRB[sec].w>0)?sectorRB[sec].sum/sectorRB[sec].w:0;
+
+      const aa=(wf-wb)*(rb-rbStep);
+      const ss=wb*(rf-rb);
+      const inter=(wf-wb)*(rf-rb);
+      const total=aa+ss+inter;
+      rows.push({sec,wf,wb,rf,rb,aa,ss,inter,total});
+    }
+
+    const tickerRows=[];
+    for(const t in posStart){
+      if(t==='MEXTRAC09')continue;
+      const p0=localPrice(t,startDate);
+      const p1=localPrice(t,endDate);
+      if(p0==null||p0<=0)continue;
+      const vm0=posStart[t].titulos*p0;
+      if(vm0<=0)continue;
+      const wf=vm0/totalStart;
+      const wb=(MEXTRAC_W[t]||0)/totalMexW;
+      const sec=UNIVERSO.find(u=>u.t===t)?.s||'Otros';
+      const rf=(p1!=null&&p0>0)?(p1/p0)-1:0;
+      const rbSec=(sectorRB[sec]&&sectorRB[sec].w>0)?sectorRB[sec].sum/sectorRB[sec].w:0;
+      const selContrib=wb*(rf-rbSec);
+      tickerRows.push({ticker:t,sec,wf,wb,rf,rbSec,selContrib});
+    }
+
+    return {rows,tickerRows};
+  };
+
+  const sectorAgg={};
+  const tickerAgg={};
+
+  for(let i=startIdx+1;i<=endIdx;i++){
+    const prev=hist[i-1];
+    const curr=hist[i];
+    if(!prev||!curr||!prev.totalFondo||!prev.mexPrice||prev.mexPrice<=0)continue;
+
+    const rp=(curr.totalFondo/prev.totalFondo)-1;
+    const rb=(curr.mexPrice&&prev.mexPrice&&prev.mexPrice>0)?(curr.mexPrice/prev.mexPrice)-1:0;
+    const k=carinoFactor(rp,rb);
+    const link=(K&&Number.isFinite(K))?(k/K):1;
+
+    const step=buildStepAttribution(prev.date,curr.date,rb);
+    for(const r of step.rows){
+      if(!sectorAgg[r.sec]) sectorAgg[r.sec]={sec:r.sec,wf:0,wb:0,rf:0,rb:0,_n:0,aa:0,ss:0,inter:0,total:0};
+      const a=sectorAgg[r.sec];
+      a.wf+=r.wf;
+      a.wb+=r.wb;
+      a.rf+=r.rf;
+      a.rb+=r.rb;
+      a._n+=1;
+      a.aa+=r.aa*link;
+      a.ss+=r.ss*link;
+      a.inter+=r.inter*link;
+      a.total+=r.total*link;
+    }
+    for(const r of step.tickerRows){
+      if(!tickerAgg[r.ticker]) tickerAgg[r.ticker]={ticker:r.ticker,sec:r.sec,wf:0,wb:0,rf:0,rbSec:0,_n:0,selContrib:0};
+      const a=tickerAgg[r.ticker];
+      a.wf+=r.wf;
+      a.wb+=r.wb;
+      a.rf+=r.rf;
+      a.rbSec+=r.rbSec;
+      a._n+=1;
+      a.selContrib+=r.selContrib*link;
+    }
   }
 
-  for(const t in MEXTRAC_W){
-    const benchInsidePct=MEXTRAC_W[t]/totalMexW*100;
-    const effectiveW=etfPctStart*benchInsidePct/100;
-    if(effectiveW<=0)continue;
-    const p0=localPrice(t,startH.date);
-    const p1=localPrice(t,endH.date);
-    const sec=UNIVERSO.find(u=>u.t===t)?.s||'Otros';
-    const r=(p0!=null&&p1!=null&&p0>0)?(p1-p0)/p0*100:0;
-    sectorW[sec]=(sectorW[sec]||0)+effectiveW;
-    if(!sectorR[sec])sectorR[sec]={sum:0,w:0};
-    sectorR[sec].sum+=effectiveW*r;
-    sectorR[sec].w+=effectiveW;
-  }
+  const rows=Object.values(sectorAgg).map(r=>({
+    sec:r.sec,
+    wf:(r.wf/Math.max(r._n,1))*100,
+    wb:(r.wb/Math.max(r._n,1))*100,
+    rf:(r.rf/Math.max(r._n,1))*100,
+    rb:(r.rb/Math.max(r._n,1))*100,
+    aa:r.aa*100,
+    ss:r.ss*100,
+    inter:r.inter*100,
+    total:r.total*100
+  })).sort((a,b)=>Math.abs(b.total)-Math.abs(a.total));
 
-  if(snapStart.efectivo>0){
-    const cashW=snapStart.efectivo/totalStart*100;
-    sectorW['CASH']=(sectorW['CASH']||0)+cashW;
-    if(!sectorR['CASH'])sectorR['CASH']={sum:0,w:0};
-    sectorR['CASH'].w+=cashW;
-  }
+  const tickerRows=Object.values(tickerAgg).map(r=>({
+    ticker:r.ticker,
+    sec:r.sec,
+    wf:(r.wf/Math.max(r._n,1))*100,
+    wb:(r.wb/Math.max(r._n,1))*100,
+    rf:(r.rf/Math.max(r._n,1))*100,
+    rbSec:(r.rbSec/Math.max(r._n,1))*100,
+    selContrib:r.selContrib*100
+  })).sort((a,b)=>Math.abs(b.selContrib)-Math.abs(a.selContrib));
 
-  for(const t in MEXTRAC_W){
-    const wb=MEXTRAC_W[t]/totalMexW*100;
-    const sec=UNIVERSO.find(u=>u.t===t)?.s||'Otros';
-    const p0=localPrice(t,startH.date);
-    const p1=localPrice(t,endH.date);
-    const r=(p0!=null&&p1!=null&&p0>0)?(p1-p0)/p0*100:0;
-    sectorWB[sec]=(sectorWB[sec]||0)+wb;
-    if(!sectorRB[sec])sectorRB[sec]={sum:0,w:0};
-    sectorRB[sec].sum+=wb*r;
-    sectorRB[sec].w+=wb;
-  }
+  const totAA=rows.reduce((s,r)=>s+r.aa,0);
+  const totSS=rows.reduce((s,r)=>s+r.ss,0);
+  const totInt=rows.reduce((s,r)=>s+r.inter,0);
+  const totTotal=rows.reduce((s,r)=>s+r.total,0);
+  let residual=(activeTot*100)-totTotal;
+  if(Math.abs(residual)<1e-8) residual=0;
 
-  if(!sectorWB['CASH'])sectorWB['CASH']=0;
-  if(!sectorRB['CASH'])sectorRB['CASH']={sum:0,w:0};
-
-  const sectors=[...new Set([...Object.keys(sectorW),...Object.keys(sectorWB)])];
-  const rows=[];
-  let totAA=0,totSS=0,totInt=0,totTotal=0;
-
-  for(const sec of sectors){
-    const wf=(sectorW[sec]||0)/100;
-    const wb=(sectorWB[sec]||0)/100;
-    const rf=(sectorR[sec]&&sectorR[sec].w>0)?sectorR[sec].sum/sectorR[sec].w:0;
-    const rb=(sectorRB[sec]&&sectorRB[sec].w>0)?sectorRB[sec].sum/sectorRB[sec].w:0;
-    const aa=(wf-wb)*(rb-rBench);
-    const ss=wb*(rf-rb);
-    const inter=(wf-wb)*(rf-rb);
-    const total=aa+ss+inter;
-    totAA+=aa;
-    totSS+=ss;
-    totInt+=inter;
-    totTotal+=total;
-    rows.push({sec,wf:wf*100,wb:wb*100,rf,rb,aa,ss,inter,total});
-  }
-
-  rows.sort((a,b)=>Math.abs(b.total)-Math.abs(a.total));
-
-  const tickerRows=[];
-  for(const t in posStart){
-    if(t==='MEXTRAC09')continue;
-    const p0=localPrice(t,startH.date);
-    const p1=localPrice(t,endH.date);
-    if(p0==null||p0<=0)continue;
-    const vm0=posStart[t].titulos*p0;
-    if(vm0<=0)continue;
-    const wf=vm0/totalStart;
-    const wb=(MEXTRAC_W[t]||0)/totalMexW;
-    const sec=UNIVERSO.find(u=>u.t===t)?.s||'Otros';
-    const rf=p1!=null?(p1-p0)/p0*100:0;
-    const rbSec=(sectorRB[sec]&&sectorRB[sec].w>0)?sectorRB[sec].sum/sectorRB[sec].w:0;
-    const selContrib=wb*(rf-rbSec);
-    tickerRows.push({ticker:t,sec,wf:wf*100,wb:wb*100,rf,rbSec,selContrib});
-  }
-  tickerRows.sort((a,b)=>Math.abs(b.selContrib)-Math.abs(a.selContrib));
-
-  let residual=activeRet-totTotal;
-  if(Math.abs(residual)<1e-10) residual=0;
-  return{rPort,rBench,activeRet,totAA,totSS,totInt,totTotal,residual,rows,tickerRows,startDate:startH.date,endDate:endH.date};
+  return{
+    rPort:rpTot*100,
+    rBench:rbTot*100,
+    activeRet:activeTot*100,
+    totAA,
+    totSS,
+    totInt,
+    totTotal,
+    residual,
+    rows,
+    tickerRows,
+    startDate:startH.date,
+    endDate:endH.date
+  };
 }
 
 function renderAtribucion(){
