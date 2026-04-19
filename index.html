@@ -1883,7 +1883,7 @@ function calcAtribucion(period){
     const wb=(sectorWB[sec]||0)/100;
     const rf=(sectorR[sec]&&sectorR[sec].w>0)?sectorR[sec].sum/sectorR[sec].w:0;
     const rb=(sectorRB[sec]&&sectorRB[sec].w>0)?sectorRB[sec].sum/sectorRB[sec].w:0;
-    const aa=(wf-wb)*rb;
+    const aa=(wf-wb)*(rb-rBench);
     const ss=wb*(rf-rb);
     const inter=(wf-wb)*(rf-rb);
     const total=aa+ss+inter;
@@ -1914,7 +1914,8 @@ function calcAtribucion(period){
   }
   tickerRows.sort((a,b)=>Math.abs(b.selContrib)-Math.abs(a.selContrib));
 
-  const residual=activeRet-totTotal;
+  let residual=activeRet-totTotal;
+  if(Math.abs(residual)<1e-10) residual=0;
   return{rPort,rBench,activeRet,totAA,totSS,totInt,totTotal,residual,rows,tickerRows,startDate:startH.date,endDate:endH.date};
 }
 
@@ -2054,7 +2055,7 @@ function runBasicValidations(){
     const a=calcAtribucion('acum');
     if(a && Number.isFinite(a.activeRet) && Number.isFinite(a.totTotal)){
       const residual = Number(a.activeRet) - Number(a.totTotal);
-      if(Math.abs(residual)>0.02) alerts.push(`Residual attribution = ${residual.toFixed(4)}%`);
+      if(Math.abs(residual)>0.005) alerts.push(`Residual attribution = ${residual.toFixed(4)}%`);
     }
     return alerts;
   }catch(err){
