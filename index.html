@@ -198,7 +198,7 @@ canvas{display:block;width:100%!important}
     </div>
     <div id="o-monto-row" class="frow">
       <div class="fg" id="o-monto-box"><label class="fl">Monto a invertir ($)</label><input type="number" id="o-monto" placeholder="Ej: 500,000" min="0" step="100" oninput="onMontoInput()"></div>
-      <div class="fg"><label class="fl">T&iacute;tulos <span style="font-size:10px;color:var(--txt3)">(auto-calculado)</span></label><input type="number" id="o-titulos" placeholder="&mdash;" min="1" oninput="onTítulosInput()"></div>
+      <div class="fg"><label class="fl">T&iacute;tulos <span style="font-size:10px;color:var(--txt3)">(auto-calculado)</span></label><input type="number" id="o-titulos" placeholder="&mdash;" min="1" oninput="onTitulosInput()"></div>
     </div>
     <div class="frow">
       <div class="fg"><label class="fl" style="display:flex;align-items:center;justify-content:space-between"><span>Precio operado ($) <span id="o-ps"></span></span><button type="button" onclick="loadPrice()" style="font-size:10px;padding:2px 8px;border:1px solid var(--line2);border-radius:var(--r);background:var(--bg3);color:var(--txt2);cursor:pointer">&#8635; Actualizar</button></label><input type="number" id="o-precio" placeholder="Cargando..." step="0.0001" oninput="calcRes()"></div>
@@ -1321,7 +1321,7 @@ function getTítulosActuales(ticker){const pos=buildPos();return pos[ticker]?.ti
 function updatePoderBar(){const tipo=document.getElementById('o-tipo').value;const ticker=document.getElementById('o-emisora').value.trim().toUpperCase();const efectivo=getEfectivoActual();const label=document.getElementById('o-poder-label');const val=document.getElementById('o-poder-val');const bar=document.getElementById('o-poder-bar');if(tipo==='compra'){label.textContent='DISPONIBLE PARA COMPRAR';val.textContent='$'+efectivo.toLocaleString('es-MX',{minimumFractionDigits:2,maximumFractionDigits:2});const pct=S.capitalInicial>0?Math.min(efectivo/S.capitalInicial,1):1;bar.style.width=(pct*100)+'%';bar.style.background=pct>0.5?'var(--grn)':pct>0.2?'var(--amb)':'var(--red)';}else{const tits=ticker?getTítulosActuales(ticker):0;const precio=parseFloat(document.getElementById('o-precio').value)||0;label.textContent=`POSICION DISPONIBLE (${ticker||'&mdash;'})`;val.textContent=tits>0?tits.toLocaleString('es-MX')+' titulos':'Sin posicion';bar.style.width=tits>0?'100%':'0%';bar.style.background='var(--accent)';}}
 function onTipoChange(){const tipo=document.getElementById('o-tipo').value;const montoBox=document.getElementById('o-monto-box');const titulosInput=document.getElementById('o-titulos');if(tipo==='venta'){montoBox.style.display='none';titulosInput.placeholder='Títulos a vender';const fecha=document.getElementById('o-fecha').value;const fechaV0=S.fechaGestion||S.fechaInicio;if(S.fechaEntrega&&fechaV0&&fecha>=S.fechaEntrega&&fecha<fechaV0){document.getElementById('o-com').value=0;document.getElementById('o-com').style.background='var(--grn2)';}}else{montoBox.style.display='';titulosInput.placeholder='Auto-calculado';document.getElementById('o-com').value=S.comisionDefault||0.30;document.getElementById('o-com').style.background='';}updatePoderBar();}
 function onMontoInput(){const monto=parseFloat(document.getElementById('o-monto').value)||0;const precio=parseFloat(document.getElementById('o-precio').value)||0;if(monto>0&&precio>0){const titulos=Math.floor(monto/precio);document.getElementById('o-titulos').value=titulos>0?titulos:'';}else{document.getElementById('o-titulos').value='';}calcRes();}
-function onTítulosInput(){const titulos=parseInt(document.getElementById('o-titulos').value)||0;const precio=parseFloat(document.getElementById('o-precio').value)||0;if(titulos>0&&precio>0)document.getElementById('o-monto').value=(titulos*precio).toFixed(2);calcRes();}
+function onTitulosInput(){const titulos=parseInt(document.getElementById('o-titulos').value)||0;const precio=parseFloat(document.getElementById('o-precio').value)||0;if(titulos>0&&precio>0)document.getElementById('o-monto').value=(titulos*precio).toFixed(2);calcRes();}
 function setPct(pct){const tipo=document.getElementById('o-tipo').value;const precio=parseFloat(document.getElementById('o-precio').value)||0;if(precio<=0){document.getElementById('m-alert').innerHTML='<div class="alert a-err">Selecciona una emisora y espera a que cargue el precio.</div>';return;}if(tipo==='compra'){const efectivo=getEfectivoActual();const monto=efectivo*pct;const titulos=Math.floor(monto/precio);document.getElementById('o-monto').value=monto.toFixed(2);document.getElementById('o-titulos').value=titulos>0?titulos:'';}else{const ticker=document.getElementById('o-emisora').value.trim().toUpperCase();const titsDisp=getTítulosActuales(ticker);const titulos=Math.floor(titsDisp*pct);document.getElementById('o-titulos').value=titulos>0?titulos:'';}calcRes();}
 function openOrdenModal(){document.getElementById('o-fecha').value=today();document.getElementById('o-com').value=S.comisionDefault;['o-emisora','o-titulos','o-precio','o-razon'].forEach(id=>document.getElementById(id).value='');document.getElementById('o-info').textContent='';document.getElementById('o-resumen').style.display='none';document.getElementById('o-ps').innerHTML='';document.getElementById('m-alert').innerHTML='';document.getElementById('m-orden').classList.add('open');}
 function regOrden(){
@@ -1919,6 +1919,10 @@ function renderAtribucion(){
     <td class="mono" style="color:${cc2(d.totInt)}">${pn(d.totInt)}</td>
     <td class="mono" style="color:${cc2(d.totTotal)}">${pn(d.totTotal)}</td>
   </tr>
+  <tr style="font-weight:700">
+    <td class="lbl">RESIDUAL</td><td></td><td></td><td></td><td></td><td></td><td></td><td></td>
+    <td class="mono" style="color:${cc2(d.residual)}">${pn(d.residual)}</td>
+  </tr>
   <tr style="background:var(--accent2);font-weight:700">
     <td class="lbl" style="color:var(--accent)">RETORNO ACTIVO</td><td></td><td></td><td></td><td></td><td></td><td></td><td></td>
     <td class="mono" style="color:${cc2(d.activeRet)};font-size:14px">${pn(d.activeRet)}</td>
@@ -1991,6 +1995,29 @@ function renderDecomposedDonuts(m){
   if(leg5)leg5.innerHTML=sLabels.map((l,i)=>`<div style="display:flex;align-items:center;gap:6px"><div style="width:8px;height:8px;border-radius:2px;background:${sColors[i]};flex-shrink:0"></div><span style="color:var(--txt2)">${l}</span><span style="margin-left:auto;font-weight:600;color:var(--txt)">${(sData[i]/sTotal*100).toFixed(1)}%</span></div>`).join('');
 }
 
+
+function runBasicValidations(){
+  try{
+    const m=calcMetrics();
+    const alerts=[];
+    if(m && Number.isFinite(m.totalFondo) && m.totalFondo>0){
+      const pos=buildPos();
+      const invested=Object.values(pos||{}).reduce((s,p)=>s+((p.titulos||0)*(p.precioActual||0)),0);
+      const pesoSum=((invested+(m.efectivo||0))/m.totalFondo)*100;
+      if(Math.abs(pesoSum-100)>0.25) alerts.push(`Pesos totales = ${pesoSum.toFixed(2)}%`);
+    }
+    const a=calcAtribucion('acum');
+    if(a && Number.isFinite(a.activeRet) && Number.isFinite(a.totTotal)){
+      const residual = Number(a.activeRet) - Number(a.totTotal);
+      if(Math.abs(residual)>0.02) alerts.push(`Residual attribution = ${residual.toFixed(4)}%`);
+    }
+    return alerts;
+  }catch(err){
+    return [`Validación no disponible: ${err.message}`];
+  }
+}
+
+
 // ═══════════════════════════════════════════════════════════════════════════
 // EXCEL EXPORT
 // ═══════════════════════════════════════════════════════════════════════════
@@ -2010,6 +2037,13 @@ async function exportToExcel(evt){
     if(typeof XLSX==='undefined'){
       await new Promise((res,rej)=>{const s=document.createElement('script');s.src='https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js';s.onload=res;s.onerror=rej;document.head.appendChild(s);});
     }
+
+    const validationAlerts=runBasicValidations();
+    if(validationAlerts.length){
+      console.warn('Validaciones SSOT:', validationAlerts);
+      alert('Revisa estas validaciones antes de usar el Excel:\n• '+validationAlerts.join('\n• '));
+    }
+
     const wb=XLSX.utils.book_new();
     const ord=S.ordenes||[];
 
@@ -2066,6 +2100,8 @@ async function exportToExcel(evt){
         attrRows.push([r.sec,+r.wf.toFixed(2),+r.wb.toFixed(2),+r.rf.toFixed(4),+r.rb.toFixed(4),+r.aa.toFixed(4),+r.ss.toFixed(4),+r.inter.toFixed(4),+r.total.toFixed(4)]);
       }
       attrRows.push(['TOTAL','','','','',+attrD.totAA.toFixed(4),+attrD.totSS.toFixed(4),+attrD.totInt.toFixed(4),+attrD.totTotal.toFixed(4)]);
+      attrRows.push(['RESIDUAL','','','','','','','',+attrD.residual.toFixed(4)]);
+      attrRows.push(['RETORNO ACTIVO','','','','','','','',+attrD.activeRet.toFixed(4)]);
       XLSX.utils.book_append_sheet(wb,XLSX.utils.aoa_to_sheet(attrRows),'Atribucion');
     }
 
@@ -2075,15 +2111,46 @@ async function exportToExcel(evt){
       XLSX.utils.book_append_sheet(wb,formatSheet(XLSX.utils.aoa_to_sheet(flRows),[0]),'Flujos');
     }
 
+    // Soporte mínimo auditable
+    const soporteRows=[['Sección','Campo 1','Campo 2','Campo 3','Campo 4','Campo 5','Campo 6','Campo 7']];
+    for(const ticker of Object.keys(PRICE_DB).sort()){
+      const serie=PRICE_DB[ticker]||{};
+      for(const fecha of Object.keys(serie).sort()){
+        soporteRows.push(['Precio Diario',ticker,toExcelDate(fecha),serie[fecha],'','','','']);
+      }
+    }
+    for(let i=0;i<hist.length;i++){
+      const h=hist[i];
+      const prev=hist[i-1];
+      const rf=(prev&&prev.totalFondo)?((h.totalFondo/prev.totalFondo)-1)*100:'';
+      const rb=(prev&&prev.mexPrice&&h.mexPrice)?((h.mexPrice/prev.mexPrice)-1)*100:'';
+      soporteRows.push(['Historial Fondo',toExcelDate(h.date),h.totalFondo,h.efectivo,h.portValue,rf,rb,h.retActivo!=null?+h.retActivo.toFixed(4):'']);
+    }
+    for(const t in pos){
+      const p=pos[t];const vm=p.titulos*p.precioActual;const pp=p.costoTotal>0?p.costoTotal/p.titulos:0;
+      soporteRows.push(['Peso Actual',t,p.titulos,+pp.toFixed(4),p.precioActual,+vm.toFixed(2),m.totalFondo>0?+(vm/m.totalFondo*100).toFixed(4):'','']);
+    }
+    if(m.efectivo>0)soporteRows.push(['Peso Actual','CASH','','','',+m.efectivo.toFixed(2),m.totalFondo>0?+(m.efectivo/m.totalFondo*100).toFixed(4):'','']);
+    XLSX.utils.book_append_sheet(wb,formatSheet(XLSX.utils.aoa_to_sheet(soporteRows),[2]),'Soporte');
+
+    const invested=Object.values(pos||{}).reduce((s,p)=>s+((p.titulos||0)*(p.precioActual||0)),0);
+    const pesoTotal=m.totalFondo>0?+(((invested+(m.efectivo||0))/m.totalFondo)*100).toFixed(6):'';
+    const attrResidual=attrD?+(attrD.activeRet-attrD.totTotal).toFixed(6):'';
+    const valRows=[['Check','Valor','Estado'],
+      ['Pesos totales %',pesoTotal,Math.abs((pesoTotal||0)-100)<=0.25?'OK':'REVISAR'],
+      ['Attribution residual %',attrResidual,attrD==null||Math.abs(attrResidual)<=0.02?'OK':'REVISAR']
+    ];
+    XLSX.utils.book_append_sheet(wb,XLSX.utils.aoa_to_sheet(valRows),'Validaciones');
+
     const date=new Date().toISOString().split('T')[0];
     XLSX.writeFile(wb,`ResearchRockets_SSOT_${date}.xlsx`);
     if(btn){btn.textContent='✓ Exportado';setTimeout(()=>{btn.innerHTML=btnLabelOriginal||'&#128229; Exportar Excel';btn.disabled=false;},2500);}
   }catch(e){
     console.error(e);
+    alert('Error al exportar: '+(e?.message||e));
     if(btn){btn.textContent='Error al exportar';setTimeout(()=>{btn.innerHTML=btnLabelOriginal||'&#128229; Exportar Excel';btn.disabled=false;},2500);}
   }
 }
-
 
 go('dashboard');
 </script>
