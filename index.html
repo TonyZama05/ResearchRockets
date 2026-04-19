@@ -758,7 +758,7 @@ const PAGES=['dashboard','ordenes','posicion','rendimiento','riesgo','analytics'
 let chartInst=[];
 function go(page){
   document.querySelectorAll('.ni').forEach((el,i)=>el.classList.toggle('active',i===PAGES.indexOf(page)));
-  const titles={dashboard:'Dashboard',ordenes:'Ordenes',posicion:'Posicion actual',rendimiento:'Rendimiento',riesgo:'Riesgo & Prospectivos',analytics:'Analytics',atribucion:'Performance Attribution',flujos:'Flujos & Ajustes de mercado',estadisticos:'Estadisticos & Medidas',config:'Configuración'};
+  const titles={dashboard:'Dashboard',ordenes:'Órdenes',posicion:'Posición actual',rendimiento:'Rendimiento',riesgo:'Riesgo & Prospectivos',analytics:'Analytics',atribucion:'Performance Attribution',flujos:'Flujos & Ajustes de mercado',estadisticos:'Estadísticos & Medidas',config:'Configuración'};
   document.getElementById('tb-title').textContent=titles[page]||page;
   document.getElementById('tb-date').textContent=new Date().toLocaleDateString('es-MX',{weekday:'long',year:'numeric',month:'long',day:'numeric'});
   // Sidebar: siempre muestra el capital asignado (V0 fijo)
@@ -770,16 +770,16 @@ function go(page){
     if(_sSub)_sSub.textContent='';
   }
   chartInst.forEach(c=>{try{c.destroy();}catch(e){}});chartInst=[];
-  const renders={dashboard:pgDash,ordenes:pgOrdenes,posicion:pgPosicion,rendimiento:pgRendimiento,riesgo:pgRiesgo,analytics:pgAnalytics,atribucion:pgAtribucion,flujos:pgFlujos,estadisticos:pgEstadisticos,config:pgConfig};
+  const renders={dashboard:pgDash,ordenes:pgÓrdenes,posicion:pgPosicion,rendimiento:pgRendimiento,riesgo:pgRiesgo,analytics:pgAnalytics,atribucion:pgAtribucion,flujos:pgFlujos,estadisticos:pgEstadísticos,config:pgConfig};
   try{
     document.getElementById('content').innerHTML=(renders[page]||pgDash)();
   }catch(err){
     console.error('go('+page+') error:',err);
     document.getElementById('content').innerHTML=`<div style="display:flex;align-items:center;justify-content:center;height:60vh;flex-direction:column;gap:14px;text-align:center">
       <div style="font-size:36px;opacity:.15">&#9888;</div>
-      <div style="font-size:16px;font-weight:700;color:var(--red)">Error al renderizar la pagina</div>
+      <div style="font-size:16px;font-weight:700;color:var(--red)">Error al renderizar la página</div>
       <div style="font-family:var(--mono);font-size:12px;color:var(--txt2);max-width:500px;background:var(--bg3);padding:12px;border-radius:var(--r);text-align:left;word-break:break-all">${err.message}</div>
-      <button class="btn btn-sm" onclick="location.reload()">Recargar pagina</button>
+      <button class="btn btn-sm" onclick="location.reload()">Recargar página</button>
     </div>`;
   }
   if(page==='analytics')setTimeout(initCharts,50);
@@ -830,7 +830,7 @@ function pgDash(){
   <div class="sg2">
     <div class="card">
       <div class="sec-h"><div class="sec-h-bar"></div><div class="sec-h-text">Composición del portafolio</div></div>
-      ${cBar('Accionario (estrategia activa + ETF)',m.valPort/m.totalFondo*100,'var(--accent)')}
+      ${cBar('Acciónario (estrategia activa + ETF)',m.valPort/m.totalFondo*100,'var(--accent)')}
       ${cBar('Efectivo disponible',m.efectivo/m.totalFondo*100,'var(--blue)')}
       <div style="display:flex;justify-content:space-between;font-size:12px;color:var(--txt3);margin-top:10px"><span>Total fondo <b style="color:var(--txt);font-family:var(--mono)">${fm(m.totalFondo)}</b></span><span>Dividendos recibidos <b style="color:var(--grn);font-family:var(--mono)">+${fm(m.divTotal)}</b></span></div>
     </div>
@@ -852,13 +852,13 @@ function pgDash(){
     <div class="sg4" style="gap:12px">
       ${miStat(fp(m.rSem),'Rend. fondo','Rend. absoluto semana',m.rSem>=0?'var(--grn)':'var(--red)')}
       ${miStat(f2(m.stdDev)+'%','Desv. estandar','Volatilidad anualizada',m.stdDev>25?'var(--red)':m.stdDev>15?'var(--amb)':'var(--grn)')}
-      ${miStat(f2(m.ir),'Razón de informacion','Retorno activo / TE',m.ir>0.5?'var(--grn)':m.ir>0?'var(--amb)':'var(--red)')}
-      ${miStat(f2(m.hitRatio)+'%','Hit Ratio','Dias ganados al benchmark',m.hitRatio>=50?'var(--grn)':'var(--red)')}
+      ${miStat(f2(m.ir),'Razón de información','Retorno activo / TE',m.ir>0.5?'var(--grn)':m.ir>0?'var(--amb)':'var(--red)')}
+      ${miStat(f2(m.hitRatio)+'%','Hit Ratio','Días ganados al benchmark',m.hitRatio>=50?'var(--grn)':'var(--red)')}
       ${miStat(f2(m.beta),'Beta vs MEXTRAC','Sensibilidad al mercado',m.beta>1.2?'var(--red)':m.beta<0.8?'var(--amb)':'var(--grn)')}
     </div>
   </div>
   <div class="card">
-    <div class="sec-h"><div class="sec-h-bar"></div><div class="sec-h-text">Ordenes recientes</div><button class="btn btn-sm" onclick="go('ordenes')" style="margin-left:auto">Ver todas &rarr;</button></div>
+    <div class="sec-h"><div class="sec-h-bar"></div><div class="sec-h-text">Órdenes recientes</div><button class="btn btn-sm" onclick="go('ordenes')" style="margin-left:auto">Ver todas &rarr;</button></div>
     <div class="tw"><table><thead><tr><th>Fecha</th><th>Tipo</th><th>Ticker</th><th>Títulos</th><th>Precio</th><th>Valor</th><th>Com+IVA</th><th>% Portafolio</th><th>Razón</th></tr></thead><tbody>
     ${(S.ordenes||[]).slice().reverse().slice(0,6).map(o=>{const pct=S.capitalInicial>0?o.titulos*o.precio/S.capitalInicial*100:0;return`<tr><td class="mono">${o.fecha}</td><td><span class="pill ${o.tipo==='compra'?'p-buy':'p-sell'}">${o.tipo}</span>${o.isEtf?' <span class="pill p-etf">ETF</span>':''}</td><td class="lbl">${UNIVERSO.find(e=>e.t===o.ticker)?.n||o.ticker}</td><td class="mono">${o.titulos.toLocaleString()}</td><td class="mono">$${f2(o.precio,4)}</td><td class="mono">${fm(o.titulos*o.precio)}</td><td class="r mono">${o.comision+o.iva>0?'-'+fm(o.comision+o.iva):'$0'}</td><td class="mono">${pct.toFixed(1)}%</td><td class="dim">${o.razon||'&mdash;'}</td></tr>`;}).join('')||'<tr><td colspan="9" class="empty">Sin ordenes registradas</td></tr>'}
     </tbody></table></div>
@@ -903,7 +903,7 @@ function renderWaterfallSectorWU(wu){
 
 
 // ORDENES
-function pgOrdenes(){
+function pgÓrdenes(){
   const m=calcMetrics();
   const op=(S.ordenesProceso||[]).filter(o=>o.estado==='proceso');
   const trades=buildTrades();
@@ -985,7 +985,7 @@ function pgPosicion(){
   const m=calcMetrics();const wu=m.wu;
   return`
   <div class="sg4">
-    ${stCard(fm(m.totalFondo),'Valor total fondo','Accionario + efectivo','stat-blue')}
+    ${stCard(fm(m.totalFondo),'Valor total fondo','Acciónario + efectivo','stat-blue')}
     ${stCard(fm(m.efectivo),'Efectivo disponible','Incl. dividendos','stat-amb')}
     ${stCard(fm(m.valPort-m.costoTotal),'P&amp;L no realizado','Valor mercado &minus; costo',m.valPort-m.costoTotal>=0?'stat-grn':'stat-red')}
     ${(()=>{const pos_snap={};let pnlReal=0;for(const o of (S.ordenes||[])){if(!pos_snap[o.ticker])pos_snap[o.ticker]={titulos:0,costoTotal:0};if(o.tipo==='compra'){pos_snap[o.ticker].titulos+=o.titulos;pos_snap[o.ticker].costoTotal+=o.titulos*o.precio;}else{const pp=pos_snap[o.ticker].titulos>0?pos_snap[o.ticker].costoTotal/pos_snap[o.ticker].titulos:0;pnlReal+=(o.precio-pp)*o.titulos;pos_snap[o.ticker].costoTotal-=pp*o.titulos;pos_snap[o.ticker].titulos-=o.titulos;}}return stCard(fm(pnlReal),'P&amp;L realizado','Ganancia/perdida en operaciones cerradas',pnlReal>=0?'stat-grn':'stat-red');})()}
@@ -1024,7 +1024,7 @@ function pgRendimiento(){
     ${stCard(fp(m.retActivo),'Retorno activo acum.','Desde inicio gestión',m.retActivo>=0?'stat-grn':'stat-red')}
   </div>
   <div class="card">
-    <div class="sec-h"><div class="sec-h-bar"></div><div class="sec-h-text">Evolucion diaria desde primera orden</div></div>
+    <div class="sec-h"><div class="sec-h-bar"></div><div class="sec-h-text">Evolución diaria desde primera orden</div></div>
     <canvas id="rend-chart" height="45" style="width:100%;display:block"></canvas>
   </div>
   <div class="card">
@@ -1083,7 +1083,7 @@ function pgRiesgo(){
     <div class="card"><div class="sec-h"><div class="sec-h-bar"></div><div class="sec-h-text">Medidas relativas &mdash; históricas</div></div>
       ${rskRow('Beta vs MEXTRAC',e?f2(m.beta):'&mdash;','Sensibilidad al mercado',m.beta>1.2?'var(--red)':m.beta<0.8?'var(--amb)':'var(--grn)')}
       ${rskRow('Tracking error (anualizado)',e?f2(m.te)+'%':'&mdash;','Desv. estandar retorno activo','var(--txt2)')}
-      ${rskRow('Razón de informacion (IR)',e?f2(m.ir):'&mdash;','Retorno activo / Tracking error',m.ir>0.5?'var(--grn)':m.ir>0?'var(--amb)':'var(--red)')}
+      ${rskRow('Razón de información (IR)',e?f2(m.ir):'&mdash;','Retorno activo / Tracking error',m.ir>0.5?'var(--grn)':m.ir>0?'var(--amb)':'var(--red)')}
       ${rskRow('Alfa (retorno activo acum.)',e?fp(m.retActivo):'&mdash;','Alpha generado vs benchmark',m.retActivo>=0?'var(--grn)':'var(--red)')}
     </div>
   </div>
@@ -1252,16 +1252,16 @@ function pgConfig(){
       </div>
       <div class="fg"><label class="fl">Comisión default (%)</label><input type="number" id="c-com" value="${S.comisionDefault}" step="0.01"></div>
       <div style="display:flex;gap:8px;flex-wrap:wrap">
-        <button class="btn btn-p" id="cfg-save-btn" onclick="saveConfig()" style="align-self:flex-start">Guardar configuracion</button>
-        <button class="btn btn-sm" onclick="exportToExcel()" style="align-self:flex-start;border-color:var(--grn);color:var(--grn)">&#128229; Exportar Excel</button>
+        <button class="btn btn-p" id="cfg-save-btn" onclick="saveConfig()" style="align-self:flex-start">Guardar configuración</button>
+        <button class="btn btn-sm" onclick="exportToExcel(event)" style="align-self:flex-start;border-color:var(--grn);color:var(--grn)">&#128229; Exportar Excel</button>
       </div>
     </div>
   </div>
   <div class="card" style="max-width:520px">
-    <div class="sec-h"><div class="sec-h-bar" style="background:var(--blue)"></div><div class="sec-h-text">Sincronizacion en equipo &mdash; Firebase</div></div>
+    <div class="sec-h"><div class="sec-h-bar" style="background:var(--blue)"></div><div class="sec-h-text">Sincronización en equipo &mdash; Firebase</div></div>
     <div style="background:var(--grn2);border:1px solid var(--grn3);border-radius:var(--r2);padding:14px 16px;margin-bottom:14px">
       <div style="font-weight:600;color:var(--grn);margin-bottom:6px;font-size:13px">&#128194; Cargar precios desde Excel (Refinitiv)</div>
-      <div style="font-size:12px;color:var(--txt2);margin-bottom:10px">Exporta tu Excel de Refinitiv con la hoja de precios históricos y cargalo aqui para actualizar el PRICE_DB.</div>
+      <div style="font-size:12px;color:var(--txt2);margin-bottom:10px">Exporta tu Excel de Refinitiv con la hoja de precios históricos y cárgalo aquí para actualizar el PRICE_DB.</div>
       <input type="file" id="excel-file-input" accept=".xlsx,.xls" style="display:none" onchange="importExcelPrices(this)">
       <button class="btn btn-p btn-sm" onclick="document.getElementById('excel-file-input').click()">&#128194; Cargar Excel Refinitiv</button>
       <span id="excel-import-status" style="margin-left:10px;font-size:12px;color:var(--txt2)"></span>
@@ -1285,7 +1285,7 @@ function pgConfig(){
     <div class="sec-h"><div class="sec-h-bar"></div><div class="sec-h-text">Estado del sistema</div></div>
     <div style="display:flex;flex-direction:column;gap:0">
       ${cfgRow('Fondo','Research Rockets')}
-      ${cfgRow('Ordenes registradas',(S.ordenes||[]).length)}
+      ${cfgRow('Órdenes registradas',(S.ordenes||[]).length)}
       ${cfgRow('Snapshots de precio',(S.snapshots||[]).length)}
       ${cfgRow('Flujos y ajustes',(S.flujos||[]).length+' flujos, '+(S.ajustes||[]).length+' ajustes')}
       ${cfgRow('Entrega de cartera','13 abril 2026')}
@@ -1339,7 +1339,7 @@ function delOrden(i){if(!confirm('Eliminar esta orden?'))return;S.ordenes.splice
 function renderOPSection(op){
   if(!op.length)return'';
   const rows=op.map(function(o){const pill=o.tipo==='compra'?'<span class="pill p-buy">COMPRA</span>':'<span class="pill p-sell">VENTA</span>';const nm=(UNIVERSO.find(function(e){return e.t===o.ticker;})||{}).n||o.ticker;return['<tr>','<td class="mono">'+o.fecha+'</td>','<td>'+pill+'</td>','<td class="lbl">'+nm+'</td>','<td class="mono">'+o.titulos.toLocaleString('es-MX')+'</td>','<td class="mono">$'+f2(o.precio,4)+'</td>','<td class="mono">'+fm(o.titulos*o.precio)+'</td>','<td class="dim" style="font-size:11px">'+(o.razon||'&mdash;')+'</td>','<td><div style="display:flex;gap:6px">','<button class="btn btn-sm" style="border-color:var(--grn);color:var(--grn)" onclick="openEjecutarOP(&quot;'+o.id+'&quot;)">&#10003; Ejecutar</button>','<button class="btn btn-sm" onclick="openEditarOP(&quot;'+o.id+'&quot;)">&#9998; Editar</button>','<button class="btn btn-sm" style="border-color:var(--red);color:var(--red)" onclick="cancelarOP(&quot;'+o.id+'&quot;)">&#10005; Cancelar</button>','</div></td>','</tr>'].join('');}).join('');
-  return['<div class="card" style="border-left:4px solid var(--amb)">','<div class="sec-h">','<div class="sec-h-bar" style="background:var(--amb)"></div>','<div class="sec-h-text">Ordenes en proceso <span style="background:var(--amb);color:#fff;border-radius:10px;padding:1px 8px;font-size:11px;margin-left:6px">'+op.length+'</span></div>','<span class="sec-h-sub">Pendientes de ejecucion &mdash; no afectan posiciones</span>','</div>','<div class="tw"><table><thead><tr><th>Fecha</th><th>Tipo</th><th>Ticker</th><th>Títulos</th><th>Precio ref.</th><th>Monto est.</th><th>Razón</th><th>Acciones</th></tr></thead><tbody>'+rows+'</tbody></table></div>','</div>'].join('');
+  return['<div class="card" style="border-left:4px solid var(--amb)">','<div class="sec-h">','<div class="sec-h-bar" style="background:var(--amb)"></div>','<div class="sec-h-text">Órdenes en proceso <span style="background:var(--amb);color:#fff;border-radius:10px;padding:1px 8px;font-size:11px;margin-left:6px">'+op.length+'</span></div>','<span class="sec-h-sub">Pendientes de ejecucion &mdash; no afectan posiciones</span>','</div>','<div class="tw"><table><thead><tr><th>Fecha</th><th>Tipo</th><th>Ticker</th><th>Títulos</th><th>Precio ref.</th><th>Monto est.</th><th>Razón</th><th>Acciónes</th></tr></thead><tbody>'+rows+'</tbody></table></div>','</div>'].join('');
 }
 function getOP(id){return(S.ordenesProceso||[]).find(o=>o.id===id);}
 function cancelarOP(id){if(!confirm('Cancelar esta orden?'))return;const op=getOP(id);if(!op)return;op.estado='cancelada';save();go('ordenes');}
@@ -1503,7 +1503,7 @@ function previewPreciosDia(){
       dbg.textContent=tickers.slice(0,8).map(t=>{
         const dates=Object.keys(result.prices[t]);
         return t+': '+result.prices[t][dates[0]];
-      }).join('  |  ')+(tickers.length>8?'  ... +'+( tickers.length-8)+' mas':'');
+      }).join('  |  ')+(tickers.length>8?'  ... +'+( tickers.length-8)+' más':'');
     }
   }else{
     prev.innerHTML=`<span style="color:var(--amb)">&#9888; Formato no detectado. Intenta pegar incluyendo la fila de encabezados con los tickers.</span>`;
@@ -1638,7 +1638,7 @@ function calcIRT(hist,flujos){if(!hist.length)return[];const result=[];let adjus
 function calcSharpe(returns){if(returns.length<3)return 0;const m=returns.reduce((a,b)=>a+b,0)/returns.length;const v=returns.reduce((s,r)=>s+(r-m)**2,0)/(returns.length-1);const std=Math.sqrt(v);return std>0?m/std*Math.sqrt(252):0;}
 function compSemanas(hist,ordenes){if(!hist.length)return{prev:null,curr:null};const curr=hist[hist.length-1];const prev=hist.length>=6?hist[hist.length-6]:hist[0];function posAt(date){const pos={};for(const o of ordenes){if(o.fecha>date)continue;if(!pos[o.ticker])pos[o.ticker]={titulos:0,costoTotal:0,isEtf:o.isEtf||false};const d=o.tipo==='compra'?o.titulos:-o.titulos;if(o.tipo==='compra')pos[o.ticker].costoTotal+=o.titulos*o.precio;pos[o.ticker].titulos+=d;}for(const t in pos)if(pos[t].titulos<=0)delete pos[t];return pos;}return{curr:{date:curr.date,totalFondo:curr.totalFondo,pos:posAt(curr.date)},prev:{date:prev.date,totalFondo:prev.totalFondo,pos:posAt(prev.date)}};}
 
-function pgEstadisticos(){
+function pgEstadísticos(){
   const m=calcMetrics();const hist=m.hist;const e=hist.length>=3;
   const irt=calcIRT(hist,S.flujos||[]);const irtLast=irt.length?irt[irt.length-1].irt:0;
   const dailyRets=hist.slice(1).map((h,i)=>hist[i].totalFondo>0?(h.totalFondo-hist[i].totalFondo)/hist[i].totalFondo*100:0);
@@ -1648,7 +1648,7 @@ function pgEstadisticos(){
   const prospVarH=prospRetsDist.length>=10?[...prospRetsDist].sort((a,b)=>a-b)[Math.floor(prospRetsDist.length*.05)]:null;
   const prospStdAnn=prospRetsDist.length>=3?stdDev(prospRetsDist)*Math.sqrt(252):null;const prospVarP=prospStdAnn?-prospStdAnn/Math.sqrt(252)*1.645:null;
   let compRows='<tr><td colspan="6" class="empty">Sin datos suficientes</td></tr>';
-  if(comp.curr&&comp.prev){const c=comp.curr,p=comp.prev;let actC=0,actP=0,etfC=0,etfP=0;for(const t in c.pos){const pr=localPrice(t,c.date)||0;const v=c.pos[t].titulos*pr;if(c.pos[t].isEtf)etfC+=v;else actC+=v;}for(const t in p.pos){const pr=localPrice(t,p.date)||0;const v=p.pos[t].titulos*pr;if(p.pos[t].isEtf)etfP+=v;else actP+=v;}function cRow(label,curr,prev,tc,tp){const pctC=tc>0?curr/tc*100:0;const pctP=tp>0?prev/tp*100:0;return`<tr><td class="lbl">${label}</td><td class="mono">${fm(prev)}</td><td class="mono">${f2(pctP,1)}%</td><td class="mono">${fm(curr)}</td><td class="mono">${f2(pctC,1)}%</td><td data-val="${pctC-pctP}" class="${cc(pctC-pctP)} mono">${(pctC-pctP)>=0?'+':''}${f2(pctC-pctP,1)}pp</td></tr>`;}compRows=cRow('Accionario activo',actC,actP,c.totalFondo,p.totalFondo)+cRow('Accionario pasivo (ETF)',etfC,etfP,c.totalFondo,p.totalFondo);}
+  if(comp.curr&&comp.prev){const c=comp.curr,p=comp.prev;let actC=0,actP=0,etfC=0,etfP=0;for(const t in c.pos){const pr=localPrice(t,c.date)||0;const v=c.pos[t].titulos*pr;if(c.pos[t].isEtf)etfC+=v;else actC+=v;}for(const t in p.pos){const pr=localPrice(t,p.date)||0;const v=p.pos[t].titulos*pr;if(p.pos[t].isEtf)etfP+=v;else actP+=v;}function cRow(label,curr,prev,tc,tp){const pctC=tc>0?curr/tc*100:0;const pctP=tp>0?prev/tp*100:0;return`<tr><td class="lbl">${label}</td><td class="mono">${fm(prev)}</td><td class="mono">${f2(pctP,1)}%</td><td class="mono">${fm(curr)}</td><td class="mono">${f2(pctC,1)}%</td><td data-val="${pctC-pctP}" class="${cc(pctC-pctP)} mono">${(pctC-pctP)>=0?'+':''}${f2(pctC-pctP,1)}pp</td></tr>`;}compRows=cRow('Acciónario activo',actC,actP,c.totalFondo,p.totalFondo)+cRow('Acciónario pasivo (ETF)',etfC,etfP,c.totalFondo,p.totalFondo);}
   return`
   <div class="card">
     <div class="sec-h"><div class="sec-h-bar" style="background:var(--accent)"></div><div class="sec-h-text">Medidas absolutas &mdash; Historicas</div></div>
@@ -1667,8 +1667,8 @@ function pgEstadisticos(){
       ${miStat(e?fp(m.retActivo):'&mdash;','Retorno activo acumulado','Alpha generado vs MEXTRAC',m.retActivo>=0?'var(--grn)':'var(--red)')}
       ${miStat(e?fp(m.retActivoSem):'&mdash;','Retorno activo semanal','Alpha última semana',m.retActivoSem>=0?'var(--grn)':'var(--red)')}
       ${miStat(e?f2(m.te)+'%':'&mdash;','Tracking error (anual.)','Desv. estandar retorno activo','var(--txt2)')}
-      ${miStat(e?f2(m.ir):'&mdash;','Razón de informacion','Ret. activo / Tracking error',m.ir>0.5?'var(--grn)':m.ir>0?'var(--amb)':'var(--red)')}
-      ${miStat(e?f2(m.hitRatio)+'%':'&mdash;','Hit Ratio','Dias ganados al benchmark',m.hitRatio>=50?'var(--grn)':'var(--red)')}
+      ${miStat(e?f2(m.ir):'&mdash;','Razón de información','Ret. activo / Tracking error',m.ir>0.5?'var(--grn)':m.ir>0?'var(--amb)':'var(--red)')}
+      ${miStat(e?f2(m.hitRatio)+'%':'&mdash;','Hit Ratio','Días ganados al benchmark',m.hitRatio>=50?'var(--grn)':'var(--red)')}
       ${miStat(e?f2(m.beta):'&mdash;','Beta histórico','vs MEXTRAC',m.beta>1.2?'var(--red)':m.beta<0.8?'var(--amb)':'var(--grn)')}
       ${miStat(m.rendBench!=null?fp(m.rendBench):'&mdash;','Rend. MEXTRAC acum.','Desde '+m.fechaRef+' a hoy',m.rendBench!=null&&m.rendBench>=0?'var(--grn)':'var(--red)')}
     </div>
@@ -1702,7 +1702,7 @@ function pgAtribucion(){
       <div class="sec-h-text">Performance Attribution &mdash; Brinson-Hood-Beebower</div>
       <div class="a-info" style="margin:0 16px;font-size:11px;padding:4px 10px;flex:1">Descompone el retorno activo (fondo vs MEXTRAC) en: <b>Asset Allocation</b>, <b>Stock Selection</b> e <b>Interaction</b></div>
       <div style="display:flex;gap:8px;align-items:center;flex-shrink:0">
-        <span style="font-size:11px;color:var(--txt3)">Periodo:</span>
+        <span style="font-size:11px;color:var(--txt3)">Período:</span>
         <select id="attr-period" onchange="renderAtribucion()" style="width:auto;padding:4px 10px;font-size:12px">
           <option value="acum">Acumulado (gestión)</option>
           <option value="week">Semanal</option>
@@ -1897,7 +1897,7 @@ function renderAtribucion(){
     new Chart(ctx,{type:'bar',data:{labels,datasets:[
       {label:'Asset Allocation',data:d.rows.map(r=>+r.aa.toFixed(3)),backgroundColor:'rgba(12,74,110,0.7)',borderRadius:3},
       {label:'Stock Selection',data:d.rows.map(r=>+r.ss.toFixed(3)),backgroundColor:'rgba(2,122,72,0.7)',borderRadius:3},
-      {label:'Interaccion',data:d.rows.map(r=>+r.inter.toFixed(3)),backgroundColor:'rgba(91,33,182,0.55)',borderRadius:3}
+      {label:'Interacción',data:d.rows.map(r=>+r.inter.toFixed(3)),backgroundColor:'rgba(91,33,182,0.55)',borderRadius:3}
     ]},options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{position:'top',labels:{font:{size:11},boxWidth:12,padding:8}},tooltip:{callbacks:{label:c=>`${c.dataset.label}: ${c.parsed.y>=0?'+':''}${c.parsed.y.toFixed(3)}%`}}},scales:{x:{ticks:{font:{size:10}},grid:{display:false}},y:{ticks:{callback:v=>`${v>=0?'+':''}${v.toFixed(2)}%`,font:{size:10}},grid:{color:'rgba(0,0,0,.04)'}}}}});
     chartInst.push(Chart.getChart(ctx));
   }
@@ -1994,90 +1994,93 @@ function renderDecomposedDonuts(m){
 // ═══════════════════════════════════════════════════════════════════════════
 // EXCEL EXPORT
 // ═══════════════════════════════════════════════════════════════════════════
-async function exportToExcel(){
-  const btn=event&&event.target?event.target:null;
+async function exportToExcel(evt){
+  const btn=evt&&evt.target?evt.target:null;
+  const btnLabelOriginal=btn?btn.innerHTML:'';
   if(btn){btn.textContent='Generando...';btn.disabled=true;}
+  const toExcelDate=iso=>{if(!iso)return'';const p=String(iso).split('-').map(Number);if(p.length!==3||p.some(Number.isNaN))return iso;return new Date(p[0],p[1]-1,p[2]);};
+  const formatSheet=(ws,dateCols=[])=>{
+    const range=XLSX.utils.decode_range(ws['!ref']||'A1');
+    for(let R=1;R<=range.e.r;R++){
+      dateCols.forEach(C=>{const ref=XLSX.utils.encode_cell({r:R,c:C});if(ws[ref]&&ws[ref].v instanceof Date){ws[ref].t='d';ws[ref].z='dd-mm-yyyy';}});
+    }
+    return ws;
+  };
   try{
     if(typeof XLSX==='undefined'){
       await new Promise((res,rej)=>{const s=document.createElement('script');s.src='https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js';s.onload=res;s.onerror=rej;document.head.appendChild(s);});
     }
     const wb=XLSX.utils.book_new();
     const ord=S.ordenes||[];
-    
-    // Sheet 1: Órdenes
+
     const ordRows=[['Fecha','Tipo','Ticker','Títulos','Precio','Valor','Comisión','IVA','Razón','Fase']];
     for(const o of ord){
-      ordRows.push([o.fecha,o.tipo,o.ticker,o.titulos,o.precio,o.titulos*o.precio,o.comision||0,o.iva||0,o.razon||'',o.isEtf?'ETF':'Accion']);
+      ordRows.push([toExcelDate(o.fecha),o.tipo,o.ticker,o.titulos,o.precio,o.titulos*o.precio,o.comision||0,o.iva||0,o.razon||'',o.isEtf?'ETF':'Acción']);
     }
-    XLSX.utils.book_append_sheet(wb,XLSX.utils.aoa_to_sheet(ordRows),'Ordenes');
-    
-    // Sheet 2: Posicion actual
+    XLSX.utils.book_append_sheet(wb,formatSheet(XLSX.utils.aoa_to_sheet(ordRows),[0]),'Órdenes');
+
     const pos=buildPos();const m=calcMetrics();
-    const posRows=[['Ticker','Nombre','Sector','Títulos','Precio Costo','Precio Actual','Valor Mercado','P&L $','P&L %','% Fondo']];
+    const posRows=[['Ticker','Nombre','Sector','Títulos','Precio costo','Precio actual','Valor mercado','P&L $','P&L %','% Fondo']];
     for(const t in pos){
       const p=pos[t];const vm=p.titulos*p.precioActual;const pp=p.costoTotal>0?p.costoTotal/p.titulos:0;
-      // Rend% from fechaInicio price (same anchor as portfolio metrics)
       const _fRef=S.fechaInicio||'2026-04-13';
       const pRef=localPrice(t,_fRef)||pp||p.precioActual;
       const pnl=vm-p.costoTotal;
       const pnlPct=pRef>0?(p.precioActual-pRef)/pRef*100:0;
       const uni=UNIVERSO.find(u=>u.t===t);
-      posRows.push([t,uni?.n||t,uni?.s||'ETF',p.titulos,+pp.toFixed(4),p.precioActual,+vm.toFixed(2),+pnl.toFixed(2),+pnlPct.toFixed(2),+(vm/m.totalFondo*100).toFixed(2)]);
+      posRows.push([t,uni?.n||t,uni?.s||'ETF',p.titulos,+pp.toFixed(4),p.precioActual,+vm.toFixed(2),+pnl.toFixed(2),+pnlPct.toFixed(2),m.totalFondo>0?+(vm/m.totalFondo*100).toFixed(2):0]);
     }
-    if(m.efectivo>0)posRows.push(['CASH','Cash','CASH',1,m.efectivo,m.efectivo,+m.efectivo.toFixed(2),0,0,+(m.efectivo/m.totalFondo*100).toFixed(2)]);
+    if(m.efectivo>0)posRows.push(['CASH','Cash','CASH',1,m.efectivo,m.efectivo,+m.efectivo.toFixed(2),0,0,m.totalFondo>0?+(m.efectivo/m.totalFondo*100).toFixed(2):0]);
     XLSX.utils.book_append_sheet(wb,XLSX.utils.aoa_to_sheet(posRows),'Posicion');
-    
-    // Sheet 3: Historico de rendimiento
+
     const hist=m.hist;
-    const histRows=[['Fecha','Valor Fondo','Efectivo','Valor Portafolio','Rend. Acum. Fondo %','Precio MEXTRAC','Rend. Bench %','Retorno Activo %']];
+    const histRows=[['Fecha','Valor Fondo','Efectivo','Valor Portafolio','Rend. acum. fondo %','Precio MEXTRAC','Rend. bench %','Retorno activo %']];
     for(const h of hist){
-      histRows.push([h.date,+h.totalFondo.toFixed(2),+h.efectivo.toFixed(2),+h.portValue.toFixed(2),+h.rendAcum.toFixed(4),h.mexPrice||'',h.rendBench!=null?+h.rendBench.toFixed(4):'',h.retActivo!=null?+h.retActivo.toFixed(4):'']);
+      histRows.push([toExcelDate(h.date),+h.totalFondo.toFixed(2),+h.efectivo.toFixed(2),+h.portValue.toFixed(2),+h.rendAcum.toFixed(4),h.mexPrice||'',h.rendBench!=null?+h.rendBench.toFixed(4):'',h.retActivo!=null?+h.retActivo.toFixed(4):'']);
     }
-    XLSX.utils.book_append_sheet(wb,XLSX.utils.aoa_to_sheet(histRows),'Rendimiento');
-    
-    // Sheet 4: Metricas
+    XLSX.utils.book_append_sheet(wb,formatSheet(XLSX.utils.aoa_to_sheet(histRows),[0]),'Rendimiento');
+
     const metRows=[
-      ['Metrica','Valor','Descripcion'],
-      ['Capital Inicial',S.capitalInicial,'MXN asignado por BBVA'],
-      ['Valor Fondo',+m.totalFondo.toFixed(2),'Portafolio + efectivo actual'],
-      ['Rend. Acumulado %',+m.rendAcum.toFixed(4),'Desde fecha inicio gestión'],
-      ['Rend. Benchmark %',m.rendBench!=null?+m.rendBench.toFixed(4):'','MEXTRAC09 mismo período'],
-      ['Retorno Activo %',m.retActivo!=null?+m.retActivo.toFixed(4):'','Alpha generado'],
-      ['Desv. Estandar %',+m.stdDev.toFixed(4),'Anualizada'],
+      ['Métrica','Valor','Descripción'],
+      ['Capital inicial',S.capitalInicial,'MXN asignado por BBVA'],
+      ['Valor fondo',+m.totalFondo.toFixed(2),'Portafolio + efectivo actual'],
+      ['Rend. acumulado %',+m.rendAcum.toFixed(4),'Desde fecha de inicio de gestión'],
+      ['Rend. benchmark %',m.rendBench!=null?+m.rendBench.toFixed(4):'','MEXTRAC09 mismo período'],
+      ['Retorno activo %',m.retActivo!=null?+m.retActivo.toFixed(4):'','Alpha generado'],
+      ['Desv. estándar %',+m.stdDev.toFixed(4),'Anualizada'],
       ['Tracking Error %',+m.te.toFixed(4),'Anualizado'],
       ['Information Ratio',+m.ir.toFixed(4),'Retorno activo / TE'],
       ['Beta vs MEXTRAC',+m.beta.toFixed(4),'Sensibilidad al mercado'],
-      ['Hit Ratio %',+m.hitRatio.toFixed(2),'Dias ganados al benchmark'],
+      ['Hit Ratio %',+m.hitRatio.toFixed(2),'Días ganados al benchmark'],
       ['VaR 5% diario %',+m.varH.toFixed(4),'Value at Risk histórico 5%'],
       ['Efectivo MXN',+m.efectivo.toFixed(2),'Capital no invertido'],
       ['Rend. semanal fondo %',+m.rSem.toFixed(4),'Semana actual'],
       ['Rend. semanal bench %',+m.rbSem.toFixed(4),'MEXTRAC semana actual'],
     ];
-    XLSX.utils.book_append_sheet(wb,XLSX.utils.aoa_to_sheet(metRows),'Metricas');
-    
-    // Sheet 5: Attribution
+    XLSX.utils.book_append_sheet(wb,XLSX.utils.aoa_to_sheet(metRows),'Métricas');
+
     const attrD=calcAtribucion('acum');
     if(attrD){
-      const attrRows=[['Sector','W Fondo %','W Bench %','R Fondo %','R Bench %','Asset Allocation','Stock Selection','Interaccion','Total']];
+      const attrRows=[['Sector','W Fondo %','W Bench %','R Fondo %','R Bench %','Asset Allocation','Stock Selection','Interacción','Total']];
       for(const r of attrD.rows){
         attrRows.push([r.sec,+r.wf.toFixed(2),+r.wb.toFixed(2),+r.rf.toFixed(4),+r.rb.toFixed(4),+r.aa.toFixed(4),+r.ss.toFixed(4),+r.inter.toFixed(4),+r.total.toFixed(4)]);
       }
       attrRows.push(['TOTAL','','','','',+attrD.totAA.toFixed(4),+attrD.totSS.toFixed(4),+attrD.totInt.toFixed(4),+attrD.totTotal.toFixed(4)]);
       XLSX.utils.book_append_sheet(wb,XLSX.utils.aoa_to_sheet(attrRows),'Atribucion');
     }
-    
-    // Sheet 6: Flujos
+
     if(S.flujos&&S.flujos.length){
       const flRows=[['Fecha','Tipo','Ticker','Monto/Factor','Notas']];
-      for(const f of S.flujos)flRows.push([f.fecha,f.tipo,f.ticker||'',f.monto,f.notas||'']);
-      XLSX.utils.book_append_sheet(wb,XLSX.utils.aoa_to_sheet(flRows),'Flujos');
+      for(const f of S.flujos)flRows.push([toExcelDate(f.fecha),f.tipo,f.ticker||'',f.monto,f.notas||'']);
+      XLSX.utils.book_append_sheet(wb,formatSheet(XLSX.utils.aoa_to_sheet(flRows),[0]),'Flujos');
     }
-    
+
     const date=new Date().toISOString().split('T')[0];
     XLSX.writeFile(wb,`ResearchRockets_SSOT_${date}.xlsx`);
-    if(btn){btn.textContent='✓ Exportado';setTimeout(()=>{btn.textContent='⬇ Exportar Excel';btn.disabled=false;},2500);}
+    if(btn){btn.textContent='✓ Exportado';setTimeout(()=>{btn.innerHTML=btnLabelOriginal||'&#128229; Exportar Excel';btn.disabled=false;},2500);}
   }catch(e){
-    console.error(e);if(btn){btn.textContent='Error al exportar';btn.disabled=false;}
+    console.error(e);
+    if(btn){btn.textContent='Error al exportar';setTimeout(()=>{btn.innerHTML=btnLabelOriginal||'&#128229; Exportar Excel';btn.disabled=false;},2500);}
   }
 }
 
