@@ -542,6 +542,36 @@ function buildPos(){
 function portVal(pos){return Object.values(pos).reduce((s,p)=>s+p.titulos*p.precioActual,0);}
 
 // Compute fund value (portfolio + cash) at a specific date using orders up to that date
+function buildPosAt(date){
+  const ord=S.ordenes||[];
+  const pos={};
+  for(const o of ord){
+    if(o.fecha>date)continue;
+    if(!pos[o.ticker])pos[o.ticker]={titulos:0,costoTotal:0,precioActual:o.precio,isEtf:o.isEtf||false};
+    if(o.tipo==='compra'){
+      pos[o.ticker].titulos+=o.titulos;
+      pos[o.ticker].costoTotal+=o.titulos*o.precio;
+    }else{
+      const pp=pos[o.ticker].titulos>0?pos[o.ticker].costoTotal/pos[o.ticker].titulos:0;
+      pos[o.ticker].costoTotal-=pp*o.titulos;
+      pos[o.ticker].titulos-=o.titulos;
+      if(pos[o.ticker].costoTotal<0)pos[o.ticker].costoTotal=0;
+    }
+  }
+  for(const t in pos)if(pos[t].titulos<=0)delete pos[t];
+  for(const a of S.ajustes||[]){
+    if(a.fecha<=date&&pos[a.ticker]){
+      if(a.tipo==='split')pos[a.ticker].titulos*=a.factor;
+      else if(a.tipo==='split_inverso')pos[a.ticker].titulos/=a.factor;
+    }
+  }
+  for(const t in pos){
+    const p=localPrice(t,date);
+    if(p!=null)pos[t].precioActual=p;
+  }
+  return pos;
+}
+
 function fundValueAt(date){
   const ord=S.ordenes||[];
   const pos={};
@@ -1744,133 +1774,148 @@ function pgAtribucion(){
 }
 
 function calcAtribucion(period){
-  const m=calcMetrics();const hist=m.hist;if(!hist.length)return null;
-  // Determine start/end based on period
-  let startH,endH;
-  if(period==='day'){startH=hist[Math.max(0,hist.length-2)];endH=hist[hist.length-1];}
-  else if(period==='week'){
+  const m=calcMetrics();
+  const hist=m.hist||[];
+  if(hist.length<2)return null;
+
+  let startH=null,endH=null;
+  if(period==='day'){
+    startH=hist[Math.max(0,hist.length-2)];
+    endH=hist[hist.length-1];
+  }else if(period==='week'){
     const _ld=parseISODate(hist[hist.length-1].date);
     if(_ld){
-      const dow=_ld.getDay();const daysToMon=dow===0?6:dow-1;
-      const monDate=new Date(_ld.getTime());monDate.setDate(monDate.getDate()-daysToMon);
+      const dow=_ld.getDay();
+      const daysToMon=dow===0?6:dow-1;
+      const monDate=new Date(_ld.getTime());
+      monDate.setDate(monDate.getDate()-daysToMon);
       const monStr=monDate.toISOString().split('T')[0];
-      let si=null;for(let i=hist.length-1;i>=0;i--){if(hist[i].date<monStr){si=hist[i];break;}}
+      let si=null;
+      for(let i=hist.length-1;i>=0;i--){
+        if(hist[i].date<monStr){si=hist[i];break;}
+      }
       startH=si||hist[0];
-    } else {startH=hist[0];}
+    }else startH=hist[0];
     endH=hist[hist.length-1];
-  }else{startH=hist[0];endH=hist[hist.length-1];}
-  
-  const rPort=startH.totalFondo>0?(endH.totalFondo-startH.totalFondo)/startH.totalFondo*100:0;
-  const rBench=startH.mexPrice&&endH.mexPrice&&startH.mexPrice>0?(endH.mexPrice-startH.mexPrice)/startH.mexPrice*100:0;
-  const activeRet=rPort-rBench;
-  
-  // Build position at startH date and endH date
-  const pos=m.pos;
-  const total=m.totalFondo;
-  if(total<=0)return null;
+  }else{
+    startH=hist[0];
+    endH=hist[hist.length-1];
+  }
+  if(!startH||!endH)return null;
 
-  // Decompose MEXTRAC holdings into constituents for real exposure
-  const etfPos=pos['MEXTRAC09'];
-  const etfVal=etfPos?etfPos.titulos*etfPos.precioActual:0;
-  const etfPct=etfVal/total*100;
-  
-  // Build real sector weights for portfolio
-  const sectorW={};// sector -> % of fund (real)
-  const sectorR={};// sector -> return of portfolio's holdings in that sector
-  const sectorRB={};// sector -> return of benchmark in that sector
-  const sectorWB={};// sector -> weight in benchmark
-  
-  // Process direct non-ETF holdings
-  for(const t in pos){
-    if(t==='MEXTRAC09')continue;
-    const p=pos[t];const vm=p.titulos*p.precioActual;
-    if(vm<=0)continue;
-    const sec=UNIVERSO.find(u=>u.t===t)?.s||'Otros';
-    const wPct=vm/total*100;
-    sectorW[sec]=(sectorW[sec]||0)+wPct;
-    const pEnd=localPrice(t,endH.date)||p.precioActual;
-    const pStart=localPrice(t,startH.date)||pEnd;
-    const r=pStart>0?(pEnd-pStart)/pStart*100:0;
-    if(!sectorR[sec])sectorR[sec]={sum:0,w:0};
-    sectorR[sec].sum+=wPct*r;sectorR[sec].w+=wPct;
-  }
-  
-  // Decompose ETF into constituents
+  const rPort=startH.totalFondo>0?(endH.totalFondo-startH.totalFondo)/startH.totalFondo*100:0;
+  const rBench=(startH.mexPrice&&endH.mexPrice&&startH.mexPrice>0)?(endH.mexPrice-startH.mexPrice)/startH.mexPrice*100:0;
+  const activeRet=rPort-rBench;
+
+  const posStart=buildPosAt(startH.date);
+  const snapStart=fundValueAt(startH.date);
+  const totalStart=snapStart.totalFondo;
+  if(totalStart<=0)return null;
+
+  const etfPosStart=posStart['MEXTRAC09'];
+  const etfValStart=etfPosStart?etfPosStart.titulos*(localPrice('MEXTRAC09',startH.date)||etfPosStart.precioActual||0):0;
+  const etfPctStart=totalStart>0?etfValStart/totalStart*100:0;
+
+  const sectorW={};
+  const sectorR={};
+  const sectorWB={};
+  const sectorRB={};
   const totalMexW=Object.values(MEXTRAC_W).reduce((s,v)=>s+v,0);
-  for(const t in MEXTRAC_W){
-    const w=MEXTRAC_W[t]/totalMexW*100;// % within MEXTRAC
-    const effectiveW=etfPct*w/100;// % of total fund
+
+  for(const t in posStart){
+    if(t==='MEXTRAC09')continue;
+    const p0=localPrice(t,startH.date);
+    const p1=localPrice(t,endH.date);
+    if(p0==null||p0<=0)continue;
+    const vm0=posStart[t].titulos*p0;
+    if(vm0<=0)continue;
     const sec=UNIVERSO.find(u=>u.t===t)?.s||'Otros';
-    sectorW[sec]=(sectorW[sec]||0)+effectiveW;
-    const pEnd=localPrice(t,endH.date)||localPrice(t);
-    const pStart=localPrice(t,startH.date)||pEnd;
-    const r=pStart&&pEnd&&pStart>0?(pEnd-pStart)/pStart*100:0;
+    const wPct=vm0/totalStart*100;
+    const r=p1!=null?(p1-p0)/p0*100:0;
+    sectorW[sec]=(sectorW[sec]||0)+wPct;
     if(!sectorR[sec])sectorR[sec]={sum:0,w:0};
-    sectorR[sec].sum+=effectiveW*r;sectorR[sec].w+=effectiveW;
+    sectorR[sec].sum+=wPct*r;
+    sectorR[sec].w+=wPct;
   }
-  
-  // Cash
-  if(m.efectivo>0){
-    const cashW=m.efectivo/total*100;
+
+  for(const t in MEXTRAC_W){
+    const benchInsidePct=MEXTRAC_W[t]/totalMexW*100;
+    const effectiveW=etfPctStart*benchInsidePct/100;
+    if(effectiveW<=0)continue;
+    const p0=localPrice(t,startH.date);
+    const p1=localPrice(t,endH.date);
+    const sec=UNIVERSO.find(u=>u.t===t)?.s||'Otros';
+    const r=(p0!=null&&p1!=null&&p0>0)?(p1-p0)/p0*100:0;
+    sectorW[sec]=(sectorW[sec]||0)+effectiveW;
+    if(!sectorR[sec])sectorR[sec]={sum:0,w:0};
+    sectorR[sec].sum+=effectiveW*r;
+    sectorR[sec].w+=effectiveW;
+  }
+
+  if(snapStart.efectivo>0){
+    const cashW=snapStart.efectivo/totalStart*100;
     sectorW['CASH']=(sectorW['CASH']||0)+cashW;
     if(!sectorR['CASH'])sectorR['CASH']={sum:0,w:0};
     sectorR['CASH'].w+=cashW;
   }
-  
-  // Build benchmark sector weights from MEXTRAC_W
+
   for(const t in MEXTRAC_W){
     const wb=MEXTRAC_W[t]/totalMexW*100;
     const sec=UNIVERSO.find(u=>u.t===t)?.s||'Otros';
+    const p0=localPrice(t,startH.date);
+    const p1=localPrice(t,endH.date);
+    const r=(p0!=null&&p1!=null&&p0>0)?(p1-p0)/p0*100:0;
     sectorWB[sec]=(sectorWB[sec]||0)+wb;
-    const pEnd=localPrice(t,endH.date)||localPrice(t);
-    const pStart=localPrice(t,startH.date)||pEnd;
-    const r=pStart&&pEnd&&pStart>0?(pEnd-pStart)/pStart*100:0;
     if(!sectorRB[sec])sectorRB[sec]={sum:0,w:0};
-    sectorRB[sec].sum+=wb*r;sectorRB[sec].w+=wb;
+    sectorRB[sec].sum+=wb*r;
+    sectorRB[sec].w+=wb;
   }
-  
-  // Compute BHB attribution per sector
-  const sectors=new Set([...Object.keys(sectorW),...Object.keys(sectorWB)]);
+
+  if(!sectorWB['CASH'])sectorWB['CASH']=0;
+  if(!sectorRB['CASH'])sectorRB['CASH']={sum:0,w:0};
+
+  const sectors=[...new Set([...Object.keys(sectorW),...Object.keys(sectorWB)])];
   const rows=[];
   let totAA=0,totSS=0,totInt=0,totTotal=0;
-  
+
   for(const sec of sectors){
     const wf=(sectorW[sec]||0)/100;
     const wb=(sectorWB[sec]||0)/100;
-    const rfRaw=sectorR[sec]?sectorR[sec].sum/Math.max(sectorR[sec].w,0.0001):0;
-    const rbRaw=sectorRB[sec]?sectorRB[sec].sum/Math.max(sectorRB[sec].w,0.0001):0;
-    const rf=rfRaw;const rb=rbRaw;
-    const rp_total=rBench;// portfolio-level benchmark return
-    // BHB: weights are decimal (0-1), returns are in % → result in %
-    // BHB original: AA = (wPort-wBench)×rBench_s  |  SS = wBench×(rPort_s-rBench_s)
+    const rf=(sectorR[sec]&&sectorR[sec].w>0)?sectorR[sec].sum/sectorR[sec].w:0;
+    const rb=(sectorRB[sec]&&sectorRB[sec].w>0)?sectorRB[sec].sum/sectorRB[sec].w:0;
     const aa=(wf-wb)*rb;
     const ss=wb*(rf-rb);
     const inter=(wf-wb)*(rf-rb);
     const total=aa+ss+inter;
-    totAA+=aa;totSS+=ss;totInt+=inter;totTotal+=total;
+    totAA+=aa;
+    totSS+=ss;
+    totInt+=inter;
+    totTotal+=total;
     rows.push({sec,wf:wf*100,wb:wb*100,rf,rb,aa,ss,inter,total});
   }
-  // Reconciliation: BHB sum should equal activeRet; compute residual
-  const residual=activeRet-totTotal;
+
   rows.sort((a,b)=>Math.abs(b.total)-Math.abs(a.total));
-  
-  // Per-ticker selection contribution
+
   const tickerRows=[];
-  for(const t in pos){
+  for(const t in posStart){
     if(t==='MEXTRAC09')continue;
-    const p=pos[t];const vm=p.titulos*p.precioActual;if(vm<=0)continue;
-    const wf=vm/total;
+    const p0=localPrice(t,startH.date);
+    const p1=localPrice(t,endH.date);
+    if(p0==null||p0<=0)continue;
+    const vm0=posStart[t].titulos*p0;
+    if(vm0<=0)continue;
+    const wf=vm0/totalStart;
     const wb=(MEXTRAC_W[t]||0)/totalMexW;
     const sec=UNIVERSO.find(u=>u.t===t)?.s||'Otros';
-    const pEnd=localPrice(t,endH.date)||p.precioActual;const pStart=localPrice(t,startH.date)||pEnd;
-    const rf=pStart>0?(pEnd-pStart)/pStart*100:0;
-    const rbSec=sectorRB[sec]?sectorRB[sec].sum/Math.max(sectorRB[sec].w,0.0001):0;
+    const rf=p1!=null?(p1-p0)/p0*100:0;
+    const rbSec=(sectorRB[sec]&&sectorRB[sec].w>0)?sectorRB[sec].sum/sectorRB[sec].w:0;
     const selContrib=wb*(rf-rbSec);
     tickerRows.push({ticker:t,sec,wf:wf*100,wb:wb*100,rf,rbSec,selContrib});
   }
   tickerRows.sort((a,b)=>Math.abs(b.selContrib)-Math.abs(a.selContrib));
-  
-  return{rPort,rBench,activeRet,totAA,totSS,totInt,totTotal,residual,rows,tickerRows};
+
+  const residual=activeRet-totTotal;
+  return{rPort,rBench,activeRet,totAA,totSS,totInt,totTotal,residual,rows,tickerRows,startDate:startH.date,endDate:endH.date};
 }
 
 function renderAtribucion(){
