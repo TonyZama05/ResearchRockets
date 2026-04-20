@@ -1149,10 +1149,9 @@ function pgAnalytics(){
     <div class="card" style="display:flex;flex-direction:column">
       <div class="sec-h"><div class="sec-h-bar"></div><div class="sec-h-text">Holdings &mdash; treemap de rendimiento</div>
         <select id="tm-period" onchange="renderTreemap()" style="width:auto;padding:4px 8px;font-size:11px;margin-left:auto">
-          <option value="all">Total (YTD)</option>
-          <option value="order">Desde 1a orden ${firstOrderDate?'('+firstOrderDate+')':''}</option>
-          <option value="1m">1 mes</option>
+          <option value="order">Desde 1a operación ${firstOrderDate?'('+firstOrderDate+')':''}</option>
           <option value="1w">1 semana</option>
+          <option value="day">Diario</option>
         </select>
       </div>
       <div id="treemap" style="flex:1;min-height:260px"></div>
@@ -1211,14 +1210,20 @@ function chartOpts(unit,legend=true){
 
 function renderTreemap(){
   const container=document.getElementById('treemap');if(!container)return;
-  const period=document.getElementById('tm-period')?.value||'all';const pos=buildPos();const items=[];const m=calcMetrics();
-  for(const t in pos){if(t==='MEXTRAC09')continue;const p=pos[t];const vm=p.titulos*p.precioActual;const pp=p.costoTotal>0?p.costoTotal/p.titulos:0;let rend=0;
-    if(period==='all'){
-      const _fRef2=S.fechaInicio||'2026-04-13';
-      const _pRef2=localPrice(t,_fRef2)||(p.costoTotal>0?p.costoTotal/p.titulos:0);
-      rend=_pRef2>0?(p.precioActual-_pRef2)/_pRef2*100:0;
+  const period=document.getElementById('tm-period')?.value||'order';const pos=buildPos();const items=[];
+  const sortedDates=(ALL_DATES||[]).map(d=>parseDate(d)).filter(Boolean).sort();
+  const latestDate=sortedDates.length?sortedDates[sortedDates.length-1]:today();
+  const prevDate=sortedDates.length>1?sortedDates[sortedDates.length-2]:null;
+  for(const t in pos){if(t==='MEXTRAC09')continue;const p=pos[t];const vm=p.titulos*p.precioActual;const pp=p.costoTotal>0?p.costoTotal/p.titulos:0;let base=pp;
+    if(period==='order') base=pp;
+    else if(period==='1w'){
+      const ref=new Date((latestDate||today())+'T12:00:00');ref.setDate(ref.getDate()-7);
+      base=localPrice(t,ref.toISOString().split('T')[0])||pp;
     }
-    else{const daysBack=period==='1w'?7:30;const ref=new Date();ref.setDate(ref.getDate()-daysBack);const refP=localPrice(t,ref.toISOString().split('T')[0]);rend=refP&&p.precioActual?(p.precioActual-refP)/refP*100:0;}
+    else if(period==='day'){
+      base=(prevDate&&latestDate&&prevDate!==latestDate?localPrice(t,prevDate):null)||pp;
+    }
+    const rend=base>0&&p.precioActual?(p.precioActual-base)/base*100:0;
     items.push({ticker:t,value:vm,rend});}
   if(!items.length){container.innerHTML='<div class="empty" style="height:180px;display:flex;align-items:center;justify-content:center">Sin posiciones para mostrar</div>';return;}
   const W=container.offsetWidth||600;const H=220;container.style.height=H+'px';
@@ -1466,13 +1471,10 @@ function parsePreciosPaste(raw,fallbackFecha){
     const dateCells=cells.filter(c=>!!parseDate(c));
     const numCells=cells.filter(c=>!isNaN(parseFloat(c.replace(/,/g,'.')))&&parseFloat(c.replace(/,/g,'.'))>0);
     // If majority are ticker-like and no date/numbers → this is the header row
-    if(tickerCells.length>=2&&dateCells.length===0&&numCells.length===0){
+    const firstCellEmpty=cells[0]===''||cells[0].toUpperCase()==='FECHA';
+    if(firstCellEmpty&&tickerCells.length>=2&&dateCells.length===0&&numCells.length===0){
       headerRowIdx=i;
-      // Skip the first cell if it's empty (leading tab)
-      headerTickers=cells.map(cleanTicker).filter((t,idx)=>idx===0?(t!==''&&t!=='FECHA'):true);
-      // If first cell is empty/FECHA, tickers start from idx 1
-      const firstCellEmpty=cells[0]===''||cells[0].toUpperCase()==='FECHA';
-      headerTickers=firstCellEmpty?cells.slice(1).map(cleanTicker):cells.map(cleanTicker);
+      headerTickers=cells.slice(1).map(cleanTicker).filter(Boolean);
       break;
     }
   }
@@ -2178,7 +2180,7 @@ async function exportToExcel(evt){
       const _fRef=S.fechaInicio||'2026-04-13';
       const pRef=localPrice(t,_fRef)||pp||p.precioActual;
       const pnl=vm-p.costoTotal;
-      const pnlPct=pRef>0?(p.precioActual-pRef)/pRef*100:0;
+      const pnlPct=p.costoTotal>0?pnl/p.costoTotal*100:0;
       const uni=UNIVERSO.find(u=>u.t===t);
       posRows.push([t,uni?.n||t,uni?.s||'ETF',p.titulos,+pp.toFixed(4),p.precioActual,+vm.toFixed(2),+pnl.toFixed(2),+pnlPct.toFixed(2),m.totalFondo>0?+(vm/m.totalFondo*100).toFixed(2):0]);
     }
