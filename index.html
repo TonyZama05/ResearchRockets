@@ -1951,8 +1951,7 @@ function calcAtribucion(period){
   }
   tickerRows.sort((a,b)=>Math.abs(b.selContrib)-Math.abs(a.selContrib));
 
-  const residual=0;
-  return{rPort,rBench,activeRet,totAA,totSS,totInt,totTotal,residual,rows,tickerRows,startDate:startH.date,endDate:endH.date};
+  return{rPort,rBench,activeRet,totAA,totSS,totInt,totTotal,rows,tickerRows,startDate:startH.date,endDate:endH.date};
 }
 
 function renderAtribucion(){
