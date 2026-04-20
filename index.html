@@ -1722,7 +1722,7 @@ function pgEstadísticos(){
 
 // INIT
 // ═══════════════════════════════════════════════════════════════════════════
-// PERFORMANCE ATTRIBUTION  (Brinson-Hood-Beebower)
+// PERFORMANCE ATTRIBUTION (modo profesor)
 // ═══════════════════════════════════════════════════════════════════════════
 function pgAtribucion(){
   const m=calcMetrics();
@@ -1731,8 +1731,8 @@ function pgAtribucion(){
   <div class="card" style="padding:14px 20px">
     <div style="display:flex;align-items:center;gap:0">
       <div class="sec-h-bar" style="background:var(--purple);width:4px;height:20px;border-radius:2px;margin-right:10px;flex-shrink:0"></div>
-      <div class="sec-h-text">Performance Attribution &mdash; Brinson-Fachler</div>
-      <div class="a-info" style="margin:0 16px;font-size:11px;padding:4px 10px;flex:1">Identidad: <b>r<sub>P</sub> − r<sub>B</sub> = Allocation + Selection + Interaction</b> &middot; modelo single-period, sin residual</div>
+      <div class="sec-h-text">Performance Attribution</div>
+      <div class="a-info" style="margin:0 16px;font-size:11px;padding:4px 10px;flex:1">Identidad: <b>r<sub>P</sub> − r<sub>B</sub> = Allocation + Selection + Interaction</b> &middot; modo profesor, sin residual</div>
       <div style="display:flex;gap:8px;align-items:center;flex-shrink:0">
         <span style="font-size:11px;color:var(--txt3)">Período:</span>
         <select id="attr-period" onchange="renderAtribucion()" style="width:auto;padding:4px 10px;font-size:12px">
@@ -1972,7 +1972,7 @@ function renderAtribucion(){
     ${stCard(pn(d.rPort),'Retorno Portafolio','Σ(w<sub>P</sub> · r<sub>P</sub>)',d.rPort>=0?'stat-grn':'stat-red')}
     ${stCard(pn(d.rBench),'Retorno Benchmark','Σ(w<sub>B</sub> · r<sub>B</sub>) — MEXTRAC',d.rBench>=0?'stat-grn':'stat-red')}
     ${stCard(pn(d.activeRet),'Retorno Activo','r<sub>P</sub> − r<sub>B</sub>',d.activeRet>=0?'stat-grn':'stat-red')}
-    ${stCard(pn(d.totTotal),'Total BHB','AA + SS + Int','stat-acc')}
+    ${stCard(pn(d.totTotal),'Total Attribution','AA + SS + Int','stat-acc')}
   `;
 
   // ── Bar chart ──
@@ -2219,7 +2219,7 @@ async function exportToExcel(evt){
       for(const r of attrD.rows){
         attrRows.push([r.sec,+r.wf.toFixed(2),+r.wb.toFixed(2),+r.rf.toFixed(4),+r.rb.toFixed(4),+r.aa.toFixed(4),+r.ss.toFixed(4),+r.inter.toFixed(4),+r.total.toFixed(4)]);
       }
-      attrRows.push(['TOTAL BHB','','','','',+attrD.totAA.toFixed(4),+attrD.totSS.toFixed(4),+attrD.totInt.toFixed(4),+attrD.totTotal.toFixed(4)]);
+      attrRows.push(['TOTAL ATTRIBUTION','','','','',+attrD.totAA.toFixed(4),+attrD.totSS.toFixed(4),+attrD.totInt.toFixed(4),+attrD.totTotal.toFixed(4)]);
       attrRows.push(['RETORNO ACTIVO','','','','','','','',+attrD.activeRet.toFixed(4)]);
       XLSX.utils.book_append_sheet(wb,XLSX.utils.aoa_to_sheet(attrRows),'Atribucion');
     }
