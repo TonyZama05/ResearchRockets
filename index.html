@@ -147,6 +147,7 @@ canvas{display:block;width:100%!important}
     <button class="ni" onclick="go('riesgo')"><svg viewBox="0 0 16 16"><path d="M8 2l1.5 4H14l-3.7 2.7 1.4 4.3L8 11l-3.7 2 1.4-4.3L2 6h4.5z"/></svg>Riesgo</button>
     <button class="ni" onclick="go('analytics')"><svg viewBox="0 0 16 16"><circle cx="8" cy="8" r="6"/><path d="M8 5v3l2 2"/></svg>Analytics</button>
     <button class="ni" onclick="go('atribucion')"><svg viewBox="0 0 16 16"><path d="M2 14l3-8 3 4 2-6 4 10" stroke-linecap="round" stroke-linejoin="round"/></svg>Atribuci&oacute;n</button>
+    <button class="ni" onclick="go('snapshot')"><svg viewBox="0 0 16 16"><rect x="2" y="3" width="12" height="10" rx="1.5"/><circle cx="8" cy="8" r="2.5"/><path d="M6 3l1-1h2l1 1"/></svg>Snapshot Diario</button>
     <div class="nav-section">Gesti&oacute;n</div>
     <button class="ni" onclick="go('flujos')"><svg viewBox="0 0 16 16"><path d="M8 2v12M2 6l6-4 6 4M2 10l6 4 6-4"/></svg>Flujos &amp; Ajustes</button>
     <button class="ni" onclick="go('estadisticos')" id="ni-est"><svg viewBox="0 0 16 16" style="width:15px;height:15px;stroke:currentColor;fill:none;stroke-width:1.75"><path d="M1 13l4-8 3 5 2-3 3 6"/></svg>Estad&iacute;sticos</button>
@@ -784,11 +785,11 @@ function sortTable(tid,col,type='str'){
 function th(label,tid,col,type='str'){return`<th onclick="sortTable('${tid}',${col},'${type}')">${label}</th>`;}
 
 // ROUTING - No universo page
-const PAGES=['dashboard','ordenes','posicion','rendimiento','riesgo','analytics','atribucion','flujos','estadisticos','config'];
+const PAGES=['dashboard','ordenes','posicion','rendimiento','riesgo','analytics','atribucion','snapshot','flujos','estadisticos','config'];
 let chartInst=[];
 function go(page){
   document.querySelectorAll('.ni').forEach((el,i)=>el.classList.toggle('active',i===PAGES.indexOf(page)));
-  const titles={dashboard:'Dashboard',ordenes:'Órdenes',posicion:'Posición actual',rendimiento:'Rendimiento',riesgo:'Riesgo & Prospectivos',analytics:'Analytics',atribucion:'Performance Attribution',flujos:'Flujos & Ajustes de mercado',estadisticos:'Estadísticos & Medidas',config:'Configuración'};
+  const titles={dashboard:'Dashboard',ordenes:'Órdenes',posicion:'Posición actual',rendimiento:'Rendimiento',riesgo:'Riesgo & Prospectivos',analytics:'Analytics',atribucion:'Performance Attribution',snapshot:'Snapshot Diario',flujos:'Flujos & Ajustes de mercado',estadisticos:'Estadísticos & Medidas',config:'Configuración'};
   document.getElementById('tb-title').textContent=titles[page]||page;
   document.getElementById('tb-date').textContent=new Date().toLocaleDateString('es-MX',{weekday:'long',year:'numeric',month:'long',day:'numeric'});
   // Sidebar: siempre muestra el capital asignado (V0 fijo)
@@ -800,7 +801,7 @@ function go(page){
     if(_sSub)_sSub.textContent='';
   }
   chartInst.forEach(c=>{try{c.destroy();}catch(e){}});chartInst=[];
-  const renders={dashboard:pgDash,ordenes:pgÓrdenes,posicion:pgPosicion,rendimiento:pgRendimiento,riesgo:pgRiesgo,analytics:pgAnalytics,atribucion:pgAtribucion,flujos:pgFlujos,estadisticos:pgEstadísticos,config:pgConfig};
+  const renders={dashboard:pgDash,ordenes:pgÓrdenes,posicion:pgPosicion,rendimiento:pgRendimiento,riesgo:pgRiesgo,analytics:pgAnalytics,atribucion:pgAtribucion,snapshot:pgSnapshot,flujos:pgFlujos,estadisticos:pgEstadísticos,config:pgConfig};
   try{
     document.getElementById('content').innerHTML=(renders[page]||pgDash)();
   }catch(err){
@@ -814,6 +815,7 @@ function go(page){
   }
   if(page==='analytics')setTimeout(initCharts,50);
   if(page==='atribucion')setTimeout(initAtribucionCharts,50);
+  if(page==='snapshot')setTimeout(initSnapshot,50);
   if(page==='rendimiento')setTimeout(initRendChart,50);
   if(page==='config')setTimeout(()=>{
     const f=document.getElementById('c-fecha');
@@ -1149,9 +1151,10 @@ function pgAnalytics(){
     <div class="card" style="display:flex;flex-direction:column">
       <div class="sec-h"><div class="sec-h-bar"></div><div class="sec-h-text">Holdings &mdash; treemap de rendimiento</div>
         <select id="tm-period" onchange="renderTreemap()" style="width:auto;padding:4px 8px;font-size:11px;margin-left:auto">
-          <option value="order">Desde 1a operación ${firstOrderDate?'('+firstOrderDate+')':''}</option>
+          <option value="all">Total (YTD)</option>
+          <option value="order">Desde 1a orden ${firstOrderDate?'('+firstOrderDate+')':''}</option>
+          <option value="1m">1 mes</option>
           <option value="1w">1 semana</option>
-          <option value="day">Diario</option>
         </select>
       </div>
       <div id="treemap" style="flex:1;min-height:260px"></div>
@@ -1210,20 +1213,14 @@ function chartOpts(unit,legend=true){
 
 function renderTreemap(){
   const container=document.getElementById('treemap');if(!container)return;
-  const period=document.getElementById('tm-period')?.value||'order';const pos=buildPos();const items=[];
-  const sortedDates=(ALL_DATES||[]).map(d=>parseDate(d)).filter(Boolean).sort();
-  const latestDate=sortedDates.length?sortedDates[sortedDates.length-1]:today();
-  const prevDate=sortedDates.length>1?sortedDates[sortedDates.length-2]:null;
-  for(const t in pos){if(t==='MEXTRAC09')continue;const p=pos[t];const vm=p.titulos*p.precioActual;const pp=p.costoTotal>0?p.costoTotal/p.titulos:0;let base=pp;
-    if(period==='order') base=pp;
-    else if(period==='1w'){
-      const ref=new Date((latestDate||today())+'T12:00:00');ref.setDate(ref.getDate()-7);
-      base=localPrice(t,ref.toISOString().split('T')[0])||pp;
+  const period=document.getElementById('tm-period')?.value||'all';const pos=buildPos();const items=[];const m=calcMetrics();
+  for(const t in pos){if(t==='MEXTRAC09')continue;const p=pos[t];const vm=p.titulos*p.precioActual;const pp=p.costoTotal>0?p.costoTotal/p.titulos:0;let rend=0;
+    if(period==='all'){
+      const _fRef2=S.fechaInicio||'2026-04-13';
+      const _pRef2=localPrice(t,_fRef2)||(p.costoTotal>0?p.costoTotal/p.titulos:0);
+      rend=_pRef2>0?(p.precioActual-_pRef2)/_pRef2*100:0;
     }
-    else if(period==='day'){
-      base=(prevDate&&latestDate&&prevDate!==latestDate?localPrice(t,prevDate):null)||pp;
-    }
-    const rend=base>0&&p.precioActual?(p.precioActual-base)/base*100:0;
+    else{const daysBack=period==='1w'?7:30;const ref=new Date();ref.setDate(ref.getDate()-daysBack);const refP=localPrice(t,ref.toISOString().split('T')[0]);rend=refP&&p.precioActual?(p.precioActual-refP)/refP*100:0;}
     items.push({ticker:t,value:vm,rend});}
   if(!items.length){container.innerHTML='<div class="empty" style="height:180px;display:flex;align-items:center;justify-content:center">Sin posiciones para mostrar</div>';return;}
   const W=container.offsetWidth||600;const H=220;container.style.height=H+'px';
@@ -1471,10 +1468,13 @@ function parsePreciosPaste(raw,fallbackFecha){
     const dateCells=cells.filter(c=>!!parseDate(c));
     const numCells=cells.filter(c=>!isNaN(parseFloat(c.replace(/,/g,'.')))&&parseFloat(c.replace(/,/g,'.'))>0);
     // If majority are ticker-like and no date/numbers → this is the header row
-    const firstCellEmpty=cells[0]===''||cells[0].toUpperCase()==='FECHA';
-    if(firstCellEmpty&&tickerCells.length>=2&&dateCells.length===0&&numCells.length===0){
+    if(tickerCells.length>=2&&dateCells.length===0&&numCells.length===0){
       headerRowIdx=i;
-      headerTickers=cells.slice(1).map(cleanTicker).filter(Boolean);
+      // Skip the first cell if it's empty (leading tab)
+      headerTickers=cells.map(cleanTicker).filter((t,idx)=>idx===0?(t!==''&&t!=='FECHA'):true);
+      // If first cell is empty/FECHA, tickers start from idx 1
+      const firstCellEmpty=cells[0]===''||cells[0].toUpperCase()==='FECHA';
+      headerTickers=firstCellEmpty?cells.slice(1).map(cleanTicker):cells.map(cleanTicker);
       break;
     }
   }
@@ -1722,7 +1722,7 @@ function pgEstadísticos(){
 
 // INIT
 // ═══════════════════════════════════════════════════════════════════════════
-// PERFORMANCE ATTRIBUTION (modo profesor)
+// PERFORMANCE ATTRIBUTION  (Brinson-Hood-Beebower)
 // ═══════════════════════════════════════════════════════════════════════════
 function pgAtribucion(){
   const m=calcMetrics();
@@ -1731,7 +1731,8 @@ function pgAtribucion(){
   <div class="card" style="padding:14px 20px">
     <div style="display:flex;align-items:center;gap:0">
       <div class="sec-h-bar" style="background:var(--purple);width:4px;height:20px;border-radius:2px;margin-right:10px;flex-shrink:0"></div>
-      <div class="sec-h-text">Performance Attribution</div>
+      <div class="sec-h-text">Performance Attribution &mdash; Brinson-Fachler</div>
+      <div class="a-info" style="margin:0 16px;font-size:11px;padding:4px 10px;flex:1">Brinson-Fachler diario + <b>Carino linking</b> · Cash como clase · Reconcilia con Dashboard · Identidad: <b>r<sub>P</sub> − r<sub>B</sub> = Allocation + Selection + Interaction</b></div>
       <div style="display:flex;gap:8px;align-items:center;flex-shrink:0">
         <span style="font-size:11px;color:var(--txt3)">Período:</span>
         <select id="attr-period" onchange="renderAtribucion()" style="width:auto;padding:4px 10px;font-size:12px">
@@ -1752,53 +1753,32 @@ function pgAtribucion(){
     <div style="position:relative;height:240px"><canvas id="attr-bar-chart" style="width:100%!important;height:240px!important"></canvas></div>
   </div>
 
-  <!-- Allocation table -->
+  <!-- Unified Brinson table -->
   <div class="card">
     <div class="sec-h">
-      <div class="sec-h-bar" style="background:var(--blue)"></div>
-      <div class="sec-h-text">Allocation</div>
-      <div class="sec-h-sub">Efecto Asignación = (w<sub>P</sub> − w<sub>B</sub>) × r<sub>B</sub></div>
+      <div class="sec-h-bar" style="background:var(--accent)"></div>
+      <div class="sec-h-text">Brinson-Fachler &mdash; Tabla unificada</div>
+      <div class="sec-h-sub">Portfolio Weight · Benchmark Weight · Weight Difference · Allocation · Selection · Interaction</div>
     </div>
-    <div class="tw"><table id="tbl-attr-alloc"><thead><tr>
-      <th>Sector</th>
-      <th title="Peso del sector en el portafolio">w's Portafolio</th>
-      <th title="Peso del sector en el benchmark">w's Benchmark</th>
-      <th title="Retorno del sector en el benchmark">r's Benchmark</th>
-      <th title="(wP − wB) × rB">Efecto Asignación</th>
-      <th title="Over/Under sectorial: wP − wB">O/U Sect</th>
-    </tr></thead><tbody id="attr-tbody-alloc"></tbody></table></div>
-  </div>
-
-  <!-- Selection table -->
-  <div class="card">
-    <div class="sec-h">
-      <div class="sec-h-bar" style="background:var(--grn)"></div>
-      <div class="sec-h-text">Selection</div>
-      <div class="sec-h-sub">Efecto Selección = w<sub>B</sub> × (r<sub>P</sub> − r<sub>B</sub>)</div>
-    </div>
-    <div class="tw"><table id="tbl-attr-sel"><thead><tr>
-      <th>Sector</th>
-      <th title="Peso del sector en el benchmark">w's Benchmark</th>
-      <th title="Retorno del sector en el portafolio">r's Portafolio</th>
-      <th title="Retorno del sector en el benchmark">r's Benchmark</th>
-      <th title="wB × (rP − rB)">Efecto Selección</th>
-      <th title="Rendimiento relativo / alpha sectorial: rP − rB">Rend Rel / Act / α</th>
-    </tr></thead><tbody id="attr-tbody-sel"></tbody></table></div>
-  </div>
-
-  <!-- Interaction table -->
-  <div class="card">
-    <div class="sec-h">
-      <div class="sec-h-bar" style="background:var(--purple)"></div>
-      <div class="sec-h-text">Interaction</div>
-      <div class="sec-h-sub">Efecto Interacción = (w<sub>P</sub> − w<sub>B</sub>) × (r<sub>P</sub> − r<sub>B</sub>)</div>
-    </div>
-    <div class="tw"><table id="tbl-attr-int"><thead><tr>
-      <th>Sector</th>
-      <th title="Over/Under sectorial">w<sub>P</sub> − w<sub>B</sub></th>
-      <th title="Rendimiento relativo sectorial">r<sub>P</sub> − r<sub>B</sub></th>
-      <th title="(wP − wB) × (rP − rB)">Efecto Interacción</th>
-    </tr></thead><tbody id="attr-tbody-int"></tbody></table></div>
+    <div class="tw"><table id="tbl-attr-unif"><thead>
+      <tr style="background:var(--accent);color:#fff">
+        <th rowspan="2" style="background:var(--accent);color:#fff;vertical-align:middle;text-align:left">Asset Class</th>
+        <th style="background:var(--accent);color:#fff;text-align:center">Portfolio Weight</th>
+        <th style="background:var(--accent);color:#fff;text-align:center">Benchmark Weight</th>
+        <th style="background:var(--accent);color:#fff;text-align:center">Weight Difference</th>
+        <th style="background:var(--accent);color:#fff;text-align:center">Allocation Effect</th>
+        <th style="background:var(--accent);color:#fff;text-align:center">Selection Effect</th>
+        <th style="background:var(--accent);color:#fff;text-align:center">Interaction Effect</th>
+      </tr>
+      <tr style="background:var(--accent);color:#fff">
+        <th style="background:var(--accent);color:#fff;text-align:center;font-style:italic;font-weight:400">w<sub>pi</sub></th>
+        <th style="background:var(--accent);color:#fff;text-align:center;font-style:italic;font-weight:400">w<sub>bi</sub></th>
+        <th style="background:var(--accent);color:#fff;text-align:center;font-style:italic;font-weight:400">w<sub>pi</sub> − w<sub>bi</sub></th>
+        <th style="background:var(--accent);color:#fff;text-align:center;font-style:italic;font-weight:400">(w<sub>pi</sub>−w<sub>bi</sub>)(R<sub>bi</sub>−R<sub>b</sub>)</th>
+        <th style="background:var(--accent);color:#fff;text-align:center;font-style:italic;font-weight:400">w<sub>bi</sub>(R<sub>pi</sub>−R<sub>bi</sub>)</th>
+        <th style="background:var(--accent);color:#fff;text-align:center;font-style:italic;font-weight:400">(w<sub>pi</sub>−w<sub>bi</sub>)(R<sub>pi</sub>−R<sub>bi</sub>)</th>
+      </tr>
+    </thead><tbody id="attr-tbody-unif"></tbody></table></div>
   </div>
 
   <!-- Ticker-level selection (bonus detail) -->
@@ -1810,15 +1790,132 @@ function pgAtribucion(){
   </div>`;
 }
 
+// ═══════════════════════════════════════════════════════════════════════════
+// ATRIBUCIÓN DIARIA CON CARINO LINKING
+// Cada día: pesos reales (incl. cash) → BHB single-period → identidad cierra
+// Multi-día: factores Carino por día → efectos encadenados → cuadra con r_acum
+// ═══════════════════════════════════════════════════════════════════════════
+
+// Single-period BHB para un día t→t+1, con CASH como asset class explícito.
+// Devuelve {rPort, rBench, rActive, sectors:{sec:{wp,wb,rp,rb,aa,ss,inter}}}
+function _bhbSinglePeriod(d0,d1){
+  const posEnd=buildPosAt(d0);   // pesos al CIERRE de d0 → usados para retorno d0→d1
+  const snap=fundValueAt(d0);
+  const tf=snap.totalFondo;
+  if(tf<=0)return null;
+  const ef=snap.efectivo;
+  const totalMexW=Object.values(MEXTRAC_W).reduce((s,v)=>s+v,0);
+
+  // realMap = valor_mercado por ticker (ETF descompuesto look-through)
+  const realMap={};
+  let etfVal=0;
+  for(const t in posEnd){
+    const p=localPrice(t,d0);
+    if(p==null)continue;
+    const vm=posEnd[t].titulos*p;
+    if(vm<=0)continue;
+    if(t==='MEXTRAC09'){etfVal=vm;continue;}
+    realMap[t]=(realMap[t]||0)+vm;
+  }
+  if(etfVal>0){
+    for(const bt in MEXTRAC_W){
+      realMap[bt]=(realMap[bt]||0)+etfVal*(MEXTRAC_W[bt]/totalMexW);
+    }
+  }
+
+  // Acumular por sector
+  const sd={};
+  const ensure=s=>{if(!sd[s])sd[s]={wp:0,wb:0,vpRet:0,vbRet:0,vbW:0};};
+
+  // Portafolio sectorial (incluye look-through ETF)
+  for(const t in realMap){
+    const sec=UNIVERSO.find(u=>u.t===t)?.s||'Otros';
+    const p0=localPrice(t,d0),p1=localPrice(t,d1);
+    const r=(p0!=null&&p0>0&&p1!=null)?(p1-p0)/p0*100:0;
+    const w=realMap[t]/tf*100;
+    ensure(sec);
+    sd[sec].wp+=w;
+    sd[sec].vpRet+=w*r;
+  }
+  // Cash como asset class: w_P = %cash, w_B = 0, retorno 0
+  const cashWp=ef/tf*100;
+  if(cashWp>0){
+    ensure('CASH');
+    sd['CASH'].wp+=cashWp;
+    sd['CASH'].vpRet+=cashWp*0;
+  }
+  // Benchmark sectorial
+  for(const bt in MEXTRAC_W){
+    const sec=UNIVERSO.find(u=>u.t===bt)?.s||'Otros';
+    const wbPct=(MEXTRAC_W[bt]/totalMexW)*100;
+    const p0=localPrice(bt,d0),p1=localPrice(bt,d1);
+    ensure(sec);
+    sd[sec].wb+=wbPct;
+    if(p0!=null&&p0>0&&p1!=null){
+      const r=(p1-p0)/p0*100;
+      sd[sec].vbRet+=wbPct*r;
+      sd[sec].vbW+=wbPct;
+    }
+  }
+
+  // Retorno total del portafolio y del benchmark (single-period)
+  let rPort=0,rBench=0;
+  for(const sec in sd){
+    const s=sd[sec];
+    const rp=s.wp>0?s.vpRet/s.wp:0;
+    const rb=s.vbW>0?s.vbRet/s.vbW:0;
+    rPort+=(s.wp/100)*rp;
+    rBench+=(s.wb/100)*rb;
+  }
+  const Rb=rBench;
+
+  // Efectos Brinson-Fachler por sector
+  const sectors={};
+  for(const sec in sd){
+    const s=sd[sec];
+    const wp=s.wp/100, wb=s.wb/100;
+    const rp=s.wp>0?s.vpRet/s.wp:0;
+    const rb=s.vbW>0?s.vbRet/s.vbW:0;
+    const aa=(wp-wb)*(rb-Rb);
+    const ss=wb*(rp-rb);
+    const inter=(wp-wb)*(rp-rb);
+    sectors[sec]={wp:s.wp,wb:s.wb,rp,rb,aa,ss,inter};
+  }
+  return{rPort,rBench,rActive:rPort-rBench,sectors};
+}
+
+// Factor Carino para encadenar un período t→t+1 dentro de un total acumulado T
+function _carinoFactor(rP,rB,RP,RB){
+  // Factores que garantizan: Σ k_t * (rP_t - rB_t) = R_P - R_B (geométrico)
+  // Si denominadores son ~0, usar límite (expansión de Taylor → 1/(1+R))
+  const EPS=1e-10;
+  let kT;
+  if(Math.abs(RP-RB)<EPS){
+    kT=1/(1+RP/100);
+  }else{
+    const num=Math.log(1+RP/100)-Math.log(1+RB/100);
+    kT=num/((RP-RB)/100);
+  }
+  let kt;
+  if(Math.abs(rP-rB)<EPS){
+    kt=1/(1+rP/100);
+  }else{
+    const num=Math.log(1+rP/100)-Math.log(1+rB/100);
+    kt=num/((rP-rB)/100);
+  }
+  return kT>0?kt/kT:1;
+}
+
 function calcAtribucion(period){
   const m=calcMetrics();
   const hist=m.hist||[];
   if(hist.length<2)return null;
 
-  let startH=null,endH=null;
+  // Determinar rango de fechas según el período
+  let startIdx=0,endIdx=hist.length-1;
   if(period==='day'){
-    startH=hist[Math.max(0,hist.length-2)];
-    endH=hist[hist.length-1];
+    startIdx=Math.max(0,hist.length-2);
+    endIdx=hist.length-1;
   }else if(period==='week'){
     const _ld=parseISODate(hist[hist.length-1].date);
     if(_ld){
@@ -1827,132 +1924,119 @@ function calcAtribucion(period){
       const monDate=new Date(_ld.getTime());
       monDate.setDate(monDate.getDate()-daysToMon);
       const monStr=monDate.toISOString().split('T')[0];
-      let si=null;
       for(let i=hist.length-1;i>=0;i--){
-        if(hist[i].date<monStr){si=hist[i];break;}
+        if(hist[i].date<monStr){startIdx=i;break;}
       }
-      startH=si||hist[0];
-    }else startH=hist[0];
-    endH=hist[hist.length-1];
-  }else{
-    startH=hist[0];
-    endH=hist[hist.length-1];
-  }
-  if(!startH||!endH)return null;
-
-  const posStart=buildPosAt(startH.date);
-  const totalMexW=Object.values(MEXTRAC_W).reduce((s,v)=>s+v,0);
-
-  // Excluir CASH del attribution y normalizar pesos sobre la parte invertida
-  let investedStart=0;
-  for(const t in posStart){
-    const p0=localPrice(t,startH.date);
-    if(p0==null||p0<=0)continue;
-    investedStart+=posStart[t].titulos*p0;
-  }
-  if(investedStart<=0)return null;
-
-  const sectorData={};
-
-  // 1) Fondo al inicio del periodo, sin cash. MEXTRAC09 se descompone en sectores.
-  for(const t in posStart){
-    const p0=localPrice(t,startH.date);
-    const p1=localPrice(t,endH.date);
-    if(p0==null||p0<=0)continue;
-
-    const vm0=posStart[t].titulos*p0;
-    if(vm0<=0)continue;
-
-    if(t==='MEXTRAC09'){
-      for(const bt in MEXTRAC_W){
-        const sec=UNIVERSO.find(u=>u.t===bt)?.s||'Otros';
-        const p0b=localPrice(bt,startH.date);
-        const p1b=localPrice(bt,endH.date);
-        if(p0b==null||p0b<=0)continue;
-        const r=(p1b!=null)?(p1b-p0b)/p0b*100:0;
-        const wPct=(vm0/investedStart)*(MEXTRAC_W[bt]/totalMexW)*100;
-        if(!sectorData[sec])sectorData[sec]={wf:0,wb:0,rfSum:0,rfW:0,rbSum:0,rbW:0};
-        sectorData[sec].wf+=wPct;
-        sectorData[sec].rfSum+=wPct*r;
-        sectorData[sec].rfW+=wPct;
-      }
-      continue;
     }
-
-    const sec=UNIVERSO.find(u=>u.t===t)?.s||'Otros';
-    const wPct=vm0/investedStart*100;
-    const r=(p1!=null)?(p1-p0)/p0*100:0;
-    if(!sectorData[sec])sectorData[sec]={wf:0,wb:0,rfSum:0,rfW:0,rbSum:0,rbW:0};
-    sectorData[sec].wf+=wPct;
-    sectorData[sec].rfSum+=wPct*r;
-    sectorData[sec].rfW+=wPct;
+    endIdx=hist.length-1;
   }
+  const startH=hist[startIdx],endH=hist[endIdx];
+  if(!startH||!endH||startIdx>=endIdx)return null;
 
-  // 2) Benchmark sectorial
-  for(const t in MEXTRAC_W){
-    const sec=UNIVERSO.find(u=>u.t===t)?.s||'Otros';
-    const wbPct=(MEXTRAC_W[t]/totalMexW)*100;
-    const p0=localPrice(t,startH.date);
-    const p1=localPrice(t,endH.date);
-    if(!sectorData[sec])sectorData[sec]={wf:0,wb:0,rfSum:0,rfW:0,rbSum:0,rbW:0};
-    sectorData[sec].wb+=wbPct;
-    if(p0!=null&&p0>0&&p1!=null){
-      const r=(p1-p0)/p0*100;
-      sectorData[sec].rbSum+=wbPct*r;
-      sectorData[sec].rbW+=wbPct;
+  // ── Retornos acumulados reales (geometric compounding de retornos diarios) ──
+  // R_P = Π(1 + rP_t) - 1  (daily fund return); R_B = Π(1 + rB_t) - 1 (daily bench)
+  let cumFundFactor=1,cumBenchFactor=1;
+  const dailyRets=[];
+  for(let i=startIdx+1;i<=endIdx;i++){
+    const prev=hist[i-1],cur=hist[i];
+    const rF=prev.totalFondo>0?(cur.totalFondo-prev.totalFondo)/prev.totalFondo*100:0;
+    const rB=(prev.mexPrice&&cur.mexPrice&&prev.mexPrice>0)?(cur.mexPrice-prev.mexPrice)/prev.mexPrice*100:0;
+    cumFundFactor*=(1+rF/100);
+    cumBenchFactor*=(1+rB/100);
+    dailyRets.push({d0:prev.date,d1:cur.date,rF,rB});
+  }
+  const R_P=(cumFundFactor-1)*100;
+  const R_B=(cumBenchFactor-1)*100;
+  const activeRet=R_P-R_B;
+
+  // ── BHB diario para cada día del período ──
+  const dailyBHB=[];
+  for(const dr of dailyRets){
+    const bhb=_bhbSinglePeriod(dr.d0,dr.d1);
+    if(bhb)dailyBHB.push({...dr,...bhb});
+  }
+  if(!dailyBHB.length)return null;
+
+  // ── Carino linking: escalar cada efecto diario por su factor k_t / k_T ──
+  const sectorAgg={};
+  let totAA=0,totSS=0,totInt=0;
+
+  for(const dbhb of dailyBHB){
+    // Usar los retornos BHB del modelo diario (cierran single-period exacto)
+    const rP_t=dbhb.rPort, rB_t=dbhb.rBench;
+    const k=_carinoFactor(rP_t,rB_t,R_P,R_B);
+    for(const sec in dbhb.sectors){
+      const s=dbhb.sectors[sec];
+      if(!sectorAgg[sec])sectorAgg[sec]={wf_sum:0,wb_sum:0,wCount:0,rp_sum:0,rb_sum:0,aa:0,ss:0,inter:0};
+      sectorAgg[sec].aa+=s.aa*k;
+      sectorAgg[sec].ss+=s.ss*k;
+      sectorAgg[sec].inter+=s.inter*k;
+      sectorAgg[sec].wf_sum+=s.wp;
+      sectorAgg[sec].wb_sum+=s.wb;
+      sectorAgg[sec].wCount+=1;
+      sectorAgg[sec].rp_sum+=s.rp;
+      sectorAgg[sec].rb_sum+=s.rb;
+      totAA+=s.aa*k;
+      totSS+=s.ss*k;
+      totInt+=s.inter*k;
     }
   }
+  const totTotal=totAA+totSS+totInt;
 
+  // Construir filas para la tabla (pesos y retornos promedio del período)
   const rows=[];
-  let totAA=0,totSS=0,totInt=0,totTotal=0,portRet=0,benchRet=0;
-
-  for(const sec of Object.keys(sectorData)){
-    const d=sectorData[sec];
-    const wf=(d.wf||0)/100;
-    const wb=(d.wb||0)/100;
-    const rf=d.rfW>0?d.rfSum/d.rfW:0;
-    const rb=d.rbW>0?d.rbSum/d.rbW:0;
-
-    const aa=(wf-wb)*rb;
-    const ss=wb*(rf-rb);
-    const inter=(wf-wb)*(rf-rb);
-    const total=aa+ss+inter;
-
-    portRet+=wf*rf;
-    benchRet+=wb*rb;
-    totAA+=aa;
-    totSS+=ss;
-    totInt+=inter;
-    totTotal+=total;
-
-    rows.push({sec,wf:wf*100,wb:wb*100,rf,rb,aa,ss,inter,total});
+  for(const sec in sectorAgg){
+    const a=sectorAgg[sec];
+    const wf=a.wCount>0?a.wf_sum/a.wCount:0;
+    const wb=a.wCount>0?a.wb_sum/a.wCount:0;
+    const rf=a.wCount>0?a.rp_sum/a.wCount:0;
+    const rb=a.wCount>0?a.rb_sum/a.wCount:0;
+    const total=a.aa+a.ss+a.inter;
+    rows.push({sec,wf,wb,rf,rb,aa:a.aa,ss:a.ss,inter:a.inter,total});
   }
-
   rows.sort((a,b)=>Math.abs(b.total)-Math.abs(a.total));
 
-  const activeRet=portRet-benchRet;
-  const rPort=portRet;
-  const rBench=benchRet;
-
-  const tickerRows=[];
+  // ── Ticker-level selection (aproximación: última foto del período) ──
+  const posStart=buildPosAt(startH.date);
+  const totalMexW=Object.values(MEXTRAC_W).reduce((s,v)=>s+v,0);
+  let investedStart=0;
   for(const t in posStart){
-    if(t==='MEXTRAC09')continue;
-    const p0=localPrice(t,startH.date);
-    const p1=localPrice(t,endH.date);
-    if(p0==null||p0<=0)continue;
-    const vm0=posStart[t].titulos*p0;
-    if(vm0<=0)continue;
-    const wf=vm0/investedStart;
-    const wb=(MEXTRAC_W[t]||0)/totalMexW;
-    const sec=UNIVERSO.find(u=>u.t===t)?.s||'Otros';
-    const rf=p1!=null?(p1-p0)/p0*100:0;
-    const rbSec=sectorData[sec]&&sectorData[sec].rbW>0?sectorData[sec].rbSum/sectorData[sec].rbW:0;
-    const selContrib=wb*(rf-rbSec);
-    tickerRows.push({ticker:t,sec,wf:wf*100,wb:wb*100,rf,rbSec,selContrib});
+    const p=localPrice(t,startH.date);
+    if(p==null||p<=0)continue;
+    investedStart+=posStart[t].titulos*p;
   }
-  tickerRows.sort((a,b)=>Math.abs(b.selContrib)-Math.abs(a.selContrib));
+  const tickerRows=[];
+  if(investedStart>0){
+    const sectorData={};
+    for(const sec in sectorAgg){
+      const a=sectorAgg[sec];
+      sectorData[sec]={rb:a.wCount>0?a.rb_sum/a.wCount:0};
+    }
+    for(const t in posStart){
+      if(t==='MEXTRAC09')continue;
+      const p0=localPrice(t,startH.date);
+      const p1=localPrice(t,endH.date);
+      if(p0==null||p0<=0)continue;
+      const vm0=posStart[t].titulos*p0;
+      if(vm0<=0)continue;
+      const wf=vm0/investedStart;
+      const wb=(MEXTRAC_W[t]||0)/totalMexW;
+      const sec=UNIVERSO.find(u=>u.t===t)?.s||'Otros';
+      const rf=p1!=null?(p1-p0)/p0*100:0;
+      const rbSec=sectorData[sec]?sectorData[sec].rb:0;
+      const selContrib=wb*(rf-rbSec);
+      tickerRows.push({ticker:t,sec,wf:wf*100,wb:wb*100,rf,rbSec,selContrib});
+    }
+    tickerRows.sort((a,b)=>Math.abs(b.selContrib)-Math.abs(a.selContrib));
+  }
 
-  return{rPort,rBench,activeRet,totAA,totSS,totInt,totTotal,rows,tickerRows,startDate:startH.date,endDate:endH.date};
+  return{
+    rPort:R_P, rBench:R_B, activeRet,
+    totAA, totSS, totInt, totTotal,
+    rows, tickerRows,
+    startDate:startH.date, endDate:endH.date,
+    _carino:true, _nDays:dailyBHB.length
+  };
 }
 
 function renderAtribucion(){
@@ -1967,11 +2051,13 @@ function renderAtribucion(){
   const pw=n=>n==null||isNaN(n)?'—':n.toFixed(2)+'%';
 
   // ── Summary cards ──
+  const nDays=d._nDays||0;
+  const carinoBadge=d._carino?`Carino · ${nDays} día${nDays===1?'':'s'}`:'';
   document.getElementById('attr-summary-cards').innerHTML=`
-    ${stCard(pn(d.rPort),'Retorno Portafolio','Σ(w<sub>P</sub> · r<sub>P</sub>)',d.rPort>=0?'stat-grn':'stat-red')}
-    ${stCard(pn(d.rBench),'Retorno Benchmark','Σ(w<sub>B</sub> · r<sub>B</sub>) — MEXTRAC',d.rBench>=0?'stat-grn':'stat-red')}
+    ${stCard(pn(d.rPort),'Retorno Portafolio','Real (Dashboard)',d.rPort>=0?'stat-grn':'stat-red')}
+    ${stCard(pn(d.rBench),'Retorno Benchmark','MEXTRAC09 real',d.rBench>=0?'stat-grn':'stat-red')}
     ${stCard(pn(d.activeRet),'Retorno Activo','r<sub>P</sub> − r<sub>B</sub>',d.activeRet>=0?'stat-grn':'stat-red')}
-    ${stCard(pn(d.totTotal),'Total Attribution','AA + SS + Int','stat-acc')}
+    ${stCard(pn(d.totTotal),'Total BHB',carinoBadge,'stat-acc')}
   `;
 
   // ── Bar chart ──
@@ -1991,65 +2077,34 @@ function renderAtribucion(){
   const sumWf=d.rows.reduce((s,r)=>s+r.wf,0);
   const sumWb=d.rows.reduce((s,r)=>s+r.wb,0);
 
-  // ── Allocation table ──
-  const allocRows=d.rows.map(r=>{
-    const ou=r.wf-r.wb;
+  // ── Tabla unificada Brinson-Fachler ──
+  const unifRows=d.rows.map(r=>{
+    const wd=r.wf-r.wb;
     return `<tr>
       <td class="lbl">${r.sec}</td>
-      <td class="mono">${pw(r.wf)}</td>
-      <td class="mono">${pw(r.wb)}</td>
-      <td class="mono" style="color:${cc2(r.rb)}">${pn(r.rb)}</td>
-      <td class="mono" style="font-weight:700;color:${cc2(r.aa)}">${pn(r.aa)}</td>
-      <td class="mono" style="color:${cc2(ou)}">${pn(ou)}</td>
+      <td class="mono" style="text-align:center">${pw(r.wf)}</td>
+      <td class="mono" style="text-align:center">${pw(r.wb)}</td>
+      <td class="mono" style="text-align:center;color:${cc2(wd)}">${pn(wd)}</td>
+      <td class="mono" style="text-align:center;font-weight:700;color:${cc2(r.aa)}">${pn(r.aa)}</td>
+      <td class="mono" style="text-align:center;font-weight:700;color:${cc2(r.ss)}">${pn(r.ss)}</td>
+      <td class="mono" style="text-align:center;font-weight:700;color:${cc2(r.inter)}">${pn(r.inter)}</td>
     </tr>`;
   }).join('');
-  document.getElementById('attr-tbody-alloc').innerHTML=allocRows+`<tr style="border-top:2px solid var(--line2);background:var(--accent2);font-weight:700">
-    <td class="lbl" style="color:var(--accent)">Total</td>
-    <td class="mono">${pw(sumWf)}</td>
-    <td class="mono">${pw(sumWb)}</td>
-    <td class="mono" style="color:${cc2(d.rBench)}">${pn(d.rBench)}</td>
-    <td class="mono" style="color:${cc2(d.totAA)};font-size:14px">${pn(d.totAA)}</td>
-    <td></td>
+  const totalRow=`<tr style="border-top:2px solid var(--line2);background:var(--accent2);font-weight:700">
+    <td class="lbl" style="color:var(--accent)">TOTAL</td>
+    <td class="mono" style="text-align:center">${pw(sumWf)}</td>
+    <td class="mono" style="text-align:center">${pw(sumWb)}</td>
+    <td class="mono" style="text-align:center">${pn(sumWf-sumWb)}</td>
+    <td class="mono" style="text-align:center;color:${cc2(d.totAA)};font-size:14px">${pn(d.totAA)}</td>
+    <td class="mono" style="text-align:center;color:${cc2(d.totSS)};font-size:14px">${pn(d.totSS)}</td>
+    <td class="mono" style="text-align:center;color:${cc2(d.totInt)};font-size:14px">${pn(d.totInt)}</td>
+  </tr>
+  <tr style="background:var(--bg3);font-weight:600">
+    <td class="lbl" style="color:var(--txt2);font-size:11px;text-transform:uppercase;letter-spacing:.04em">Retorno activo = Σ(Alloc + Sel + Inter)</td>
+    <td colspan="3"></td>
+    <td class="mono" colspan="3" style="text-align:center;color:${cc2(d.activeRet)};font-size:15px;font-weight:700">${pn(d.activeRet)} &nbsp;=&nbsp; ${pn(d.totAA)} + ${pn(d.totSS)} + ${pn(d.totInt)}</td>
   </tr>`;
-
-  // ── Selection table ──
-  const selRows=d.rows.map(r=>{
-    const rel=r.rf-r.rb;
-    return `<tr>
-      <td class="lbl">${r.sec}</td>
-      <td class="mono">${pw(r.wb)}</td>
-      <td class="mono" style="color:${cc2(r.rf)}">${pn(r.rf)}</td>
-      <td class="mono" style="color:${cc2(r.rb)}">${pn(r.rb)}</td>
-      <td class="mono" style="font-weight:700;color:${cc2(r.ss)}">${pn(r.ss)}</td>
-      <td class="mono" style="color:${cc2(rel)}">${pn(rel)}</td>
-    </tr>`;
-  }).join('');
-  document.getElementById('attr-tbody-sel').innerHTML=selRows+`<tr style="border-top:2px solid var(--line2);background:var(--accent2);font-weight:700">
-    <td class="lbl" style="color:var(--accent)">Total</td>
-    <td class="mono">${pw(sumWb)}</td>
-    <td class="mono" style="color:${cc2(d.rPort)}">${pn(d.rPort)}</td>
-    <td class="mono" style="color:${cc2(d.rBench)}">${pn(d.rBench)}</td>
-    <td class="mono" style="color:${cc2(d.totSS)};font-size:14px">${pn(d.totSS)}</td>
-    <td></td>
-  </tr>`;
-
-  // ── Interaction table ──
-  const intRows=d.rows.map(r=>{
-    const ou=r.wf-r.wb;
-    const rel=r.rf-r.rb;
-    return `<tr>
-      <td class="lbl">${r.sec}</td>
-      <td class="mono" style="color:${cc2(ou)}">${pn(ou)}</td>
-      <td class="mono" style="color:${cc2(rel)}">${pn(rel)}</td>
-      <td class="mono" style="font-weight:700;color:${cc2(r.inter)}">${pn(r.inter)}</td>
-    </tr>`;
-  }).join('');
-  document.getElementById('attr-tbody-int').innerHTML=intRows+`<tr style="border-top:2px solid var(--line2);background:var(--accent2);font-weight:700">
-    <td class="lbl" style="color:var(--accent)">Total</td>
-    <td></td>
-    <td></td>
-    <td class="mono" style="color:${cc2(d.totInt)};font-size:14px">${pn(d.totInt)}</td>
-  </tr>`;
+  document.getElementById('attr-tbody-unif').innerHTML=unifRows+totalRow;
 
   // ── Ticker selection table ──
   document.getElementById('attr-tbody2').innerHTML=d.tickerRows.slice(0,15).map(r=>`<tr>
@@ -2064,6 +2119,336 @@ function renderAtribucion(){
 }
 
 function initAtribucionCharts(){renderAtribucion();}
+
+// ═══════════════════════════════════════════════════════════════════════════
+// SNAPSHOT DIARIO - Base para atribución diaria con CASH como clase explícita
+// Opción 1 Brinson pura: w_B(cash)=0%, cash retorna 0%
+// ═══════════════════════════════════════════════════════════════════════════
+function buildSnapshotForDate(date){
+  // Devuelve la foto del fondo al cierre de `date`: posiciones, precios, pesos,
+  // benchmark, cash como fila explícita, y retornos diarios vs día anterior.
+  const hist=buildHistorical();
+  if(!hist||!hist.length)return null;
+
+  // Encontrar el snapshot del día y el día anterior (para retornos diarios)
+  const idx=hist.findIndex(h=>h.date===date);
+  if(idx<0)return null;
+  const cur=hist[idx];
+  const prev=idx>0?hist[idx-1]:null;
+
+  const posCur=buildPosAt(date);
+  const posPrev=prev?buildPosAt(prev.date):null;
+  const totalFondo=cur.totalFondo;
+  const efectivo=cur.efectivo;
+  if(totalFondo<=0)return null;
+
+  const totalMexW=Object.values(MEXTRAC_W).reduce((s,v)=>s+v,0);
+
+  // Construir realMap (ETF MEXTRAC09 descompuesto look-through)
+  // realMap[ticker] = valor_mercado_real_$ en el fondo
+  const realMap={};
+  let etfVal=0;
+  for(const t in posCur){
+    const p=localPrice(t,date);
+    if(p==null)continue;
+    const vm=posCur[t].titulos*p;
+    if(vm<=0)continue;
+    if(t==='MEXTRAC09'){etfVal=vm;continue;}
+    realMap[t]=(realMap[t]||0)+vm;
+  }
+  // Desglosar MEXTRAC09 en constituyentes
+  if(etfVal>0){
+    for(const bt in MEXTRAC_W){
+      realMap[bt]=(realMap[bt]||0)+etfVal*(MEXTRAC_W[bt]/totalMexW);
+    }
+  }
+
+  // Retornos diarios por ticker (vs cierre de prev.date)
+  const rTicker={};
+  if(prev){
+    const allTickers=new Set([...Object.keys(realMap),...Object.keys(MEXTRAC_W)]);
+    for(const t of allTickers){
+      const p0=localPrice(t,prev.date);
+      const p1=localPrice(t,date);
+      rTicker[t]=(p0!=null&&p0>0&&p1!=null)?(p1-p0)/p0*100:null;
+    }
+    rTicker['MEXTRAC09']=(()=>{
+      const p0=localPrice('MEXTRAC09',prev.date);
+      const p1=localPrice('MEXTRAC09',date);
+      return(p0!=null&&p0>0&&p1!=null)?(p1-p0)/p0*100:null;
+    })();
+  }
+
+  // Rows por emisora, ordenadas por valor de mercado (desc)
+  const rows=[];
+  const seenTickers=Object.keys(realMap);
+  for(const t of seenTickers){
+    const vm=realMap[t];
+    const wF=vm/totalFondo*100;
+    const wB=((MEXTRAC_W[t]||0)/totalMexW)*100;
+    const uni=UNIVERSO.find(u=>u.t===t);
+    rows.push({
+      ticker:t,
+      nombre:uni?.n||t,
+      sector:uni?.s||'Otros',
+      titulos:posCur[t]?posCur[t].titulos:null,
+      precio:localPrice(t,date),
+      vm,
+      wF,
+      wB,
+      oUw:wF-wB,
+      rDia:rTicker[t]!=null?rTicker[t]:null
+    });
+  }
+  // También agregar constituyentes del bench que no tienes (para completitud sectorial futura)
+  for(const bt in MEXTRAC_W){
+    if(realMap[bt]!=null)continue;
+    const uni=UNIVERSO.find(u=>u.t===bt);
+    rows.push({
+      ticker:bt,
+      nombre:uni?.n||bt,
+      sector:uni?.s||'Otros',
+      titulos:null,
+      precio:localPrice(bt,date),
+      vm:0,
+      wF:0,
+      wB:(MEXTRAC_W[bt]/totalMexW)*100,
+      oUw:-(MEXTRAC_W[bt]/totalMexW)*100,
+      rDia:rTicker[bt]!=null?rTicker[bt]:null
+    });
+  }
+  rows.sort((a,b)=>b.vm-a.vm);
+
+  // Fila CASH explícita — Opción 1 Brinson: w_B=0%, retorno=0%
+  const cashRow={
+    ticker:'CASH',
+    nombre:'Efectivo',
+    sector:'CASH',
+    titulos:null,
+    precio:null,
+    vm:efectivo,
+    wF:efectivo/totalFondo*100,
+    wB:0,
+    oUw:efectivo/totalFondo*100,
+    rDia:0
+  };
+
+  // Retorno diario del fondo y bench
+  let rFondoDia=null,rBenchDia=null,rActivoDia=null;
+  if(prev){
+    rFondoDia=prev.totalFondo>0?(cur.totalFondo-prev.totalFondo)/prev.totalFondo*100:null;
+    rBenchDia=(prev.mexPrice&&cur.mexPrice&&prev.mexPrice>0)?(cur.mexPrice-prev.mexPrice)/prev.mexPrice*100:null;
+    rActivoDia=(rFondoDia!=null&&rBenchDia!=null)?rFondoDia-rBenchDia:null;
+  }
+
+  return{
+    date,prevDate:prev?prev.date:null,
+    totalFondo,efectivo,
+    invertido:totalFondo-efectivo,
+    pctInvertido:(totalFondo-efectivo)/totalFondo*100,
+    pctCash:efectivo/totalFondo*100,
+    rows,cashRow,
+    rFondoDia,rBenchDia,rActivoDia,
+    mexPrice:cur.mexPrice
+  };
+}
+
+function buildSnapshotHistory(){
+  // Tabla histórica: para cada día en hist, el resumen de pesos y retornos diarios
+  const hist=buildHistorical();
+  if(!hist||!hist.length)return[];
+  const out=[];
+  for(let i=0;i<hist.length;i++){
+    const h=hist[i];
+    const prev=i>0?hist[i-1]:null;
+    const pctCash=h.totalFondo>0?(h.efectivo/h.totalFondo)*100:0;
+    const pctInv=100-pctCash;
+    let rF=null,rB=null,rA=null;
+    if(prev){
+      rF=prev.totalFondo>0?(h.totalFondo-prev.totalFondo)/prev.totalFondo*100:null;
+      rB=(prev.mexPrice&&h.mexPrice&&prev.mexPrice>0)?(h.mexPrice-prev.mexPrice)/prev.mexPrice*100:null;
+      rA=(rF!=null&&rB!=null)?rF-rB:null;
+    }
+    out.push({
+      date:h.date,
+      totalFondo:h.totalFondo,
+      efectivo:h.efectivo,
+      invertido:h.totalFondo-h.efectivo,
+      pctInv,pctCash,
+      mexPrice:h.mexPrice,
+      rFondo:rF,rBench:rB,rActivo:rA
+    });
+  }
+  return out;
+}
+
+function pgSnapshot(){
+  const hist=buildHistorical();
+  if(!hist||!hist.length){
+    return`<div class="card"><div class="empty" style="padding:40px;text-align:center;color:var(--txt3)">
+      Sin historial disponible. Registra órdenes y precios para ver el snapshot diario.
+    </div></div>`;
+  }
+  const dates=hist.map(h=>h.date);
+  const latestDate=dates[dates.length-1];
+  const options=dates.slice().reverse().map(d=>`<option value="${d}"${d===latestDate?' selected':''}>${d}</option>`).join('');
+
+  return`
+  <!-- Header -->
+  <div class="card" style="padding:14px 20px">
+    <div style="display:flex;align-items:center;gap:0;flex-wrap:wrap">
+      <div class="sec-h-bar" style="background:var(--accent);width:4px;height:20px;border-radius:2px;margin-right:10px;flex-shrink:0"></div>
+      <div class="sec-h-text">Snapshot Diario &mdash; Base Brinson con Cash explícito</div>
+      <div class="a-info" style="margin:0 16px;font-size:11px;padding:4px 10px;flex:1;min-width:240px">
+        Cash tratado como clase de activo (Opción 1): <b>w<sub>B</sub>(cash) = 0%</b>, retorno cash = 0%. Base para atribución diaria + linking Carino.
+      </div>
+      <div style="display:flex;gap:8px;align-items:center;flex-shrink:0">
+        <span style="font-size:11px;color:var(--txt3)">Fecha:</span>
+        <select id="snap-date" onchange="renderSnapshot()" style="width:auto;padding:4px 10px;font-size:12px">${options}</select>
+      </div>
+    </div>
+  </div>
+
+  <!-- Resumen cards -->
+  <div id="snap-cards" class="sg4"></div>
+
+  <!-- Tabla del día -->
+  <div class="card">
+    <div class="sec-h">
+      <div class="sec-h-bar" style="background:var(--accent)"></div>
+      <div class="sec-h-text">Posiciones al cierre del día</div>
+      <div class="sec-h-sub" id="snap-hint"></div>
+    </div>
+    <div class="tw"><table id="tbl-snap"><thead><tr>
+      <th>Ticker</th>
+      <th>Nombre</th>
+      <th>Sector</th>
+      <th style="text-align:right">Títulos</th>
+      <th style="text-align:right">Precio</th>
+      <th style="text-align:right">Valor mercado</th>
+      <th title="Peso real en el fondo (incluye look-through del ETF)" style="text-align:right">W Fondo %</th>
+      <th title="Peso en MEXTRAC09" style="text-align:right">W Bench %</th>
+      <th title="Overweight / Underweight vs MEXTRAC" style="text-align:right">O/U vs Bench</th>
+      <th title="Retorno vs cierre del día anterior" style="text-align:right">R Diario %</th>
+    </tr></thead><tbody id="snap-tbody"></tbody></table></div>
+  </div>
+
+  <!-- Tabla histórica -->
+  <div class="card">
+    <div class="sec-h">
+      <div class="sec-h-bar" style="background:var(--purple)"></div>
+      <div class="sec-h-text">Historial diario &mdash; base para Carino linking</div>
+      <div class="sec-h-sub">% invertido · % cash · retornos diarios</div>
+    </div>
+    <div class="tw"><table id="tbl-snap-hist"><thead><tr>
+      <th>Fecha</th>
+      <th style="text-align:right">Valor Fondo</th>
+      <th style="text-align:right">Invertido</th>
+      <th style="text-align:right">Cash</th>
+      <th style="text-align:right">% Invertido</th>
+      <th style="text-align:right">% Cash</th>
+      <th style="text-align:right">R Fondo %</th>
+      <th style="text-align:right">R Bench %</th>
+      <th style="text-align:right">R Activo %</th>
+    </tr></thead><tbody id="snap-hist-tbody"></tbody></table></div>
+  </div>`;
+}
+
+function renderSnapshot(){
+  const sel=document.getElementById('snap-date');
+  const date=sel?sel.value:null;
+  if(!date)return;
+  const s=buildSnapshotForDate(date);
+  if(!s){
+    document.getElementById('snap-cards').innerHTML='<div class="empty" style="grid-column:1/-1">Sin datos para esta fecha.</div>';
+    return;
+  }
+  const cc=n=>n>0?'var(--grn)':n<0?'var(--red)':'var(--txt3)';
+  const pn=n=>n==null||isNaN(n)?'—':(n>=0?'+':'')+n.toFixed(2)+'%';
+  const pw=n=>n==null||isNaN(n)?'—':n.toFixed(2)+'%';
+
+  // Cards
+  const hintPrev=s.prevDate?`vs ${s.prevDate}`:'(primer día)';
+  document.getElementById('snap-cards').innerHTML=`
+    ${stCard(fm(s.totalFondo),'Valor Fondo',`Cierre ${s.date}`,'stat-acc')}
+    ${stCard(pw(s.pctInvertido),'% Invertido',`Cash ${pw(s.pctCash)}`,'stat-blue')}
+    ${stCard(pn(s.rFondoDia),'R Fondo diario',hintPrev,s.rFondoDia==null?'stat-acc':s.rFondoDia>=0?'stat-grn':'stat-red')}
+    ${stCard(pn(s.rActivoDia),'R Activo diario',s.rBenchDia!=null?`Bench ${pn(s.rBenchDia)}`:'',s.rActivoDia==null?'stat-acc':s.rActivoDia>=0?'stat-grn':'stat-red')}
+  `;
+
+  const hint=document.getElementById('snap-hint');
+  if(hint)hint.textContent=s.prevDate?`Retornos diarios vs ${s.prevDate}`:'Primer día — retornos diarios no disponibles';
+
+  // Tabla de posiciones
+  // Filas con W_F > 0 (tenencia real) + fila CASH siempre + después filas de bench-only (opcional)
+  const tenencias=s.rows.filter(r=>r.wF>0.001);
+  const benchOnly=s.rows.filter(r=>r.wF<=0.001&&r.wB>0);
+
+  const fmTitles=v=>v==null?'—':v.toLocaleString('es-MX',{maximumFractionDigits:0});
+  const fmPx=v=>v==null?'—':v.toLocaleString('es-MX',{minimumFractionDigits:2,maximumFractionDigits:2});
+  const fmVm=v=>v==null?'—':'$'+v.toLocaleString('es-MX',{maximumFractionDigits:0});
+
+  const rowHtml=r=>`<tr>
+    <td class="lbl mono">${r.ticker}</td>
+    <td class="dim" style="max-width:220px">${r.nombre}</td>
+    <td class="dim">${r.sector}</td>
+    <td class="mono" style="text-align:right">${fmTitles(r.titulos)}</td>
+    <td class="mono" style="text-align:right">${fmPx(r.precio)}</td>
+    <td class="mono" style="text-align:right">${fmVm(r.vm)}</td>
+    <td class="mono" style="text-align:right">${pw(r.wF)}</td>
+    <td class="mono" style="text-align:right">${pw(r.wB)}</td>
+    <td class="mono" style="text-align:right;color:${cc(r.oUw)}">${pn(r.oUw)}</td>
+    <td class="mono" style="text-align:right;color:${cc(r.rDia)}">${pn(r.rDia)}</td>
+  </tr>`;
+
+  const cashHtml=`<tr style="background:var(--amb2)">
+    <td class="lbl mono" style="color:var(--amb)">${s.cashRow.ticker}</td>
+    <td class="dim">${s.cashRow.nombre}</td>
+    <td class="dim" style="font-weight:600;color:var(--amb)">${s.cashRow.sector}</td>
+    <td class="mono" style="text-align:right">—</td>
+    <td class="mono" style="text-align:right">—</td>
+    <td class="mono" style="text-align:right">${fmVm(s.cashRow.vm)}</td>
+    <td class="mono" style="text-align:right">${pw(s.cashRow.wF)}</td>
+    <td class="mono" style="text-align:right">${pw(s.cashRow.wB)}</td>
+    <td class="mono" style="text-align:right;color:${cc(s.cashRow.oUw)}">${pn(s.cashRow.oUw)}</td>
+    <td class="mono" style="text-align:right">+0.00%</td>
+  </tr>`;
+
+  // Totales
+  const sumWf=tenencias.reduce((a,r)=>a+r.wF,0)+s.cashRow.wF;
+  const sumWb=tenencias.reduce((a,r)=>a+r.wB,0)+benchOnly.reduce((a,r)=>a+r.wB,0);
+  const totalRow=`<tr style="border-top:2px solid var(--line2);background:var(--accent2);font-weight:700">
+    <td class="lbl" style="color:var(--accent)" colspan="5">TOTAL</td>
+    <td class="mono" style="text-align:right">${fmVm(s.totalFondo)}</td>
+    <td class="mono" style="text-align:right">${pw(sumWf)}</td>
+    <td class="mono" style="text-align:right">${pw(sumWb)}</td>
+    <td></td>
+    <td class="mono" style="text-align:right;color:${cc(s.rFondoDia)}">${pn(s.rFondoDia)}</td>
+  </tr>`;
+
+  let html=tenencias.map(rowHtml).join('')+cashHtml+totalRow;
+  if(benchOnly.length){
+    html+=`<tr><td colspan="10" style="background:var(--bg3);padding:8px 12px;font-size:11px;font-weight:600;color:var(--txt3);text-transform:uppercase;letter-spacing:.06em">Emisoras del benchmark no tenidas (bench-only)</td></tr>`;
+    html+=benchOnly.map(rowHtml).join('');
+  }
+  document.getElementById('snap-tbody').innerHTML=html;
+
+  // Histórico
+  const histData=buildSnapshotHistory();
+  document.getElementById('snap-hist-tbody').innerHTML=histData.map(h=>`<tr${h.date===date?' style="background:var(--accent2)"':''}>
+    <td class="lbl mono">${h.date}</td>
+    <td class="mono" style="text-align:right">${fmVm(h.totalFondo)}</td>
+    <td class="mono" style="text-align:right">${fmVm(h.invertido)}</td>
+    <td class="mono" style="text-align:right">${fmVm(h.efectivo)}</td>
+    <td class="mono" style="text-align:right">${pw(h.pctInv)}</td>
+    <td class="mono" style="text-align:right;color:var(--amb)">${pw(h.pctCash)}</td>
+    <td class="mono" style="text-align:right;color:${cc(h.rFondo)}">${pn(h.rFondo)}</td>
+    <td class="mono" style="text-align:right;color:${cc(h.rBench)}">${pn(h.rBench)}</td>
+    <td class="mono" style="text-align:right;font-weight:600;color:${cc(h.rActivo)}">${pn(h.rActivo)}</td>
+  </tr>`).join('');
+}
+
+function initSnapshot(){renderSnapshot();}
 
 // ═══════════════════════════════════════════════════════════════════════════
 // DECOMPOSED DONUTS (real exposure with MEXTRAC breakdown)
@@ -2179,7 +2564,7 @@ async function exportToExcel(evt){
       const _fRef=S.fechaInicio||'2026-04-13';
       const pRef=localPrice(t,_fRef)||pp||p.precioActual;
       const pnl=vm-p.costoTotal;
-      const pnlPct=p.costoTotal>0?pnl/p.costoTotal*100:0;
+      const pnlPct=pRef>0?(p.precioActual-pRef)/pRef*100:0;
       const uni=UNIVERSO.find(u=>u.t===t);
       posRows.push([t,uni?.n||t,uni?.s||'ETF',p.titulos,+pp.toFixed(4),p.precioActual,+vm.toFixed(2),+pnl.toFixed(2),+pnlPct.toFixed(2),m.totalFondo>0?+(vm/m.totalFondo*100).toFixed(2):0]);
     }
@@ -2214,13 +2599,59 @@ async function exportToExcel(evt){
 
     const attrD=calcAtribucion('acum');
     if(attrD){
-      const attrRows=[['Sector','W Fondo %','W Bench %','R Fondo %','R Bench %','Asset Allocation','Stock Selection','Interacción','Total']];
+      const attrRows=[['Asset Class','Portfolio Weight (wpi)','Benchmark Weight (wbi)','Weight Difference (wpi-wbi)','Allocation Effect','Selection Effect','Interaction Effect','Total']];
       for(const r of attrD.rows){
-        attrRows.push([r.sec,+r.wf.toFixed(2),+r.wb.toFixed(2),+r.rf.toFixed(4),+r.rb.toFixed(4),+r.aa.toFixed(4),+r.ss.toFixed(4),+r.inter.toFixed(4),+r.total.toFixed(4)]);
+        attrRows.push([r.sec,+r.wf.toFixed(4),+r.wb.toFixed(4),+(r.wf-r.wb).toFixed(4),+r.aa.toFixed(4),+r.ss.toFixed(4),+r.inter.toFixed(4),+r.total.toFixed(4)]);
       }
-      attrRows.push(['TOTAL ATTRIBUTION','','','','',+attrD.totAA.toFixed(4),+attrD.totSS.toFixed(4),+attrD.totInt.toFixed(4),+attrD.totTotal.toFixed(4)]);
-      attrRows.push(['RETORNO ACTIVO','','','','','','','',+attrD.activeRet.toFixed(4)]);
+      const sumWf=attrD.rows.reduce((s,r)=>s+r.wf,0);
+      const sumWb=attrD.rows.reduce((s,r)=>s+r.wb,0);
+      attrRows.push(['TOTAL',+sumWf.toFixed(4),+sumWb.toFixed(4),+(sumWf-sumWb).toFixed(4),+attrD.totAA.toFixed(4),+attrD.totSS.toFixed(4),+attrD.totInt.toFixed(4),+attrD.totTotal.toFixed(4)]);
+      attrRows.push(['RETORNO ACTIVO','','','','','','',+attrD.activeRet.toFixed(4)]);
       XLSX.utils.book_append_sheet(wb,XLSX.utils.aoa_to_sheet(attrRows),'Atribucion');
+    }
+
+    // Snapshot Diario — base Brinson con CASH como clase explícita
+    // Una fila por (fecha, ticker) + fila CASH por fecha. Base para linking Carino.
+    const snapHist=buildSnapshotHistory();
+    if(snapHist.length){
+      const snapRows=[['Fecha','Ticker','Nombre','Sector','Títulos','Precio','Valor mercado','W Fondo %','W Bench %','O/U vs Bench %','R Diario %']];
+      for(const hs of snapHist){
+        const s=buildSnapshotForDate(hs.date);
+        if(!s)continue;
+        // Posiciones reales
+        for(const r of s.rows){
+          if(r.wF<=0.001&&r.wB<=0.001)continue;
+          snapRows.push([
+            toExcelDate(hs.date),r.ticker,r.nombre,r.sector,
+            r.titulos!=null?+r.titulos.toFixed(4):'',
+            r.precio!=null?+r.precio.toFixed(4):'',
+            +r.vm.toFixed(2),
+            +r.wF.toFixed(4),+r.wB.toFixed(4),+r.oUw.toFixed(4),
+            r.rDia!=null?+r.rDia.toFixed(4):''
+          ]);
+        }
+        // Fila CASH
+        snapRows.push([
+          toExcelDate(hs.date),s.cashRow.ticker,s.cashRow.nombre,s.cashRow.sector,
+          '','',+s.cashRow.vm.toFixed(2),
+          +s.cashRow.wF.toFixed(4),0,+s.cashRow.oUw.toFixed(4),0
+        ]);
+      }
+      XLSX.utils.book_append_sheet(wb,formatSheet(XLSX.utils.aoa_to_sheet(snapRows),[0]),'Snapshot_Diario');
+
+      // Snapshot_Historial — resumen por fecha
+      const histRows2=[['Fecha','Valor Fondo','Invertido','Cash','% Invertido','% Cash','Precio MEXTRAC','R Fondo %','R Bench %','R Activo %']];
+      for(const h of snapHist){
+        histRows2.push([
+          toExcelDate(h.date),+h.totalFondo.toFixed(2),+h.invertido.toFixed(2),+h.efectivo.toFixed(2),
+          +h.pctInv.toFixed(4),+h.pctCash.toFixed(4),
+          h.mexPrice!=null?+h.mexPrice:'',
+          h.rFondo!=null?+h.rFondo.toFixed(4):'',
+          h.rBench!=null?+h.rBench.toFixed(4):'',
+          h.rActivo!=null?+h.rActivo.toFixed(4):''
+        ]);
+      }
+      XLSX.utils.book_append_sheet(wb,formatSheet(XLSX.utils.aoa_to_sheet(histRows2),[0]),'Snapshot_Historial');
     }
 
     if(S.flujos&&S.flujos.length){
