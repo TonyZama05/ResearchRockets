@@ -2748,7 +2748,7 @@ function pgInfoCoef(){
       <div class="sec-h-text">Descomposición visual</div>
       <div class="sec-h-sub">Transfer Coefficient × Information Coefficient × √Breadth = Information Ratio</div>
     </div>
-    <div id="ic-charts-row" style="display:grid;grid-template-columns:1fr auto 1fr auto 1fr auto 1fr;gap:10px;align-items:center;padding:14px"></div>
+    <div id="ic-charts-row" style="display:grid;grid-template-columns:1fr auto 1fr auto 1fr auto 1fr;gap:10px;align-items:start;justify-items:center;padding:14px"></div>
   </div>`;
 }
 
@@ -2776,6 +2776,21 @@ function renderInfoCoef(){
   // ── Caja izquierda: info ──
   const TC_pct=d.TC!=null?d.TC:0;
   const sqrtB=Math.sqrt(d.breadthAvg);
+
+  // Disclaimer banner si hay problemas de inferencia
+  const warnings=[];
+  if(d.N<10)warnings.push(`<b>N = ${d.N} días</b> — inferencia estadística débil (recomendado N ≥ 20)`);
+  if(d.IR_efectivo!=null&&d.IR_ley_anual!=null&&Math.sign(d.IR_efectivo)!==Math.sign(d.IR_ley_anual)&&Math.abs(d.IR_ley_anual)>0.05){
+    warnings.push(`Signos discrepantes: <b>IR Efectivo ${d.IR_efectivo>=0?'+':''}${d.IR_efectivo.toFixed(2)}</b> vs <b>IR Ley ${d.IR_ley_anual>=0?'+':''}${d.IR_ley_anual.toFixed(2)}</b> — la Ley de Grinold cancela TC×IC negativos; el IR Efectivo refleja la realización`);
+  }
+  if(Math.abs(d.IR_efectivo)>5){
+    warnings.push(`IR Efectivo magnitud >5: con N pequeño, el TE diario se aproxima a cero y dispara el IR al anualizar (×√252). Interpretar con cautela`);
+  }
+  const warnBanner=warnings.length?`<div class="card" style="padding:10px 14px;background:#FEF3C7;border-left:3px solid var(--amb);margin-bottom:0">
+    <div style="font-size:11px;font-weight:700;color:var(--amb);text-transform:uppercase;letter-spacing:.06em;margin-bottom:4px">⚠ Avisos de calidad estadística</div>
+    ${warnings.map(w=>`<div style="font-size:11px;color:#78350F;line-height:1.5;margin:2px 0">• ${w}</div>`).join('')}
+  </div>`:'';
+
   document.getElementById('ic-info-block').innerHTML=`
     <table style="width:100%;border-collapse:collapse;margin:0">
       <tbody>
@@ -2794,6 +2809,7 @@ function renderInfoCoef(){
         <tr><td style="padding:6px 12px;font-size:12px;font-weight:600">Information Ratio Efectivo</td><td class="mono" style="padding:6px 12px;text-align:right;font-size:13px;font-weight:700;color:${cc(d.IR_efectivo)}">${(d.IR_efectivo>=0?'+':'')+d.IR_efectivo.toFixed(2)}</td></tr>
       </tbody>
     </table>
+    ${warnBanner?'<div style="padding:0 0 0 0;margin-top:12px">'+warnBanner+'</div>':''}
   `;
 
   // ── Caja derecha: fórmula visual ──
@@ -2843,7 +2859,7 @@ function renderInfoCoef(){
   document.getElementById('ic-summary-tbody').innerHTML=`<tr>
     <td class="lbl" style="font-weight:700">Efectiva</td>
     <td class="mono" style="text-align:center;color:${cc(d.alfaDiariaBps)}">${(d.alfaDiariaBps>=0?'+':'')+d.alfaDiariaBps.toFixed(2)}</td>
-    <td class="mono" style="text-align:center">${f4(d.TE_anual/100)}</td>
+    <td class="mono" style="text-align:center">${d.TE_anual.toFixed(2)}%</td>
     <td class="mono" style="text-align:center;font-weight:700;color:${cc(d.IR_efectivo)}">${(d.IR_efectivo>=0?'+':'')+d.IR_efectivo.toFixed(2)}</td>
     <td class="mono" style="text-align:center">${fpct(TC_pct)}</td>
     <td class="mono" style="text-align:center">${fpct(d.icMean)}</td>
@@ -2855,13 +2871,13 @@ function renderInfoCoef(){
   // Cada uno es un canvas de barra única con valor anotado encima
   const charts=document.getElementById('ic-charts-row');
   charts.innerHTML=`
-    <div style="text-align:center"><div style="font-size:12px;font-weight:600;color:var(--accent);margin-bottom:6px">Transfer Coefficient (%)</div><canvas id="chart-tc" style="height:200px;width:100%"></canvas></div>
-    <div style="font-size:24px;color:var(--txt2);font-weight:600">×</div>
-    <div style="text-align:center"><div style="font-size:12px;font-weight:600;color:var(--accent);margin-bottom:6px">Information Coefficient (%)</div><canvas id="chart-ic" style="height:200px;width:100%"></canvas></div>
-    <div style="font-size:24px;color:var(--txt2);font-weight:600">×</div>
-    <div style="text-align:center"><div style="font-size:12px;font-weight:600;color:var(--accent);margin-bottom:6px">Breadth (N)</div><canvas id="chart-br" style="height:200px;width:100%"></canvas></div>
-    <div style="font-size:24px;color:var(--txt2);font-weight:600">=</div>
-    <div style="text-align:center"><div style="font-size:12px;font-weight:600;color:var(--accent);margin-bottom:6px">Information Ratio</div><canvas id="chart-ir" style="height:200px;width:100%"></canvas></div>
+    <div style="text-align:center;width:100%"><div style="font-size:12px;font-weight:600;color:var(--accent);margin-bottom:6px">Transfer Coefficient (%)</div><div style="position:relative;height:200px;width:100%"><canvas id="chart-tc"></canvas></div></div>
+    <div style="font-size:24px;color:var(--txt2);font-weight:600;align-self:center">×</div>
+    <div style="text-align:center;width:100%"><div style="font-size:12px;font-weight:600;color:var(--accent);margin-bottom:6px">Information Coefficient (%)</div><div style="position:relative;height:200px;width:100%"><canvas id="chart-ic"></canvas></div></div>
+    <div style="font-size:24px;color:var(--txt2);font-weight:600;align-self:center">×</div>
+    <div style="text-align:center;width:100%"><div style="font-size:12px;font-weight:600;color:var(--accent);margin-bottom:6px">Breadth (N)</div><div style="position:relative;height:200px;width:100%"><canvas id="chart-br"></canvas></div></div>
+    <div style="font-size:24px;color:var(--txt2);font-weight:600;align-self:center">=</div>
+    <div style="text-align:center;width:100%"><div style="font-size:12px;font-weight:600;color:var(--accent);margin-bottom:6px">Information Ratio</div><div style="position:relative;height:200px;width:100%"><canvas id="chart-ir"></canvas></div></div>
   `;
   const mkBar=(canvasId,value,label,color,maxY,yFmt)=>{
     const ctx=document.getElementById(canvasId);
