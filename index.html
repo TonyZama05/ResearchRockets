@@ -148,6 +148,7 @@ canvas{display:block;width:100%!important}
     <button class="ni" onclick="go('analytics')"><svg viewBox="0 0 16 16"><circle cx="8" cy="8" r="6"/><path d="M8 5v3l2 2"/></svg>Analytics</button>
     <button class="ni" onclick="go('atribucion')"><svg viewBox="0 0 16 16"><path d="M2 14l3-8 3 4 2-6 4 10" stroke-linecap="round" stroke-linejoin="round"/></svg>Atribuci&oacute;n</button>
     <button class="ni" onclick="go('snapshot')"><svg viewBox="0 0 16 16"><rect x="2" y="3" width="12" height="10" rx="1.5"/><circle cx="8" cy="8" r="2.5"/><path d="M6 3l1-1h2l1 1"/></svg>Snapshot Diario</button>
+    <button class="ni" onclick="go('infocoef')"><svg viewBox="0 0 16 16"><circle cx="4.5" cy="11" r="1.3"/><circle cx="8" cy="6" r="1.3"/><circle cx="11.5" cy="9" r="1.3"/><path d="M2 14L14 2" stroke-dasharray="2 2"/></svg>IC &amp; Fund. Law</button>
     <div class="nav-section">Gesti&oacute;n</div>
     <button class="ni" onclick="go('flujos')"><svg viewBox="0 0 16 16"><path d="M8 2v12M2 6l6-4 6 4M2 10l6 4 6-4"/></svg>Flujos &amp; Ajustes</button>
     <button class="ni" onclick="go('estadisticos')" id="ni-est"><svg viewBox="0 0 16 16" style="width:15px;height:15px;stroke:currentColor;fill:none;stroke-width:1.75"><path d="M1 13l4-8 3 5 2-3 3 6"/></svg>Estad&iacute;sticos</button>
@@ -785,11 +786,11 @@ function sortTable(tid,col,type='str'){
 function th(label,tid,col,type='str'){return`<th onclick="sortTable('${tid}',${col},'${type}')">${label}</th>`;}
 
 // ROUTING - No universo page
-const PAGES=['dashboard','ordenes','posicion','rendimiento','riesgo','analytics','atribucion','snapshot','flujos','estadisticos','config'];
+const PAGES=['dashboard','ordenes','posicion','rendimiento','riesgo','analytics','atribucion','snapshot','infocoef','flujos','estadisticos','config'];
 let chartInst=[];
 function go(page){
   document.querySelectorAll('.ni').forEach((el,i)=>el.classList.toggle('active',i===PAGES.indexOf(page)));
-  const titles={dashboard:'Dashboard',ordenes:'Órdenes',posicion:'Posición actual',rendimiento:'Rendimiento',riesgo:'Riesgo & Prospectivos',analytics:'Analytics',atribucion:'Performance Attribution',snapshot:'Snapshot Diario',flujos:'Flujos & Ajustes de mercado',estadisticos:'Estadísticos & Medidas',config:'Configuración'};
+  const titles={dashboard:'Dashboard',ordenes:'Órdenes',posicion:'Posición actual',rendimiento:'Rendimiento',riesgo:'Riesgo & Prospectivos',analytics:'Analytics',atribucion:'Performance Attribution',snapshot:'Snapshot Diario',infocoef:'Information Coefficient & Fundamental Law',flujos:'Flujos & Ajustes de mercado',estadisticos:'Estadísticos & Medidas',config:'Configuración'};
   document.getElementById('tb-title').textContent=titles[page]||page;
   document.getElementById('tb-date').textContent=new Date().toLocaleDateString('es-MX',{weekday:'long',year:'numeric',month:'long',day:'numeric'});
   // Sidebar: siempre muestra el capital asignado (V0 fijo)
@@ -801,7 +802,7 @@ function go(page){
     if(_sSub)_sSub.textContent='';
   }
   chartInst.forEach(c=>{try{c.destroy();}catch(e){}});chartInst=[];
-  const renders={dashboard:pgDash,ordenes:pgÓrdenes,posicion:pgPosicion,rendimiento:pgRendimiento,riesgo:pgRiesgo,analytics:pgAnalytics,atribucion:pgAtribucion,snapshot:pgSnapshot,flujos:pgFlujos,estadisticos:pgEstadísticos,config:pgConfig};
+  const renders={dashboard:pgDash,ordenes:pgÓrdenes,posicion:pgPosicion,rendimiento:pgRendimiento,riesgo:pgRiesgo,analytics:pgAnalytics,atribucion:pgAtribucion,snapshot:pgSnapshot,infocoef:pgInfoCoef,flujos:pgFlujos,estadisticos:pgEstadísticos,config:pgConfig};
   try{
     document.getElementById('content').innerHTML=(renders[page]||pgDash)();
   }catch(err){
@@ -816,6 +817,7 @@ function go(page){
   if(page==='analytics')setTimeout(initCharts,50);
   if(page==='atribucion')setTimeout(initAtribucionCharts,50);
   if(page==='snapshot')setTimeout(initSnapshot,50);
+  if(page==='infocoef')setTimeout(initInfoCoef,50);
   if(page==='rendimiento')setTimeout(initRendChart,50);
   if(page==='config')setTimeout(()=>{
     const f=document.getElementById('c-fecha');
@@ -2449,6 +2451,471 @@ function renderSnapshot(){
 }
 
 function initSnapshot(){renderSnapshot();}
+
+// ═══════════════════════════════════════════════════════════════════════════
+// INFORMATION COEFFICIENT (Grinold-Kahn implícito) + FUNDAMENTAL LAW
+// IC_t = Spearman((w_P,i,t - w_B,i,t), (r_i,t - r̄_B,t)) por día
+// IR_teórico = IC × √(Breadth × Frecuencia)
+// ═══════════════════════════════════════════════════════════════════════════
+
+// Spearman ρ: Pearson sobre ranks (ordinal, robusto a outliers)
+function _rank(arr){
+  const n=arr.length;
+  const idx=arr.map((v,i)=>[v,i]).sort((a,b)=>a[0]-b[0]);
+  const ranks=new Array(n);
+  let i=0;
+  while(i<n){
+    let j=i;
+    while(j+1<n&&idx[j+1][0]===idx[i][0])j++;
+    const avg=(i+j)/2+1;
+    for(let k=i;k<=j;k++)ranks[idx[k][1]]=avg;
+    i=j+1;
+  }
+  return ranks;
+}
+function _pearson(x,y){
+  const n=x.length;
+  if(n<2)return null;
+  const mx=x.reduce((a,b)=>a+b,0)/n;
+  const my=y.reduce((a,b)=>a+b,0)/n;
+  let num=0,sx=0,sy=0;
+  for(let i=0;i<n;i++){
+    const dx=x[i]-mx,dy=y[i]-my;
+    num+=dx*dy; sx+=dx*dx; sy+=dy*dy;
+  }
+  const den=Math.sqrt(sx*sy);
+  return den>0?num/den:null;
+}
+function _spearman(x,y){
+  if(!x||!y||x.length!==y.length||x.length<2)return null;
+  return _pearson(_rank(x),_rank(y));
+}
+
+function calcInfoCoefficient(period){
+  // period = 'gestion' (todo) | 'week' (última semana)
+  const m=calcMetrics();
+  const hist=m.hist||[];
+  if(hist.length<2)return null;
+  const totalMexW=Object.values(MEXTRAC_W).reduce((s,v)=>s+v,0);
+
+  // Determinar índices de inicio/fin según período
+  let startIdx=0,endIdx=hist.length-1;
+  if(period==='week'){
+    const _ld=parseISODate(hist[hist.length-1].date);
+    if(_ld){
+      const dow=_ld.getDay();
+      const daysToMon=dow===0?6:dow-1;
+      const monDate=new Date(_ld.getTime());
+      monDate.setDate(monDate.getDate()-daysToMon);
+      const monStr=monDate.toISOString().split('T')[0];
+      for(let i=hist.length-1;i>=0;i--){
+        if(hist[i].date<monStr){startIdx=i;break;}
+      }
+    }
+  }
+  const startH=hist[startIdx],endH=hist[endIdx];
+  if(!startH||!endH||startIdx>=endIdx)return null;
+
+  // ════════════════════════════════════════════════════════════════════
+  // BLOQUE 1 — IC diario (Spearman cross-sectional) por cada día t→t+1
+  // ════════════════════════════════════════════════════════════════════
+  const dailyIC=[];
+  const activeRetsArr=[]; // r_fondo - r_bench por día (para TE/IR efectivo)
+
+  for(let i=startIdx+1;i<=endIdx;i++){
+    const d0=hist[i-1].date,d1=hist[i].date;
+    const posEnd=buildPosAt(d0);
+    const snap=fundValueAt(d0);
+    const tf=snap.totalFondo;
+    if(tf<=0)continue;
+
+    const realMap={};
+    let etfVal=0;
+    for(const t in posEnd){
+      const p=localPrice(t,d0);
+      if(p==null||p<=0)continue;
+      const vm=posEnd[t].titulos*p;
+      if(vm<=0)continue;
+      if(t==='MEXTRAC09'){etfVal=vm;continue;}
+      realMap[t]=(realMap[t]||0)+vm;
+    }
+    if(etfVal>0){
+      for(const bt in MEXTRAC_W){
+        realMap[bt]=(realMap[bt]||0)+etfVal*(MEXTRAC_W[bt]/totalMexW);
+      }
+    }
+    const universe=new Set([...Object.keys(realMap),...Object.keys(MEXTRAC_W)]);
+
+    // r̄_B = retorno benchmark del día (look-through)
+    let rBar=0,rBarW=0;
+    for(const t of universe){
+      const wb=(MEXTRAC_W[t]||0)/totalMexW;
+      if(wb<=0)continue;
+      const p0=localPrice(t,d0),p1=localPrice(t,d1);
+      if(p0==null||p0<=0||p1==null)continue;
+      const r=(p1-p0)/p0*100;
+      rBar+=wb*r; rBarW+=wb;
+    }
+    rBar=rBarW>0?rBar/rBarW:0;
+
+    const bets=[],excess=[];
+    for(const t of universe){
+      const wP=(realMap[t]||0)/tf*100;
+      const wB=((MEXTRAC_W[t]||0)/totalMexW)*100;
+      const p0=localPrice(t,d0),p1=localPrice(t,d1);
+      if(p0==null||p0<=0||p1==null)continue;
+      const r=(p1-p0)/p0*100;
+      const bet=wP-wB;
+      if(Math.abs(bet)<1e-6&&wP<1e-6&&wB<1e-6)continue;
+      bets.push(bet);
+      excess.push(r-rBar);
+    }
+    if(bets.length<3)continue;
+    const ic=_spearman(bets,excess);
+    if(ic==null||isNaN(ic))continue;
+    const breadth=bets.filter(b=>Math.abs(b)>1e-4).length;
+
+    // Retorno activo del día (real Dashboard)
+    const prev=hist[i-1],cur=hist[i];
+    const rF=prev.totalFondo>0?(cur.totalFondo-prev.totalFondo)/prev.totalFondo*100:null;
+    const rB=(prev.mexPrice&&cur.mexPrice&&prev.mexPrice>0)?(cur.mexPrice-prev.mexPrice)/prev.mexPrice*100:null;
+    const rA=(rF!=null&&rB!=null)?rF-rB:null;
+    if(rA!=null)activeRetsArr.push(rA);
+
+    dailyIC.push({date:d1,ic,breadth,n:bets.length,rA});
+  }
+  if(!dailyIC.length)return null;
+
+  // Estadísticos del IC
+  const icArr=dailyIC.map(d=>d.ic);
+  const icMean=icArr.reduce((a,b)=>a+b,0)/icArr.length;
+  const breadthAvg=dailyIC.reduce((a,b)=>a+b.breadth,0)/dailyIC.length;
+  const N=dailyIC.length;
+
+  // ════════════════════════════════════════════════════════════════════
+  // BLOQUE 2 — Transfer Coefficient (período completo)
+  // TC = corr( w_P,i - w_B,i ,  alpha_i )    con alpha_i = retorno relativo realizado acumulado
+  // Usamos pesos al CIERRE del primer día y retornos del período entero
+  // ════════════════════════════════════════════════════════════════════
+  const startDate=startH.date,endDate=endH.date;
+  const posStart=buildPosAt(startDate);
+  const snapStart=fundValueAt(startDate);
+  const tfStart=snapStart.totalFondo;
+  let TC=null,nTC=0;
+  if(tfStart>0){
+    const realMapTC={};
+    let etfValTC=0;
+    for(const t in posStart){
+      const p=localPrice(t,startDate);
+      if(p==null||p<=0)continue;
+      const vm=posStart[t].titulos*p;
+      if(vm<=0)continue;
+      if(t==='MEXTRAC09'){etfValTC=vm;continue;}
+      realMapTC[t]=(realMapTC[t]||0)+vm;
+    }
+    if(etfValTC>0){
+      for(const bt in MEXTRAC_W){
+        realMapTC[bt]=(realMapTC[bt]||0)+etfValTC*(MEXTRAC_W[bt]/totalMexW);
+      }
+    }
+    const universeTC=new Set([...Object.keys(realMapTC),...Object.keys(MEXTRAC_W)]);
+
+    // Retorno acumulado del benchmark look-through del período
+    let rBarPeriod=0,rBarPeriodW=0;
+    for(const t of universeTC){
+      const wb=(MEXTRAC_W[t]||0)/totalMexW;
+      if(wb<=0)continue;
+      const p0=localPrice(t,startDate),p1=localPrice(t,endDate);
+      if(p0==null||p0<=0||p1==null)continue;
+      const r=(p1-p0)/p0*100;
+      rBarPeriod+=wb*r; rBarPeriodW+=wb;
+    }
+    rBarPeriod=rBarPeriodW>0?rBarPeriod/rBarPeriodW:0;
+
+    const betsTC=[],alphasTC=[];
+    for(const t of universeTC){
+      const wP=(realMapTC[t]||0)/tfStart*100;
+      const wB=((MEXTRAC_W[t]||0)/totalMexW)*100;
+      const p0=localPrice(t,startDate),p1=localPrice(t,endDate);
+      if(p0==null||p0<=0||p1==null)continue;
+      const r=(p1-p0)/p0*100;
+      const bet=wP-wB;
+      if(Math.abs(bet)<1e-6&&wP<1e-6&&wB<1e-6)continue;
+      betsTC.push(bet);
+      alphasTC.push(r-rBarPeriod); // alpha_i = retorno relativo realizado del stock
+    }
+    nTC=betsTC.length;
+    if(nTC>=3)TC=_pearson(betsTC,alphasTC); // TC = Pearson clásico (no rank)
+  }
+
+  // ════════════════════════════════════════════════════════════════════
+  // BLOQUE 3 — Métricas efectivas: Active Return, TE, IR
+  // ════════════════════════════════════════════════════════════════════
+  // Active return diario promedio (bps), TE anualizado, IR efectivo anualizado
+  const meanActive=activeRetsArr.length>0?activeRetsArr.reduce((a,b)=>a+b,0)/activeRetsArr.length:0;
+  let stdActive=0;
+  if(activeRetsArr.length>1){
+    const v=activeRetsArr.reduce((a,b)=>a+(b-meanActive)**2,0)/(activeRetsArr.length-1);
+    stdActive=Math.sqrt(v);
+  }
+  const alfaDiariaBps=meanActive*100; // bps (pct → bps)
+  const TE_anual=stdActive*Math.sqrt(252); // % anualizado
+  const IR_efectivo=stdActive>0?(meanActive/stdActive)*Math.sqrt(252):0;
+
+  // ════════════════════════════════════════════════════════════════════
+  // BLOQUE 4 — Fundamental Law: IR_ley = TC × IC × √Breadth
+  // (Versión Grinold original, sin √Frecuencia — coincide con slide Apex)
+  // ════════════════════════════════════════════════════════════════════
+  const IR_ley_crudo=(TC!=null?TC:0)*icMean*Math.sqrt(breadthAvg*N);
+  const IR_ley_anual=(TC!=null?TC:0)*icMean*Math.sqrt(breadthAvg);
+
+  // Rendimiento benchmark del período (real)
+  let rBenchPeriod=null;
+  if(startH.mexPrice&&endH.mexPrice&&startH.mexPrice>0){
+    rBenchPeriod=(endH.mexPrice-startH.mexPrice)/startH.mexPrice*100;
+  }
+
+  return{
+    period,
+    startDate,endDate,
+    diasHabiles:N,
+    rBenchPeriod,
+    alfaDiariaBps,TE_anual,IR_efectivo,
+    icMean,TC,nTC,breadthAvg,N,
+    IR_ley_crudo,IR_ley_anual,
+    dailyIC
+  };
+}
+
+function pgInfoCoef(){
+  return`
+  <!-- Header -->
+  <div class="card" style="padding:14px 20px">
+    <div style="display:flex;align-items:center;gap:0;flex-wrap:wrap">
+      <div class="sec-h-bar" style="background:var(--accent);width:4px;height:20px;border-radius:2px;margin-right:10px;flex-shrink:0"></div>
+      <div class="sec-h-text">Information Ratio &middot; Fundamental Law of Active Management</div>
+      <div class="a-info" style="margin:0 16px;font-size:11px;padding:4px 10px;flex:1;min-width:240px">
+        <b>IR = TC × IC × √Breadth</b> &middot; Eficiencia Operativa × Habilidad de los Gestores × Decisiones Independientes
+      </div>
+      <div style="display:flex;gap:8px;align-items:center;flex-shrink:0">
+        <span style="font-size:11px;color:var(--txt3)">Período:</span>
+        <select id="ic-period" onchange="renderInfoCoef()" style="width:auto;padding:4px 10px;font-size:12px">
+          <option value="gestion">Total de gestión</option>
+          <option value="week">Semana actual</option>
+        </select>
+      </div>
+    </div>
+  </div>
+
+  <!-- Bloque superior: 2 columnas (info gestion + formula visual) -->
+  <div style="display:grid;grid-template-columns:1fr 1.3fr;gap:14px;align-items:start">
+    <!-- Caja izquierda: tablas de info -->
+    <div class="card" id="ic-info-card" style="padding:0">
+      <div id="ic-info-block"></div>
+    </div>
+    <!-- Caja derecha: formula visual -->
+    <div class="card" id="ic-formula-card">
+      <div class="sec-h" style="border-bottom:1px solid var(--line)">
+        <div class="sec-h-bar" style="background:var(--accent)"></div>
+        <div class="sec-h-text">Fundamental Law of Active Management</div>
+      </div>
+      <div id="ic-formula-block" style="padding:18px 14px"></div>
+    </div>
+  </div>
+
+  <!-- Tabla de métricas -->
+  <div class="card">
+    <div class="sec-h">
+      <div class="sec-h-bar" style="background:var(--blue)"></div>
+      <div class="sec-h-text">Resumen de métricas</div>
+    </div>
+    <div class="tw"><table id="tbl-ic-summary"><thead><tr style="background:var(--accent);color:#fff">
+      <th style="background:var(--accent);color:#fff">Métrica</th>
+      <th style="background:var(--accent);color:#fff;text-align:center">Active Return<br><span style="font-size:10px;font-weight:400">(Efectivo, bps)</span></th>
+      <th style="background:var(--accent);color:#fff;text-align:center">Tracking Error<br><span style="font-size:10px;font-weight:400">(Efectivo)</span></th>
+      <th style="background:var(--accent);color:#fff;text-align:center">Information Ratio<br><span style="font-size:10px;font-weight:400">(Efectivo)</span></th>
+      <th style="background:var(--accent);color:#fff;text-align:center">Transfer<br>Coefficient</th>
+      <th style="background:var(--accent);color:#fff;text-align:center">Information<br>Coefficient</th>
+      <th style="background:var(--accent);color:#fff;text-align:center">Breadth</th>
+      <th style="background:var(--accent);color:#fff;text-align:center">Information Ratio<br><span style="font-size:10px;font-weight:400">(Ley)</span></th>
+    </tr></thead><tbody id="ic-summary-tbody"></tbody></table></div>
+  </div>
+
+  <!-- Mini-charts: TC * IC * sqrt(B) = IR -->
+  <div class="card">
+    <div class="sec-h">
+      <div class="sec-h-bar" style="background:var(--purple)"></div>
+      <div class="sec-h-text">Descomposición visual</div>
+      <div class="sec-h-sub">Transfer Coefficient × Information Coefficient × √Breadth = Information Ratio</div>
+    </div>
+    <div id="ic-charts-row" style="display:grid;grid-template-columns:1fr auto 1fr auto 1fr auto 1fr;gap:10px;align-items:center;padding:14px"></div>
+  </div>`;
+}
+
+function renderInfoCoef(){
+  const period=document.getElementById('ic-period')?.value||'gestion';
+  const d=calcInfoCoefficient(period);
+  if(!d){
+    document.getElementById('ic-info-block').innerHTML='<div class="empty" style="padding:20px">Sin datos suficientes para el período seleccionado.</div>';
+    document.getElementById('ic-formula-block').innerHTML='';
+    document.getElementById('ic-summary-tbody').innerHTML='';
+    document.getElementById('ic-charts-row').innerHTML='';
+    return;
+  }
+  const cc=n=>n>0?'var(--grn)':n<0?'var(--red)':'var(--txt3)';
+  const f3=n=>n==null||isNaN(n)?'—':(n>=0?'+':'')+n.toFixed(3);
+  const f2=n=>n==null||isNaN(n)?'—':n.toFixed(2);
+  const f4=n=>n==null||isNaN(n)?'—':n.toFixed(4);
+  const fpct=n=>n==null||isNaN(n)?'—':(n*100).toFixed(1)+'%';
+  const fdate=s=>{
+    if(!s)return'—';
+    const [y,m,dd]=s.split('-');
+    return `${dd}/${m}/${y}`;
+  };
+
+  // ── Caja izquierda: info ──
+  const TC_pct=d.TC!=null?d.TC:0;
+  const sqrtB=Math.sqrt(d.breadthAvg);
+  document.getElementById('ic-info-block').innerHTML=`
+    <table style="width:100%;border-collapse:collapse;margin:0">
+      <tbody>
+        <tr style="background:var(--accent);color:#fff"><td colspan="2" style="padding:6px 12px;font-weight:600;font-size:12px;letter-spacing:.04em;text-transform:uppercase">Información de Gestión</td></tr>
+        <tr><td style="padding:6px 12px;font-size:12px;border-bottom:1px solid var(--line)">Inicio Gestión</td><td class="mono" style="padding:6px 12px;text-align:right;font-size:12px;border-bottom:1px solid var(--line)">${fdate(d.startDate)}</td></tr>
+        <tr><td style="padding:6px 12px;font-size:12px;border-bottom:1px solid var(--line)">Fecha Análisis</td><td class="mono" style="padding:6px 12px;text-align:right;font-size:12px;border-bottom:1px solid var(--line)">${fdate(d.endDate)}</td></tr>
+        <tr><td style="padding:6px 12px;font-size:12px;border-bottom:1px solid var(--line)">Días Hábiles Gestión</td><td class="mono" style="padding:6px 12px;text-align:right;font-size:12px;border-bottom:1px solid var(--line)">${d.diasHabiles}</td></tr>
+        <tr><td style="padding:6px 12px;font-size:12px">Rendimiento Benchmark</td><td class="mono" style="padding:6px 12px;text-align:right;font-size:12px;color:${cc(d.rBenchPeriod)}">${d.rBenchPeriod!=null?(d.rBenchPeriod>=0?'+':'')+d.rBenchPeriod.toFixed(2)+'%':'—'}</td></tr>
+      </tbody>
+    </table>
+    <table style="width:100%;border-collapse:collapse;margin-top:12px">
+      <tbody>
+        <tr style="background:var(--accent);color:#fff"><td colspan="2" style="padding:6px 12px;font-weight:600;font-size:12px;letter-spacing:.04em;text-transform:uppercase">Resultados Objetivo Final de Gestión</td></tr>
+        <tr><td style="padding:6px 12px;font-size:12px;border-bottom:1px solid var(--line)">Alfa Diaria (bps)</td><td class="mono" style="padding:6px 12px;text-align:right;font-size:12px;border-bottom:1px solid var(--line);color:${cc(d.alfaDiariaBps)}">${(d.alfaDiariaBps>=0?'+':'')+d.alfaDiariaBps.toFixed(2)}</td></tr>
+        <tr><td style="padding:6px 12px;font-size:12px;border-bottom:1px solid var(--line)">Tracking Error (Anualizado)</td><td class="mono" style="padding:6px 12px;text-align:right;font-size:12px;border-bottom:1px solid var(--line)">${d.TE_anual.toFixed(2)}%</td></tr>
+        <tr><td style="padding:6px 12px;font-size:12px;font-weight:600">Information Ratio Efectivo</td><td class="mono" style="padding:6px 12px;text-align:right;font-size:13px;font-weight:700;color:${cc(d.IR_efectivo)}">${(d.IR_efectivo>=0?'+':'')+d.IR_efectivo.toFixed(2)}</td></tr>
+      </tbody>
+    </table>
+  `;
+
+  // ── Caja derecha: fórmula visual ──
+  const ircol=cc(d.IR_ley_anual);
+  document.getElementById('ic-formula-block').innerHTML=`
+    <div style="display:grid;grid-template-columns:auto 1fr auto 1fr auto 1fr auto 1fr;gap:8px;align-items:center;text-align:center">
+      <!-- Encabezados -->
+      <div style="font-size:13px;font-weight:600;color:var(--accent)">Information Ratio</div>
+      <div style="font-size:18px;font-weight:600;color:var(--txt2)">=</div>
+      <div style="font-size:13px;font-weight:600;color:var(--accent)">Transfer<br>Coefficient</div>
+      <div style="font-size:18px;font-weight:600;color:var(--txt2)">×</div>
+      <div style="font-size:13px;font-weight:600;color:var(--accent)">Information<br>Coefficient</div>
+      <div style="font-size:18px;font-weight:600;color:var(--txt2)">×</div>
+      <div style="font-size:13px;font-weight:600;color:var(--accent)">√Breadth</div>
+      <div></div>
+      <!-- Flechas -->
+      <div style="color:var(--txt3);font-size:18px">↓</div>
+      <div></div>
+      <div style="color:var(--txt3);font-size:18px">↓</div>
+      <div></div>
+      <div style="color:var(--txt3);font-size:18px">↓</div>
+      <div></div>
+      <div style="color:var(--txt3);font-size:18px">↓</div>
+      <div></div>
+      <!-- Sub-etiquetas -->
+      <div></div>
+      <div></div>
+      <div style="font-size:11px;color:var(--txt3)">Eficiencia<br>Operativa</div>
+      <div></div>
+      <div style="font-size:11px;color:var(--txt3)">Habilidad de los<br>Gestores</div>
+      <div></div>
+      <div style="font-size:11px;color:var(--txt3)">Decisiones<br>Independientes</div>
+      <div></div>
+      <!-- Valores -->
+      <div style="font-family:var(--mono);font-size:18px;font-weight:700;color:${ircol};margin-top:10px">${f2(d.IR_ley_anual)}</div>
+      <div style="font-size:18px;font-weight:600;color:var(--txt2);margin-top:10px">=</div>
+      <div style="font-family:var(--mono);font-size:18px;font-weight:700;color:var(--accent);margin-top:10px">${fpct(TC_pct)}</div>
+      <div style="font-size:18px;font-weight:600;color:var(--txt2);margin-top:10px">×</div>
+      <div style="font-family:var(--mono);font-size:18px;font-weight:700;color:var(--accent);margin-top:10px">${fpct(d.icMean)}</div>
+      <div style="font-size:18px;font-weight:600;color:var(--txt2);margin-top:10px">×</div>
+      <div style="font-family:var(--mono);font-size:18px;font-weight:700;color:var(--accent);margin-top:10px">√${d.breadthAvg.toFixed(0)}</div>
+      <div></div>
+    </div>
+  `;
+
+  // ── Tabla de resumen ──
+  document.getElementById('ic-summary-tbody').innerHTML=`<tr>
+    <td class="lbl" style="font-weight:700">Efectiva</td>
+    <td class="mono" style="text-align:center;color:${cc(d.alfaDiariaBps)}">${(d.alfaDiariaBps>=0?'+':'')+d.alfaDiariaBps.toFixed(2)}</td>
+    <td class="mono" style="text-align:center">${f4(d.TE_anual/100)}</td>
+    <td class="mono" style="text-align:center;font-weight:700;color:${cc(d.IR_efectivo)}">${(d.IR_efectivo>=0?'+':'')+d.IR_efectivo.toFixed(2)}</td>
+    <td class="mono" style="text-align:center">${fpct(TC_pct)}</td>
+    <td class="mono" style="text-align:center">${fpct(d.icMean)}</td>
+    <td class="mono" style="text-align:center">${d.breadthAvg.toFixed(0)}</td>
+    <td class="mono" style="text-align:center;font-weight:700;color:${cc(d.IR_ley_anual)}">${(d.IR_ley_anual>=0?'+':'')+d.IR_ley_anual.toFixed(2)}</td>
+  </tr>`;
+
+  // ── 4 mini-charts: TC * IC * √B = IR ──
+  // Cada uno es un canvas de barra única con valor anotado encima
+  const charts=document.getElementById('ic-charts-row');
+  charts.innerHTML=`
+    <div style="text-align:center"><div style="font-size:12px;font-weight:600;color:var(--accent);margin-bottom:6px">Transfer Coefficient (%)</div><canvas id="chart-tc" style="height:200px;width:100%"></canvas></div>
+    <div style="font-size:24px;color:var(--txt2);font-weight:600">×</div>
+    <div style="text-align:center"><div style="font-size:12px;font-weight:600;color:var(--accent);margin-bottom:6px">Information Coefficient (%)</div><canvas id="chart-ic" style="height:200px;width:100%"></canvas></div>
+    <div style="font-size:24px;color:var(--txt2);font-weight:600">×</div>
+    <div style="text-align:center"><div style="font-size:12px;font-weight:600;color:var(--accent);margin-bottom:6px">Breadth (N)</div><canvas id="chart-br" style="height:200px;width:100%"></canvas></div>
+    <div style="font-size:24px;color:var(--txt2);font-weight:600">=</div>
+    <div style="text-align:center"><div style="font-size:12px;font-weight:600;color:var(--accent);margin-bottom:6px">Information Ratio</div><canvas id="chart-ir" style="height:200px;width:100%"></canvas></div>
+  `;
+  const mkBar=(canvasId,value,label,color,maxY,yFmt)=>{
+    const ctx=document.getElementById(canvasId);
+    if(!ctx)return;
+    Chart.getChart(ctx)?.destroy();
+    const c=new Chart(ctx,{
+      type:'bar',
+      data:{labels:['Efectivo'],datasets:[{label,data:[value],backgroundColor:color,borderRadius:3,barPercentage:0.5}]},
+      options:{
+        responsive:true,maintainAspectRatio:false,
+        plugins:{
+          legend:{display:false},
+          tooltip:{enabled:false},
+          datalabels:false
+        },
+        scales:{
+          x:{ticks:{font:{size:10}},grid:{display:false}},
+          y:{beginAtZero:true,suggestedMax:maxY,ticks:{callback:yFmt,font:{size:9}},grid:{color:'rgba(0,0,0,.04)'}}
+        },
+        animation:false
+      }
+    });
+    chartInst.push(c);
+    // Anotación del valor encima de la barra
+    setTimeout(()=>{
+      const meta=c.getDatasetMeta(0);
+      const bar=meta.data[0];
+      if(!bar)return;
+      const ctx2=c.ctx;
+      ctx2.save();
+      ctx2.fillStyle=color;
+      ctx2.font='bold 14px system-ui,sans-serif';
+      ctx2.textAlign='center';
+      ctx2.fillText(yFmt(value),bar.x,bar.y-6);
+      ctx2.restore();
+    },10);
+  };
+  const tcVal=TC_pct*100;
+  const icVal=d.icMean*100;
+  const brVal=d.breadthAvg;
+  const irVal=d.IR_ley_anual;
+  // Max Y heurístico
+  const tcMax=Math.max(50,Math.abs(tcVal)*1.3);
+  const icMax=Math.max(25,Math.abs(icVal)*1.3);
+  const brMax=Math.max(brVal*1.3,5);
+  const irMax=Math.max(0.7,Math.abs(irVal)*1.3);
+  mkBar('chart-tc',tcVal,'TC',tcVal>=0?'#1e3a5f':'#B42318',tcMax,v=>v.toFixed(1)+'%');
+  mkBar('chart-ic',icVal,'IC',icVal>=0?'#1e3a5f':'#B42318',icMax,v=>v.toFixed(1)+'%');
+  mkBar('chart-br',brVal,'B',brVal>=0?'#1e3a5f':'#B42318',brMax,v=>v.toFixed(0));
+  mkBar('chart-ir',irVal,'IR',irVal>=0?'#1e3a5f':'#B42318',irMax,v=>v.toFixed(2));
+}
+
+function initInfoCoef(){renderInfoCoef();}
+
 
 // ═══════════════════════════════════════════════════════════════════════════
 // DECOMPOSED DONUTS (real exposure with MEXTRAC breakdown)
