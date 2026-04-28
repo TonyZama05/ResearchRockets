@@ -2066,7 +2066,6 @@ function pgAtribucion(){
     <div style="display:flex;align-items:center;gap:0">
       <div class="sec-h-bar" style="background:var(--purple);width:4px;height:20px;border-radius:2px;margin-right:10px;flex-shrink:0"></div>
       <div class="sec-h-text">Performance Attribution &mdash; Brinson-Fachler</div>
-      <div class="a-info" style="margin:0 16px;font-size:11px;padding:4px 10px;flex:1">Brinson-Fachler diario + <b>Carino linking</b> · Cash como clase · Cálculo interno <b>look-through</b> · Benchmark visible: <b>ETF real MEXTRAC09</b></div>
       <div style="display:flex;gap:8px;align-items:center;flex-shrink:0">
         <span style="font-size:11px;color:var(--txt3)">Período:</span>
         <select id="attr-period" onchange="renderAtribucion()" style="width:auto;padding:4px 10px;font-size:12px">
@@ -2447,7 +2446,6 @@ function renderAtribucion(){
   document.getElementById('attr-summary-cards').innerHTML=`
     ${stCard(pn(d.rPort),'Retorno Portafolio','Real (Dashboard)',d.rPort>=0?'stat-grn':'stat-red')}
     ${stCard(_fmtMaybePct(d.rBenchReal),'Retorno Benchmark','ETF real MEXTRAC09',d.rBenchReal>=0?'stat-grn':'stat-red')}
-    ${stCard(_fmtMaybePct(d.activeRetReal),'Retorno Activo Real','Portafolio − ETF real',d.activeRetReal>=0?'stat-grn':'stat-red')}
     ${stCard(pn(d.totTotal),'Total BHB','Modelo look-through · '+carinoBadge,'stat-acc')}
   `;
 
