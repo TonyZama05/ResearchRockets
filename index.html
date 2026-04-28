@@ -2344,42 +2344,59 @@ function calcAtribucion(period){
     cumPortFactor*=(1+d.rPort/100);
     cumBenchFactor*=(1+d.rBench/100);
   }
-  const R_P=(cumPortFactor-1)*100;
-  const R_B=(cumBenchFactor-1)*100; // Benchmark sintético look-through usado para Brinson
-  const rBenchReal=_etfRealReturn(startH.date,endH.date); // ETF real MEXTRAC09 para mostrar
-  const activeRet=R_P-R_B; // Retorno activo del MODELO look-through
-  const activeRetReal=(rBenchReal==null?null:R_P-rBenchReal); // Retorno activo económico vs ETF real
+  // ── Look-through (interno, base aritmética de los efectos diarios) ───────
+  const R_P_LT=(cumPortFactor-1)*100;
+  const R_B_LT=(cumBenchFactor-1)*100;
+
+  // ── Headline: retornos REALES (Dashboard + ETF MEXTRAC09) ────────────────
+  const rPortReal=(startH.totalFondo>0)
+    ?(endH.totalFondo-startH.totalFondo)/startH.totalFondo*100
+    :R_P_LT;
+  const rBenchRealVal=_etfRealReturn(startH.date,endH.date);
+  const rBenchReal=(rBenchRealVal!=null)?rBenchRealVal:R_B_LT;
+
+  // ── Anclas para Carino: Dashboard real (no look-through) ─────────────────
+  const R_P=rPortReal;
+  const R_B=rBenchReal;
+  const activeRet=R_P-R_B; // ≡ Dashboard m.retActivo
+
+  // ── Factor de escalamiento: re-escala efectos LT al espacio real ─────────
+  // Carino con anclas reales en vez de LT garantiza Σ(AA+SS+Int) ≡ activeRet
+  const _LT_active=R_P_LT-R_B_LT;
+  const scaleToReal=(Math.abs(_LT_active)>1e-10)?(activeRet/_LT_active):1;
 
   const sectorAgg={};
   const tickerAgg={};
   let totAA=0,totSS=0,totInt=0;
 
   for(const dbhb of dailyBHB){
-    const k=_carinoFactor(dbhb.rPort,dbhb.rBench,R_P,R_B);
+    // Carino diario en espacio LT (donde los efectos diarios viven aritméticamente)
+    const k=_carinoFactor(dbhb.rPort,dbhb.rBench,R_P_LT,R_B_LT);
+    const kReal=k*scaleToReal; // re-escala al headline real
 
     for(const sec in dbhb.sectors){
       const s=dbhb.sectors[sec];
       if(!sectorAgg[sec])sectorAgg[sec]={wf_sum:0,wb_sum:0,wCount:0,rp_sum:0,rb_sum:0,aa:0,ss:0,inter:0};
-      sectorAgg[sec].aa+=s.aa*k;
-      sectorAgg[sec].ss+=s.ss*k;
-      sectorAgg[sec].inter+=s.inter*k;
+      sectorAgg[sec].aa+=s.aa*kReal;
+      sectorAgg[sec].ss+=s.ss*kReal;
+      sectorAgg[sec].inter+=s.inter*kReal;
       sectorAgg[sec].wf_sum+=s.wp;
       sectorAgg[sec].wb_sum+=s.wb;
       sectorAgg[sec].wCount+=1;
       sectorAgg[sec].rp_sum+=s.rp;
       sectorAgg[sec].rb_sum+=s.rb;
-      totAA+=s.aa*k;
-      totSS+=s.ss*k;
-      totInt+=s.inter*k;
+      totAA+=s.aa*kReal;
+      totSS+=s.ss*kReal;
+      totInt+=s.inter*kReal;
     }
 
     for(const t in dbhb.tickerEffects){
       const x=dbhb.tickerEffects[t];
       if(!tickerAgg[t])tickerAgg[t]={sec:x.sec,aa:0,ss:0,inter:0,contribAct:0,wf_sum:0,wb_sum:0,count:0,rf_sum:0,rbSec_sum:0};
-      tickerAgg[t].aa+=x.aa*k;
-      tickerAgg[t].ss+=x.ss*k;
-      tickerAgg[t].inter+=x.inter*k;
-      tickerAgg[t].contribAct+=x.contribAct*k;
+      tickerAgg[t].aa+=x.aa*kReal;
+      tickerAgg[t].ss+=x.ss*kReal;
+      tickerAgg[t].inter+=x.inter*kReal;
+      tickerAgg[t].contribAct+=x.contribAct*kReal;
       tickerAgg[t].wf_sum+=x.wP;
       tickerAgg[t].wb_sum+=x.wB;
       tickerAgg[t].count+=1;
@@ -2417,13 +2434,14 @@ function calcAtribucion(period){
   const sectorTotal=rows.reduce((sum,r)=>sum+r.total,0);
 
   return{
-    rPort:R_P, rBench:R_B, rBenchReal, activeRet, activeRetReal,
-    totAA, totSS, totInt, totTotal:totAA+totSS+totInt,
+    rPort:R_P, rBench:R_B, activeRet,         // headline = Dashboard / ETF real
+    totAA, totSS, totInt,
+    totTotal:totAA+totSS+totInt,              // ≡ activeRet por construcción
     rows, tickerRows,
     startDate:startH.date, endDate:endH.date,
     _carino:true,
     _nDays:dailyBHB.length,
-    _alphaScale:1,
+    _alphaScale:scaleToReal,
     _lookThrough:true,
     _reconGap:tickerTotal-sectorTotal
   };
@@ -2444,9 +2462,9 @@ function renderAtribucion(){
   const nDays=d._nDays||0;
   const carinoBadge=d._carino?`Carino · ${nDays} día${nDays===1?'':'s'}`:'';
   document.getElementById('attr-summary-cards').innerHTML=`
-    ${stCard(pn(d.rPort),'Retorno Portafolio','Real (Dashboard)',d.rPort>=0?'stat-grn':'stat-red')}
-    ${stCard(_fmtMaybePct(d.rBenchReal),'Retorno Benchmark','ETF real MEXTRAC09',d.rBenchReal>=0?'stat-grn':'stat-red')}
-    ${stCard(pn(d.totTotal),'Total BHB','Modelo look-through · '+carinoBadge,'stat-acc')}
+    ${stCard(_fmtMaybePct(d.rPort),'Retorno Portafolio','Dashboard real',d.rPort>=0?'stat-grn':'stat-red')}
+    ${stCard(_fmtMaybePct(d.rBench),'Retorno Benchmark','ETF MEXTRAC09 (precio)',d.rBench>=0?'stat-grn':'stat-red')}
+    ${stCard(_fmtMaybePct(d.activeRet),'Retorno Activo','Σ(AA+SS+Int) · '+carinoBadge,'stat-acc')}
   `;
 
   // ── Bar chart ──
