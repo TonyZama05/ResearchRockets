@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>SSOT — Fondo BBVA</title>
+<title>SSOT — Fondo BBVA · Look-through Attribution</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link href="https://fonts.googleapis.com/css2?family=Geist:wght@300;400;500;600;700&family=Geist+Mono:wght@400;500&display=swap" rel="stylesheet">
 <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
@@ -2134,6 +2134,7 @@ function pgAtribucion(){
       <th style="background:var(--accent);color:#fff;text-align:center" title="w_B(R_P,i-R_B,s)">Selection</th>
       <th style="background:var(--accent);color:#fff;text-align:center" title="(w_P-w_B)(R_P,i-R_B,s)">Interaction</th>
       <th style="background:var(--accent);color:#fff;text-align:center" title="AA + SS + Int">Total</th>
+      <th style="background:var(--accent);color:#fff;text-align:center" title="(w_P-w_B)(r_P,i-R_B) · Σ por ticker = Activo modelo BHB">Contribución</th>
     </tr></thead><tbody id="attr-tbody2"></tbody></table></div>
   </div>`;
 }
@@ -2146,15 +2147,13 @@ function pgAtribucion(){
 
 // Single-period BHB para un día t→t+1, con CASH como asset class explícito.
 // Devuelve {rPort, rBench, rActive, sectors:{sec:{wp,wb,rp,rb,aa,ss,inter}}}
-function _bhbSinglePeriod(d0,d1){
-  const posEnd=buildPosAt(d0);   // pesos al CIERRE de d0 → usados para retorno d0→d1
+function _buildLookThroughTickerData(d0,d1){
+  const posEnd=buildPosAt(d0);
   const snap=fundValueAt(d0);
   const tf=snap.totalFondo;
   if(tf<=0)return null;
-  const ef=snap.efectivo;
-  const totalMexW=Object.values(MEXTRAC_W).reduce((s,v)=>s+v,0);
+  const totalMexW=Object.values(MEXTRAC_W).reduce((sum,v)=>sum+v,0);
 
-  // realMap = valor_mercado por ticker (ETF descompuesto look-through)
   const realMap={};
   let etfVal=0;
   for(const t in posEnd){
@@ -2162,80 +2161,117 @@ function _bhbSinglePeriod(d0,d1){
     if(p==null)continue;
     const vm=posEnd[t].titulos*p;
     if(vm<=0)continue;
-    if(t==='MEXTRAC09'){etfVal=vm;continue;}
+    if(t==='MEXTRAC09'){etfVal+=vm;continue;}
     realMap[t]=(realMap[t]||0)+vm;
   }
-  if(etfVal>0){
+
+  // Look-through: MEXTRAC09 se reemplaza por sus componentes.
+  if(etfVal>0 && totalMexW>0){
     for(const bt in MEXTRAC_W){
       realMap[bt]=(realMap[bt]||0)+etfVal*(MEXTRAC_W[bt]/totalMexW);
     }
   }
 
-  // Acumular por sector
-  const sd={};
-  const ensure=s=>{if(!sd[s])sd[s]={wp:0,wb:0,vpRet:0,vbRet:0,vbW:0};};
-
-  // Portafolio sectorial (incluye look-through ETF)
-  for(const t in realMap){
+  const tickers=new Set([...Object.keys(realMap),...Object.keys(MEXTRAC_W)]);
+  const rows=[];
+  for(const t of tickers){
     const sec=UNIVERSO.find(u=>u.t===t)?.s||'Otros';
-    const p0=localPrice(t,d0),p1=localPrice(t,d1);
+    const p0=localPrice(t,d0), p1=localPrice(t,d1);
     const r=(p0!=null&&p0>0&&p1!=null)?(p1-p0)/p0*100:0;
-    const w=realMap[t]/tf*100;
-    ensure(sec);
-    sd[sec].wp+=w;
-    sd[sec].vpRet+=w*r;
-  }
-  // Cash como asset class: w_P = %cash, w_B = 0, retorno 0
-  const cashWp=ef/tf*100;
-  if(cashWp>0){
-    ensure('CASH');
-    sd['CASH'].wp+=cashWp;
-    sd['CASH'].vpRet+=cashWp*0;
-  }
-  // Benchmark sectorial
-  for(const bt in MEXTRAC_W){
-    const sec=UNIVERSO.find(u=>u.t===bt)?.s||'Otros';
-    const wbPct=(MEXTRAC_W[bt]/totalMexW)*100;
-    const p0=localPrice(bt,d0),p1=localPrice(bt,d1);
-    ensure(sec);
-    sd[sec].wb+=wbPct;
-    if(p0!=null&&p0>0&&p1!=null){
-      const r=(p1-p0)/p0*100;
-      sd[sec].vbRet+=wbPct*r;
-      sd[sec].vbW+=wbPct;
-    }
+    rows.push({
+      ticker:t,
+      sec,
+      wP:(realMap[t]||0)/tf*100,
+      wB:totalMexW>0?((MEXTRAC_W[t]||0)/totalMexW)*100:0,
+      r
+    });
   }
 
-  // Retorno total del portafolio y del benchmark (single-period)
+  const cashWp=(snap.efectivo||0)/tf*100;
+  if(cashWp>0.000001){
+    rows.push({ticker:'CASH',sec:'CASH',wP:cashWp,wB:0,r:0});
+  }
+  return rows;
+}
+
+// Single-period BHB 100% look-through.
+// IMPORTANTE: sectores y emisoras salen de la MISMA base de tickers.
+// Por eso: Σ emisoras = Σ sectores = retorno activo look-through.
+function _bhbSinglePeriod(d0,d1){
+  const tickerData=_buildLookThroughTickerData(d0,d1);
+  if(!tickerData||!tickerData.length)return null;
+
   let rPort=0,rBench=0;
-  for(const sec in sd){
-    const s=sd[sec];
-    const rp=s.wp>0?s.vpRet/s.wp:0;
-    const rb=s.vbW>0?s.vbRet/s.vbW:0;
-    rPort+=(s.wp/100)*rp;
-    rBench+=(s.wb/100)*rb;
+  for(const x of tickerData){
+    rPort+=(x.wP/100)*x.r;
+    rBench+=(x.wB/100)*x.r;
   }
   const Rb=rBench;
 
-  // Efectos Brinson-Fachler por sector
+  const sd={};
+  const ensureSec=s=>{if(!sd[s])sd[s]={wp:0,wb:0,wpRet:0,wbRet:0,tickers:[]};};
+  for(const x of tickerData){
+    ensureSec(x.sec);
+    sd[x.sec].wp+=x.wP;
+    sd[x.sec].wb+=x.wB;
+    sd[x.sec].wpRet+=x.wP*x.r;
+    sd[x.sec].wbRet+=x.wB*x.r;
+    sd[x.sec].tickers.push(x);
+  }
+
   const sectors={};
+  const tickerEffects={};
+
   for(const sec in sd){
     const s=sd[sec];
     const wp=s.wp/100, wb=s.wb/100;
-    const rp=s.wp>0?s.vpRet/s.wp:0;
-    const rb=s.vbW>0?s.vbRet/s.vbW:0;
+    const rp=s.wp>0?s.wpRet/s.wp:0;
+    const rb=s.wb>0?s.wbRet/s.wb:0;
+
     const aa=(wp-wb)*(rb-Rb);
     const ss=wb*(rp-rb);
     const inter=(wp-wb)*(rp-rb);
     sectors[sec]={wp:s.wp,wb:s.wb,rp,rb,aa,ss,inter};
+
+    const raw=s.tickers.map(x=>({
+      ...x,
+      contribAct:((x.wP-x.wB)/100)*(x.r-Rb)
+    }));
+
+    // Para que la tabla de emisoras cuadre con sectores:
+    // AA/SS/Interaction sectorial se distribuye entre emisoras del sector.
+    let denom=raw.reduce((a,x)=>a+Math.abs(x.contribAct),0);
+    let mode='contrib';
+    if(denom<1e-12){
+      denom=raw.reduce((a,x)=>a+(Math.abs(x.wP)+Math.abs(x.wB))/2,0);
+      mode='weight';
+    }
+    if(denom<1e-12)denom=raw.length||1;
+
+    for(const x of raw){
+      const share=mode==='contrib'
+        ? Math.abs(x.contribAct)/denom
+        : (((Math.abs(x.wP)+Math.abs(x.wB))/2)||1)/denom;
+
+      tickerEffects[x.ticker]={
+        ticker:x.ticker,
+        sec,
+        wP:x.wP,
+        wB:x.wB,
+        r:x.r,
+        rbSec:rb,
+        aa:aa*share,
+        ss:ss*share,
+        inter:inter*share,
+        contribAct:x.contribAct
+      };
+    }
   }
-  return{rPort,rBench,rActive:rPort-rBench,sectors};
+
+  return{rPort,rBench,rActive:rPort-rBench,sectors,tickerEffects};
 }
 
-// Factor Carino para encadenar un período t→t+1 dentro de un total acumulado T
 function _carinoFactor(rP,rB,RP,RB){
-  // Factores que garantizan: Σ k_t * (rP_t - rB_t) = R_P - R_B (geométrico)
-  // Si denominadores son ~0, usar límite (expansión de Taylor → 1/(1+R))
   const EPS=1e-10;
   let kT;
   if(Math.abs(RP-RB)<EPS){
@@ -2259,7 +2295,6 @@ function calcAtribucion(period){
   const hist=m.hist||[];
   if(hist.length<2)return null;
 
-  // Determinar rango de fechas según el período
   let startIdx=0,endIdx=hist.length-1;
   if(period==='day'){
     startIdx=Math.max(0,hist.length-2);
@@ -2278,41 +2313,36 @@ function calcAtribucion(period){
     }
     endIdx=hist.length-1;
   }
+
   const startH=hist[startIdx],endH=hist[endIdx];
   if(!startH||!endH||startIdx>=endIdx)return null;
 
-  // ── Retornos acumulados reales (geometric compounding de retornos diarios) ──
-  // R_P = Π(1 + rP_t) - 1  (daily fund return); R_B = Π(1 + rB_t) - 1 (daily bench)
-  let cumFundFactor=1,cumBenchFactor=1;
-  const dailyRets=[];
+  const dailyBHB=[];
   for(let i=startIdx+1;i<=endIdx;i++){
     const prev=hist[i-1],cur=hist[i];
-    const rF=prev.totalFondo>0?(cur.totalFondo-prev.totalFondo)/prev.totalFondo*100:0;
-    const rB=(prev.mexPrice&&cur.mexPrice&&prev.mexPrice>0)?(cur.mexPrice-prev.mexPrice)/prev.mexPrice*100:0;
-    cumFundFactor*=(1+rF/100);
-    cumBenchFactor*=(1+rB/100);
-    dailyRets.push({d0:prev.date,d1:cur.date,rF,rB});
-  }
-  const R_P=(cumFundFactor-1)*100;
-  const R_B=(cumBenchFactor-1)*100;
-  const activeRet=R_P-R_B;
-
-  // ── BHB diario para cada día del período ──
-  const dailyBHB=[];
-  for(const dr of dailyRets){
-    const bhb=_bhbSinglePeriod(dr.d0,dr.d1);
-    if(bhb)dailyBHB.push({...dr,...bhb});
+    const bhb=_bhbSinglePeriod(prev.date,cur.date);
+    if(bhb)dailyBHB.push({d0:prev.date,d1:cur.date,...bhb});
   }
   if(!dailyBHB.length)return null;
 
-  // ── Carino linking: escalar cada efecto diario por su factor k_t / k_T ──
+  // Retornos acumulados MODELO LOOK-THROUGH.
+  // Ya no usa mexPrice real ni alphaScale.
+  let cumPortFactor=1,cumBenchFactor=1;
+  for(const d of dailyBHB){
+    cumPortFactor*=(1+d.rPort/100);
+    cumBenchFactor*=(1+d.rBench/100);
+  }
+  const R_P=(cumPortFactor-1)*100;
+  const R_B=(cumBenchFactor-1)*100;
+  const activeRet=R_P-R_B;
+
   const sectorAgg={};
+  const tickerAgg={};
   let totAA=0,totSS=0,totInt=0;
 
   for(const dbhb of dailyBHB){
-    // Usar los retornos BHB del modelo diario (cierran single-period exacto)
-    const rP_t=dbhb.rPort, rB_t=dbhb.rBench;
-    const k=_carinoFactor(rP_t,rB_t,R_P,R_B);
+    const k=_carinoFactor(dbhb.rPort,dbhb.rBench,R_P,R_B);
+
     for(const sec in dbhb.sectors){
       const s=dbhb.sectors[sec];
       if(!sectorAgg[sec])sectorAgg[sec]={wf_sum:0,wb_sum:0,wCount:0,rp_sum:0,rb_sum:0,aa:0,ss:0,inter:0};
@@ -2328,10 +2358,22 @@ function calcAtribucion(period){
       totSS+=s.ss*k;
       totInt+=s.inter*k;
     }
-  }
-  const totTotal=totAA+totSS+totInt;
 
-  // Construir filas para la tabla (pesos y retornos promedio del período)
+    for(const t in dbhb.tickerEffects){
+      const x=dbhb.tickerEffects[t];
+      if(!tickerAgg[t])tickerAgg[t]={sec:x.sec,aa:0,ss:0,inter:0,contribAct:0,wf_sum:0,wb_sum:0,count:0,rf_sum:0,rbSec_sum:0};
+      tickerAgg[t].aa+=x.aa*k;
+      tickerAgg[t].ss+=x.ss*k;
+      tickerAgg[t].inter+=x.inter*k;
+      tickerAgg[t].contribAct+=x.contribAct*k;
+      tickerAgg[t].wf_sum+=x.wP;
+      tickerAgg[t].wb_sum+=x.wB;
+      tickerAgg[t].count+=1;
+      tickerAgg[t].rf_sum+=x.r;
+      tickerAgg[t].rbSec_sum+=x.rbSec;
+    }
+  }
+
   const rows=[];
   for(const sec in sectorAgg){
     const a=sectorAgg[sec];
@@ -2344,87 +2386,6 @@ function calcAtribucion(period){
   }
   rows.sort((a,b)=>Math.abs(b.total)-Math.abs(a.total));
 
-  // ── Ticker-level: AA/SS/Int por emisora (intra-sector, Carino-aggregated) ──
-  // Para cada día t y cada ticker i en sector s:
-  //   AA_i = (w_P,i - w_B,i) * (R_B,s - R_B)    ← Brinson-Fachler
-  //   SS_i = w_B,i * (R_P,i - R_B,s)
-  //   Int_i = (w_P,i - w_B,i) * (R_P,i - R_B,s)
-  // Cada efecto se escala por el factor Carino del día y se acumula.
-  // Σ AA_i = Σ AA_sector y lo mismo para SS, Int. Identidad exacta.
-  const tickerAgg={};   // ticker → {sec, aa, ss, inter, wf_sum, wb_sum, count, rf_sum, rbSec_sum}
-  const ensureT=(t,sec)=>{
-    if(!tickerAgg[t])tickerAgg[t]={sec,aa:0,ss:0,inter:0,wf_sum:0,wb_sum:0,count:0,rf_sum:0,rbSec_sum:0};
-  };
-  const totalMexW=Object.values(MEXTRAC_W).reduce((s,v)=>s+v,0);
-
-  for(const dbhb of dailyBHB){
-    const rP_t=dbhb.rPort, rB_t=dbhb.rBench;
-    const k=_carinoFactor(rP_t,rB_t,R_P,R_B);
-    const Rb_day=rB_t;  // retorno total del benchmark ese día
-
-    // Reconstruir holdings y benchmark por ticker para ESE día (mismo posEnd que en _bhbSinglePeriod)
-    const posEnd=buildPosAt(dbhb.d0);
-    const snap=fundValueAt(dbhb.d0);
-    const tf=snap.totalFondo;
-    if(tf<=0)continue;
-
-    const realMap={};
-    let etfVal=0;
-    for(const t in posEnd){
-      const p=localPrice(t,dbhb.d0);
-      if(p==null)continue;
-      const vm=posEnd[t].titulos*p;
-      if(vm<=0)continue;
-      if(t==='MEXTRAC09'){etfVal=vm;continue;}
-      realMap[t]=(realMap[t]||0)+vm;
-    }
-    if(etfVal>0){
-      for(const bt in MEXTRAC_W){
-        realMap[bt]=(realMap[bt]||0)+etfVal*(MEXTRAC_W[bt]/totalMexW);
-      }
-    }
-
-    // Calcular R_B,s (retorno del sector en el benchmark) para ese día
-    const rbSec={};
-    for(const bt in MEXTRAC_W){
-      const sec=UNIVERSO.find(u=>u.t===bt)?.s||'Otros';
-      const wbPct=(MEXTRAC_W[bt]/totalMexW)*100;
-      const p0=localPrice(bt,dbhb.d0),p1=localPrice(bt,dbhb.d1);
-      if(p0==null||p0<=0||p1==null)continue;
-      const r=(p1-p0)/p0*100;
-      if(!rbSec[sec])rbSec[sec]={sumWR:0,sumW:0};
-      rbSec[sec].sumWR+=wbPct*r;
-      rbSec[sec].sumW+=wbPct;
-    }
-    const rbSecVal=sec=>rbSec[sec]&&rbSec[sec].sumW>0?rbSec[sec].sumWR/rbSec[sec].sumW:0;
-
-    // Universo del día: tickers tenidos + benchmark
-    const universe=new Set([...Object.keys(realMap),...Object.keys(MEXTRAC_W)]);
-    for(const t of universe){
-      const sec=UNIVERSO.find(u=>u.t===t)?.s||'Otros';
-      const wP=(realMap[t]||0)/tf*100;
-      const wB=((MEXTRAC_W[t]||0)/totalMexW)*100;
-      const p0=localPrice(t,dbhb.d0),p1=localPrice(t,dbhb.d1);
-      let rP_i=0;
-      if(p0!=null&&p0>0&&p1!=null)rP_i=(p1-p0)/p0*100;
-      const rB_s=rbSecVal(sec);
-
-      const aa=((wP-wB)/100)*((rB_s-Rb_day));   // Brinson-Fachler intra-sector
-      const ss=(wB/100)*(rP_i-rB_s);
-      const inter=((wP-wB)/100)*(rP_i-rB_s);
-
-      ensureT(t,sec);
-      tickerAgg[t].aa+=aa*k;
-      tickerAgg[t].ss+=ss*k;
-      tickerAgg[t].inter+=inter*k;
-      tickerAgg[t].wf_sum+=wP;
-      tickerAgg[t].wb_sum+=wB;
-      tickerAgg[t].count+=1;
-      tickerAgg[t].rf_sum+=rP_i;
-      tickerAgg[t].rbSec_sum+=rB_s;
-    }
-  }
-
   const tickerRows=[];
   for(const t in tickerAgg){
     const a=tickerAgg[t];
@@ -2433,18 +2394,24 @@ function calcAtribucion(period){
     const rf=a.count>0?a.rf_sum/a.count:0;
     const rbSec=a.count>0?a.rbSec_sum/a.count:0;
     const total=a.aa+a.ss+a.inter;
-    // Filtrar tickers sin exposición real ni en bench
-    if(wf<0.001&&wb<0.001)continue;
-    tickerRows.push({ticker:t,sec:a.sec,wf,wb,wDiff:wf-wb,rf,rbSec,aa:a.aa,ss:a.ss,inter:a.inter,total});
+    if(wf<0.001&&wb<0.001&&Math.abs(total)<0.000001)continue;
+    tickerRows.push({ticker:t,sec:a.sec,wf,wb,wDiff:wf-wb,rf,rbSec,aa:a.aa,ss:a.ss,inter:a.inter,total,contribAct:a.contribAct});
   }
   tickerRows.sort((a,b)=>Math.abs(b.total)-Math.abs(a.total));
 
+  const tickerTotal=tickerRows.reduce((sum,r)=>sum+r.total,0);
+  const sectorTotal=rows.reduce((sum,r)=>sum+r.total,0);
+
   return{
     rPort:R_P, rBench:R_B, activeRet,
-    totAA, totSS, totInt, totTotal,
+    totAA, totSS, totInt, totTotal:totAA+totSS+totInt,
     rows, tickerRows,
     startDate:startH.date, endDate:endH.date,
-    _carino:true, _nDays:dailyBHB.length
+    _carino:true,
+    _nDays:dailyBHB.length,
+    _alphaScale:1,
+    _lookThrough:true,
+    _reconGap:tickerTotal-sectorTotal
   };
 }
 
@@ -2464,7 +2431,7 @@ function renderAtribucion(){
   const carinoBadge=d._carino?`Carino · ${nDays} día${nDays===1?'':'s'}`:'';
   document.getElementById('attr-summary-cards').innerHTML=`
     ${stCard(pn(d.rPort),'Retorno Portafolio','Real (Dashboard)',d.rPort>=0?'stat-grn':'stat-red')}
-    ${stCard(pn(d.rBench),'Retorno Benchmark','MEXTRAC09 real',d.rBench>=0?'stat-grn':'stat-red')}
+    ${stCard(pn(d.rBench),'Retorno Benchmark','MEXTRAC look-through',d.rBench>=0?'stat-grn':'stat-red')}
     ${stCard(pn(d.activeRet),'Retorno Activo','r<sub>P</sub> − r<sub>B</sub>',d.activeRet>=0?'stat-grn':'stat-red')}
     ${stCard(pn(d.totTotal),'Total BHB',carinoBadge,'stat-acc')}
   `;
@@ -2530,6 +2497,7 @@ function renderAtribucion(){
     <td class="mono" style="text-align:center;font-weight:600;color:${cc2(r.ss)}">${pn(r.ss)}</td>
     <td class="mono" style="text-align:center;font-weight:600;color:${cc2(r.inter)}">${pn(r.inter)}</td>
     <td class="mono" style="text-align:center;font-weight:700;color:${cc2(r.total)}">${pn(r.total)}</td>
+    <td class="mono" style="text-align:center;font-weight:700;color:${cc2(r.contribAct)};border-left:2px solid var(--line2)">${pn(r.contribAct)}</td>
   </tr>`).join('');
 
   // Fila TOTAL (suma por ticker = suma por sector → identidad cierra)
@@ -2537,12 +2505,14 @@ function renderAtribucion(){
   const sumSS=d.tickerRows.reduce((a,r)=>a+r.ss,0);
   const sumInter=d.tickerRows.reduce((a,r)=>a+r.inter,0);
   const sumTotal=sumAA+sumSS+sumInter;
+  const sumContrib=d.tickerRows.reduce((a,r)=>a+r.contribAct,0);
   const totalRowTicker=`<tr style="border-top:2px solid var(--line2);background:var(--accent2);font-weight:700">
-    <td class="lbl" style="color:var(--accent)" colspan="7">TOTAL · Σ Total por emisora = Retorno activo</td>
+    <td class="lbl" style="color:var(--accent)" colspan="7">TOTAL · Σ por emisora = Retorno activo</td>
     <td class="mono" style="text-align:center;color:${cc2(sumAA)};font-size:14px">${pn(sumAA)}</td>
     <td class="mono" style="text-align:center;color:${cc2(sumSS)};font-size:14px">${pn(sumSS)}</td>
     <td class="mono" style="text-align:center;color:${cc2(sumInter)};font-size:14px">${pn(sumInter)}</td>
     <td class="mono" style="text-align:center;color:${cc2(sumTotal)};font-size:14px">${pn(sumTotal)}</td>
+    <td class="mono" style="text-align:center;color:${cc2(sumContrib)};font-size:14px;border-left:2px solid var(--line2)">${pn(sumContrib)}</td>
   </tr>`;
 
   document.getElementById('attr-tbody2').innerHTML=tbodyRows+totalRowTicker;
@@ -3542,15 +3512,16 @@ async function exportToExcel(evt){
       attrRows.push(['RETORNO ACTIVO','','','','','','',+attrD.activeRet.toFixed(4)]);
       XLSX.utils.book_append_sheet(wb,XLSX.utils.aoa_to_sheet(attrRows),'Atribucion');
 
-      // Atribución por emisora (intra-sector, Carino-aggregated)
-      const tickRows=[['Ticker','Sector','W Fondo','W Bench','Diff (W)','R Ticker','R Bench Sector','Allocation','Selection','Interaction','Total']];
+      // Atribución por emisora (intra-sector, Carino-aggregated) + Contribución directa
+      const tickRows=[['Ticker','Sector','W Fondo','W Bench','Diff (W)','R Ticker','R Bench Sector','Allocation','Selection','Interaction','Total','Contribución']];
       for(const r of attrD.tickerRows){
-        tickRows.push([r.ticker,r.sec,+r.wf.toFixed(4),+r.wb.toFixed(4),+r.wDiff.toFixed(4),+r.rf.toFixed(4),+r.rbSec.toFixed(4),+r.aa.toFixed(4),+r.ss.toFixed(4),+r.inter.toFixed(4),+r.total.toFixed(4)]);
+        tickRows.push([r.ticker,r.sec,+r.wf.toFixed(4),+r.wb.toFixed(4),+r.wDiff.toFixed(4),+r.rf.toFixed(4),+r.rbSec.toFixed(4),+r.aa.toFixed(4),+r.ss.toFixed(4),+r.inter.toFixed(4),+r.total.toFixed(4),+(r.contribAct||0).toFixed(4)]);
       }
       const sAA=attrD.tickerRows.reduce((a,r)=>a+r.aa,0);
       const sSS=attrD.tickerRows.reduce((a,r)=>a+r.ss,0);
       const sInter=attrD.tickerRows.reduce((a,r)=>a+r.inter,0);
-      tickRows.push(['TOTAL','','','','','','',+sAA.toFixed(4),+sSS.toFixed(4),+sInter.toFixed(4),+(sAA+sSS+sInter).toFixed(4)]);
+      const sContrib=attrD.tickerRows.reduce((a,r)=>a+(r.contribAct||0),0);
+      tickRows.push(['TOTAL','','','','','','',+sAA.toFixed(4),+sSS.toFixed(4),+sInter.toFixed(4),+(sAA+sSS+sInter).toFixed(4),+sContrib.toFixed(4)]);
       XLSX.utils.book_append_sheet(wb,XLSX.utils.aoa_to_sheet(tickRows),'Atribucion_Emisoras');
     }
 
