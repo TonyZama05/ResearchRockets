@@ -594,6 +594,93 @@ function fundValueAt(date){
   return{portValue,efectivo,totalFondo:portValue+efectivo};
 }
 
+// ────────────────────────────────────────────────────────────────────────────
+// buildPosFromV0(fechaV0): construye holdings con WAC anclado a fechaV0.
+// Para cada ticker:
+//  1. Calcula títulos y precio promedio HISTÓRICO al cierre de fechaV0
+//  2. Reemplaza ese saldo por una "apertura sintética" al precio de cierre
+//     del cierre del día fechaV0 (precio de mercado, no histórico)
+//  3. Aplica órdenes posteriores a fechaV0 con WAC normal sobre esa apertura
+// También calcula pnlRealizado_desdeV0: solo ventas posteriores a V0,
+// contra el WAC que ese ticker tenía al momento de la venta (rebasado).
+// ────────────────────────────────────────────────────────────────────────────
+function buildPosFromV0(fechaV0){
+  const ord=(S.ordenes||[]).slice().sort((a,b)=>a.fecha<b.fecha?-1:a.fecha>b.fecha?1:0);
+
+  // ── Paso 1: estado al cierre de fechaV0 (títulos por ticker) ──
+  const histPos={};
+  for(const o of ord){
+    if(o.fecha>fechaV0)continue;
+    if(!histPos[o.ticker])histPos[o.ticker]={titulos:0,costoTotal:0,isEtf:o.isEtf||false};
+    if(o.tipo==='compra'){histPos[o.ticker].titulos+=o.titulos;histPos[o.ticker].costoTotal+=o.titulos*o.precio;}
+    else{
+      const pp=histPos[o.ticker].titulos>0?histPos[o.ticker].costoTotal/histPos[o.ticker].titulos:0;
+      histPos[o.ticker].costoTotal-=pp*o.titulos;
+      if(histPos[o.ticker].costoTotal<0)histPos[o.ticker].costoTotal=0;
+      histPos[o.ticker].titulos-=o.titulos;
+    }
+  }
+  // Splits hasta fechaV0 inclusive
+  for(const a of S.ajustes||[]){
+    if(a.fecha<=fechaV0&&histPos[a.ticker]){
+      if(a.tipo==='split')histPos[a.ticker].titulos*=a.factor;
+      else if(a.tipo==='split_inverso')histPos[a.ticker].titulos/=a.factor;
+    }
+  }
+  for(const t in histPos)if(histPos[t].titulos<=0)delete histPos[t];
+
+  // ── Paso 2: rebasar costoTotal usando precio de cierre del fechaV0 ──
+  const pos={};
+  for(const t in histPos){
+    const precioV0=localPrice(t,fechaV0);
+    if(precioV0==null||precioV0<=0){
+      // sin precio en V0: caer al costoTotal histórico (fallback honesto)
+      pos[t]={titulos:histPos[t].titulos,costoTotal:histPos[t].costoTotal,isEtf:histPos[t].isEtf,precioActual:histPos[t].costoTotal/histPos[t].titulos,_v0Fallback:true};
+    }else{
+      pos[t]={titulos:histPos[t].titulos,costoTotal:histPos[t].titulos*precioV0,isEtf:histPos[t].isEtf,precioActual:precioV0};
+    }
+  }
+
+  // ── Paso 3: aplicar órdenes POST fechaV0 con WAC normal ──
+  let pnlRealizadoDesdeV0=0;
+  for(const o of ord){
+    if(o.fecha<=fechaV0)continue;
+    if(!pos[o.ticker])pos[o.ticker]={titulos:0,costoTotal:0,isEtf:o.isEtf||false,precioActual:o.precio};
+    if(o.tipo==='compra'){
+      pos[o.ticker].titulos+=o.titulos;
+      pos[o.ticker].costoTotal+=o.titulos*o.precio;
+    }else{
+      const pp=pos[o.ticker].titulos>0?pos[o.ticker].costoTotal/pos[o.ticker].titulos:0;
+      pnlRealizadoDesdeV0+=(o.precio-pp)*o.titulos;
+      pos[o.ticker].costoTotal-=pp*o.titulos;
+      if(pos[o.ticker].costoTotal<0)pos[o.ticker].costoTotal=0;
+      pos[o.ticker].titulos-=o.titulos;
+    }
+  }
+  // Splits posteriores a fechaV0
+  for(const a of S.ajustes||[]){
+    if(a.fecha>fechaV0&&pos[a.ticker]){
+      if(a.tipo==='split')pos[a.ticker].titulos*=a.factor;
+      else if(a.tipo==='split_inverso')pos[a.ticker].titulos/=a.factor;
+    }
+  }
+  for(const t in pos)if(pos[t].titulos<=0)delete pos[t];
+
+  // Precio actual de mercado (lo que vale HOY, igual que buildPos)
+  for(const t in pos){
+    const p=localPrice(t);
+    if(p!=null)pos[t].precioActual=p;
+  }
+
+  // Para devolver datos consistentes:
+  //   valPort = Σ títulos*precioActual
+  //   p&l_no_realizado_desdeV0 = valPort - Σ costoTotal (donde costoTotal ya está rebaseado)
+  const valPort=Object.values(pos).reduce((s,p)=>s+p.titulos*p.precioActual,0);
+  const costoTotal=Object.values(pos).reduce((s,p)=>s+p.costoTotal,0);
+
+  return{pos,valPort,costoTotal,pnlRealizadoDesdeV0,fechaV0};
+}
+
 function buildHistorical(){
   const ord=S.ordenes||[];
   if(!ord.length)return[];
@@ -818,6 +905,7 @@ function go(page){
   if(page==='atribucion')setTimeout(initAtribucionCharts,50);
   if(page==='snapshot')setTimeout(initSnapshot,50);
   if(page==='infocoef')setTimeout(initInfoCoef,50);
+  if(page==='posicion')setTimeout(initPosicion,50);
   if(page==='rendimiento')setTimeout(initRendChart,50);
   if(page==='config')setTimeout(()=>{
     const f=document.getElementById('c-fecha');
@@ -886,7 +974,30 @@ function pgDash(){
     <div class="sg4" style="gap:12px">
       ${miStat(fp(m.rSem),'Rend. fondo','Rend. absoluto semana',m.rSem>=0?'var(--grn)':'var(--red)')}
       ${miStat(f2(m.stdDev)+'%','Desv. estandar','Volatilidad anualizada',m.stdDev>25?'var(--red)':m.stdDev>15?'var(--amb)':'var(--grn)')}
-      ${miStat(f2(m.ir),'Razón de información','Retorno activo / TE',m.ir>0.5?'var(--grn)':m.ir>0?'var(--amb)':'var(--red)')}
+      ${miStat(f2(m.ir),'Razón de información (anual)','Retorno activo / TE × √252',m.ir>0.5?'var(--grn)':m.ir>0?'var(--amb)':'var(--red)')}
+      ${(()=>{
+        // IR efectivo semanal = mean(rA_diario_semana) / std(rA_diario_semana)  (sin anualizar)
+        const ws=m.weekStart, we=m.weekEnd, hh=m.hist||[];
+        if(!ws||!we||hh.length<3)return miStat('&mdash;','IR efectivo (semana)','mean(rA) / std(rA), N≥3 días','var(--txt2)');
+        const _idxFromDate=d=>{for(let i=0;i<hh.length;i++)if(hh[i].date>=d)return i;return -1;};
+        const i0=_idxFromDate(ws.date), i1=_idxFromDate(we.date);
+        if(i0<0||i1<0||i1<=i0)return miStat('&mdash;','IR efectivo (semana)','mean(rA) / std(rA), N≥3 días','var(--txt2)');
+        const rA=[];
+        for(let i=i0+1;i<=i1;i++){
+          const prev=hh[i-1], cur=hh[i];
+          if(!prev||prev.totalFondo<=0||!prev.mexPrice||!cur.mexPrice||prev.mexPrice<=0)continue;
+          const rF=(cur.totalFondo-prev.totalFondo)/prev.totalFondo*100;
+          const rB=(cur.mexPrice-prev.mexPrice)/prev.mexPrice*100;
+          rA.push(rF-rB);
+        }
+        if(rA.length<2)return miStat('&mdash;','IR efectivo (semana)','requiere ≥2 retornos diarios','var(--txt2)');
+        const meanA=rA.reduce((s,v)=>s+v,0)/rA.length;
+        const varA=rA.reduce((s,v)=>s+(v-meanA)**2,0)/(rA.length-1);
+        const sdA=Math.sqrt(varA);
+        const irSem=sdA>0?meanA/sdA:0;
+        const sub=`mean(rA)/std(rA) · N=${rA.length} días`;
+        return miStat(f2(irSem),'IR efectivo (semana)',sub,irSem>0.3?'var(--grn)':irSem>0?'var(--amb)':'var(--red)');
+      })()}
       ${miStat(f2(m.hitRatio)+'%','Hit Ratio','Días ganados al benchmark',m.hitRatio>=50?'var(--grn)':'var(--red)')}
       ${miStat(f2(m.beta),'Beta vs MEXTRAC','Sensibilidad al mercado',m.beta>1.2?'var(--red)':m.beta<0.8?'var(--amb)':'var(--grn)')}
     </div>
@@ -1016,31 +1127,149 @@ function switchTab(btn,tabId){
 
 // POSICION
 function pgPosicion(){
-  const m=calcMetrics();const wu=m.wu;
+  const m=calcMetrics();
+  const fechaV0=m.fechaRef||S.fechaInicio||'2026-04-13';
+  const fmtV0=(()=>{
+    const [y,mm,dd]=fechaV0.split('-');
+    return `${dd}/${mm}/${y}`;
+  })();
   return`
-  <div class="sg4">
-    ${stCard(fm(m.totalFondo),'Valor total fondo','Acciónario + efectivo','stat-blue')}
-    ${stCard(fm(m.efectivo),'Efectivo disponible','Incl. dividendos','stat-amb')}
-    ${stCard(fm(m.valPort-m.costoTotal),'P&amp;L no realizado','Valor mercado &minus; costo',m.valPort-m.costoTotal>=0?'stat-grn':'stat-red')}
-    ${(()=>{const pos_snap={};let pnlReal=0;for(const o of (S.ordenes||[])){if(!pos_snap[o.ticker])pos_snap[o.ticker]={titulos:0,costoTotal:0};if(o.tipo==='compra'){pos_snap[o.ticker].titulos+=o.titulos;pos_snap[o.ticker].costoTotal+=o.titulos*o.precio;}else{const pp=pos_snap[o.ticker].titulos>0?pos_snap[o.ticker].costoTotal/pos_snap[o.ticker].titulos:0;pnlReal+=(o.precio-pp)*o.titulos;pos_snap[o.ticker].costoTotal-=pp*o.titulos;pos_snap[o.ticker].titulos-=o.titulos;}}return stCard(fm(pnlReal),'P&amp;L realizado','Ganancia/perdida en operaciones cerradas',pnlReal>=0?'stat-grn':'stat-red');})()}
+  <!-- Toggle desplegable -->
+  <div class="card" style="padding:12px 18px">
+    <div style="display:flex;align-items:center;gap:12px;flex-wrap:wrap">
+      <div class="sec-h-bar" style="background:var(--accent);width:4px;height:18px;border-radius:2px"></div>
+      <div style="font-size:13px;font-weight:600">Modo de costeo</div>
+      <select id="pos-mode" onchange="renderPosicion()" style="width:auto;padding:5px 12px;font-size:12px">
+        <option value="origen">Desde Origen (default)</option>
+        <option value="v0">Desde V0 (${fmtV0})</option>
+      </select>
+      <span id="pos-mode-hint" style="font-size:11px;color:var(--txt3);flex:1;min-width:200px">
+        Precios promedio y P&amp;L se calculan desde la primera orden registrada.
+      </span>
+    </div>
   </div>
+
+  <!-- Cards superiores (se rellenan dinámicamente) -->
+  <div id="pos-cards" class="sg4"></div>
+
+  <!-- Holdings table -->
   <div class="card">
-    <div class="sec-h"><div class="sec-h-bar"></div><div class="sec-h-text">Holdings actuales</div></div>
-    <div class="tw"><table id="tbl-pos"><thead><tr>
-      ${th('Ticker','tbl-pos',0,'str')}${th('Nombre','tbl-pos',1,'str')}${th('Títulos','tbl-pos',2,'num')}${th('Precio prom.','tbl-pos',3,'num')}${th('Precio actual','tbl-pos',4,'num')}${th('Val. mercado','tbl-pos',5,'num')}${th('% Fondo','tbl-pos',6,'num')}${th('% MEXTRAC','tbl-pos',7,'num')}${th('Diferencia','tbl-pos',8,'num')}${th('Rend. %','tbl-pos',9,'num')}${th('P&amp;L ($)','tbl-pos',10,'num')}
-    </tr></thead><tbody>
-    ${Object.entries(m.pos).map(([t,p])=>{const vm=p.titulos*p.precioActual;const pctF=vm/m.totalFondo*100;const pctB=MEXTRAC_W[t]||0;const pp=p.costoTotal>0?p.costoTotal/p.titulos:0;const rend=pp>0?(p.precioActual-pp)/pp*100:0;const pnl=(p.precioActual-pp)*p.titulos;const nm=UNIVERSO.find(e=>e.t===t)?.n||t;return`<tr><td class="lbl">${t}${p.isEtf?' <span class="pill p-etf" style="font-size:9px">ETF</span>':''}</td><td class="dim">${nm}</td><td data-val="${p.titulos}" class="mono">${p.titulos.toLocaleString()}</td><td data-val="${pp}" class="mono">$${f2(pp,4)}</td><td data-val="${p.precioActual}" class="mono">$${f2(p.precioActual,4)}</td><td data-val="${vm}" class="mono">${fm(vm)}</td><td data-val="${pctF}" class="mono">${pctF.toFixed(1)}%</td><td data-val="${pctB}" class="d mono">${pctB>0?pctB.toFixed(2)+'%':'&mdash;'}</td><td data-val="${pctF-pctB}" class="${cc(pctF-pctB)} mono">${(pctF-pctB)>=0?'+':''}${(pctF-pctB).toFixed(1)}%</td><td data-val="${rend}" class="${cc(rend)} mono">${fp(rend)}</td><td data-val="${pnl}" class="${cc(pnl)} mono">${fm(pnl)}</td></tr>`;}).join('')||'<tr><td colspan="11" class="empty">Sin posiciones abiertas</td></tr>'}
-    </tbody><tfoot>${(()=>{const cashPct=m.totalFondo>0?m.efectivo/m.totalFondo*100:0;return`<tr style="border-top:2px solid var(--line2);font-weight:600;background:var(--bg3)"><td class="lbl">CASH</td><td class="dim">Efectivo disponible</td><td class="mono">&mdash;</td><td class="mono">&mdash;</td><td class="mono">&mdash;</td><td data-val="${m.efectivo}" class="mono">${fm(m.efectivo)}</td><td data-val="${cashPct}" class="b mono">${cashPct.toFixed(1)}%</td><td class="d mono">&mdash;</td><td class="d mono">&mdash;</td><td class="d mono">&mdash;</td><td class="d mono">&mdash;</td></tr>`;})()}</tfoot></table></div>
+    <div class="sec-h"><div class="sec-h-bar"></div><div class="sec-h-text">Holdings actuales</div><div class="sec-h-sub" id="pos-hold-sub"></div></div>
+    <div class="tw"><table id="tbl-pos"><thead><tr id="tbl-pos-head"></tr></thead><tbody id="tbl-pos-body"></tbody><tfoot id="tbl-pos-foot"></tfoot></table></div>
   </div>
+
+  <!-- Exposición efectiva (no cambia con el toggle) -->
   <div class="card">
     <div class="sec-h"><div class="sec-h-bar"></div><div class="sec-h-text">Exposición efectiva por componente MEXTRAC</div></div>
     <div class="tw"><table id="tbl-exp"><thead><tr>
       ${th('Ticker','tbl-exp',0,'str')}${th('Nombre','tbl-exp',1,'str')}${th('% Directo','tbl-exp',2,'num')}${th('% via ETF','tbl-exp',3,'num')}${th('% Total exposicion','tbl-exp',4,'num')}${th('% Benchmark','tbl-exp',5,'num')}${th('Diferencia','tbl-exp',6,'num')}
-    </tr></thead><tbody>
-    ${wu.map(r=>`<tr><td class="lbl">${r.ticker}</td><td class="dim">${r.name}</td><td data-val="${r.direct}" class="d mono">${r.direct>0?r.direct.toFixed(2)+'%':'&mdash;'}</td><td data-val="${r.indirect}" class="b mono">${r.indirect>0?r.indirect.toFixed(2)+'%':'&mdash;'}</td><td data-val="${r.total}" class="mono" style="font-weight:600">${r.total.toFixed(2)}%</td><td data-val="${r.bench}" class="d mono">${r.bench.toFixed(2)}%</td><td data-val="${r.diff}" class="${cc(r.diff)} mono">${r.diff>=0?'+':''}${r.diff.toFixed(2)}%</td></tr>`).join('')||'<tr><td colspan="7" class="empty">Sin datos</td></tr>'}
-    </tbody></table></div>
+    </tr></thead><tbody id="tbl-exp-body"></tbody></table></div>
   </div>`;
 }
+
+function renderPosicion(){
+  const sel=document.getElementById('pos-mode');
+  const mode=sel?sel.value:'origen';
+  const m=calcMetrics();
+  const fechaV0=m.fechaRef||S.fechaInicio||'2026-04-13';
+
+  // Datos según modo
+  let pos,valPort,costoTotal,pnlReal,modeLabel,modeHint;
+  if(mode==='v0'){
+    const r=buildPosFromV0(fechaV0);
+    pos=r.pos; valPort=r.valPort; costoTotal=r.costoTotal; pnlReal=r.pnlRealizadoDesdeV0;
+    modeLabel='desde V0';
+    modeHint=`Precios promedio anclados al cierre de ${fechaV0}. Posiciones previas a esa fecha se fusionan en una apertura sintética; órdenes posteriores se promedian normal.`;
+  }else{
+    pos=m.pos; valPort=m.valPort; costoTotal=m.costoTotal;
+    // PnL realizado desde origen (replicar lógica original de pgPosicion)
+    const pos_snap={}; pnlReal=0;
+    for(const o of (S.ordenes||[])){
+      if(!pos_snap[o.ticker])pos_snap[o.ticker]={titulos:0,costoTotal:0};
+      if(o.tipo==='compra'){pos_snap[o.ticker].titulos+=o.titulos;pos_snap[o.ticker].costoTotal+=o.titulos*o.precio;}
+      else{
+        const pp=pos_snap[o.ticker].titulos>0?pos_snap[o.ticker].costoTotal/pos_snap[o.ticker].titulos:0;
+        pnlReal+=(o.precio-pp)*o.titulos;
+        pos_snap[o.ticker].costoTotal-=pp*o.titulos;
+        pos_snap[o.ticker].titulos-=o.titulos;
+      }
+    }
+    modeLabel='desde origen';
+    modeHint='Precios promedio y P&L se calculan desde la primera orden registrada.';
+  }
+
+  const pnlNoReal=valPort-costoTotal;
+  const totalFondo=valPort+m.efectivo;
+
+  // Hint del modo
+  const hint=document.getElementById('pos-mode-hint');
+  if(hint)hint.textContent=modeHint;
+  const sub=document.getElementById('pos-hold-sub');
+  if(sub)sub.textContent=modeLabel==='desde V0'?`Precio promedio anclado a ${fechaV0}`:'Precio promedio histórico desde la primera orden';
+
+  // ── Cards ──
+  document.getElementById('pos-cards').innerHTML=`
+    ${stCard(fm(totalFondo),'Valor total fondo','Acciónario + efectivo','stat-blue')}
+    ${stCard(fm(m.efectivo),'Efectivo disponible','Incl. dividendos','stat-amb')}
+    ${stCard(fm(pnlNoReal),'P&L no realizado',`Valor mercado − costo (${modeLabel})`,pnlNoReal>=0?'stat-grn':'stat-red')}
+    ${stCard(fm(pnlReal),'P&L realizado',`Operaciones cerradas (${modeLabel})`,pnlReal>=0?'stat-grn':'stat-red')}
+  `;
+
+  // ── Holdings header ──
+  document.getElementById('tbl-pos-head').innerHTML=
+    th('Ticker','tbl-pos',0,'str')+th('Nombre','tbl-pos',1,'str')+th('Títulos','tbl-pos',2,'num')+th('Precio prom.','tbl-pos',3,'num')+th('Precio actual','tbl-pos',4,'num')+th('Val. mercado','tbl-pos',5,'num')+th('% Fondo','tbl-pos',6,'num')+th('% MEXTRAC','tbl-pos',7,'num')+th('Diferencia','tbl-pos',8,'num')+th('Rend. %','tbl-pos',9,'num')+th('P&L ($)','tbl-pos',10,'num');
+
+  // ── Holdings body ──
+  const rows=Object.entries(pos).map(([t,p])=>{
+    const vm=p.titulos*p.precioActual;
+    const pctF=totalFondo>0?vm/totalFondo*100:0;
+    const pctB=MEXTRAC_W[t]||0;
+    const pp=p.titulos>0?p.costoTotal/p.titulos:0;
+    const rend=pp>0?(p.precioActual-pp)/pp*100:0;
+    const pnl=(p.precioActual-pp)*p.titulos;
+    const nm=UNIVERSO.find(e=>e.t===t)?.n||t;
+    const fbBadge=p._v0Fallback?' <span style="font-size:9px;background:var(--amb2);color:var(--amb);padding:1px 5px;border-radius:3px;font-weight:600" title="Sin precio de mercado en V0; se usó costo histórico como fallback">!</span>':'';
+    return`<tr>
+      <td class="lbl">${t}${p.isEtf?' <span class="pill p-etf" style="font-size:9px">ETF</span>':''}${fbBadge}</td>
+      <td class="dim">${nm}</td>
+      <td data-val="${p.titulos}" class="mono">${p.titulos.toLocaleString()}</td>
+      <td data-val="${pp}" class="mono">$${f2(pp,4)}</td>
+      <td data-val="${p.precioActual}" class="mono">$${f2(p.precioActual,4)}</td>
+      <td data-val="${vm}" class="mono">${fm(vm)}</td>
+      <td data-val="${pctF}" class="mono">${pctF.toFixed(1)}%</td>
+      <td data-val="${pctB}" class="d mono">${pctB>0?pctB.toFixed(2)+'%':'&mdash;'}</td>
+      <td data-val="${pctF-pctB}" class="${cc(pctF-pctB)} mono">${(pctF-pctB)>=0?'+':''}${(pctF-pctB).toFixed(1)}%</td>
+      <td data-val="${rend}" class="${cc(rend)} mono">${fp(rend)}</td>
+      <td data-val="${pnl}" class="${cc(pnl)} mono">${fm(pnl)}</td>
+    </tr>`;
+  }).join('')||'<tr><td colspan="11" class="empty">Sin posiciones abiertas</td></tr>';
+  document.getElementById('tbl-pos-body').innerHTML=rows;
+
+  // ── Holdings foot (CASH) ──
+  const cashPct=totalFondo>0?m.efectivo/totalFondo*100:0;
+  document.getElementById('tbl-pos-foot').innerHTML=`<tr style="border-top:2px solid var(--line2);font-weight:600;background:var(--bg3)">
+    <td class="lbl">CASH</td><td class="dim">Efectivo disponible</td>
+    <td class="mono">&mdash;</td><td class="mono">&mdash;</td><td class="mono">&mdash;</td>
+    <td data-val="${m.efectivo}" class="mono">${fm(m.efectivo)}</td>
+    <td data-val="${cashPct}" class="b mono">${cashPct.toFixed(1)}%</td>
+    <td class="d mono">&mdash;</td><td class="d mono">&mdash;</td><td class="d mono">&mdash;</td><td class="d mono">&mdash;</td>
+  </tr>`;
+
+  // ── Exposición efectiva (no cambia con el toggle) ──
+  const wu=calcWU(m.pos,m.totalFondo);
+  document.getElementById('tbl-exp-body').innerHTML=wu.map(r=>`<tr>
+    <td class="lbl">${r.ticker}</td><td class="dim">${r.name}</td>
+    <td data-val="${r.direct}" class="d mono">${r.direct>0?r.direct.toFixed(2)+'%':'&mdash;'}</td>
+    <td data-val="${r.indirect}" class="b mono">${r.indirect>0?r.indirect.toFixed(2)+'%':'&mdash;'}</td>
+    <td data-val="${r.total}" class="mono" style="font-weight:600">${r.total.toFixed(2)}%</td>
+    <td data-val="${r.bench}" class="d mono">${r.bench.toFixed(2)}%</td>
+    <td data-val="${r.diff}" class="${cc(r.diff)} mono">${r.diff>=0?'+':''}${r.diff.toFixed(2)}%</td>
+  </tr>`).join('')||'<tr><td colspan="7" class="empty">Sin datos</td></tr>';
+}
+
+function initPosicion(){renderPosicion();}
+
+
 
 // RENDIMIENTO
 function pgRendimiento(){
@@ -1783,11 +2012,25 @@ function pgAtribucion(){
     </thead><tbody id="attr-tbody-unif"></tbody></table></div>
   </div>
 
-  <!-- Ticker-level selection (bonus detail) -->
+  <!-- Ticker-level: Performance Attribution por emisora (intra-sector, Carino) -->
   <div class="card">
-    <div class="sec-h"><div class="sec-h-bar" style="background:var(--amb)"></div><div class="sec-h-text">Selección de valores &mdash; contribución por emisora</div></div>
-    <div class="tw"><table id="tbl-attr-ticker"><thead><tr>
-      <th>Ticker</th><th>Sector</th><th>W Fondo</th><th>W Bench</th><th>Retorno</th><th>R Bench sector</th><th>Contribución selección</th>
+    <div class="sec-h">
+      <div class="sec-h-bar" style="background:var(--amb)"></div>
+      <div class="sec-h-text">Performance Attribution &mdash; por emisora</div>
+      <div class="sec-h-sub">Brinson-Fachler intra-sector · Σ Total por ticker = Σ Total por sector (Carino)</div>
+    </div>
+    <div class="tw"><table id="tbl-attr-ticker"><thead><tr style="background:var(--accent);color:#fff">
+      <th style="background:var(--accent);color:#fff">Ticker</th>
+      <th style="background:var(--accent);color:#fff">Sector</th>
+      <th style="background:var(--accent);color:#fff;text-align:center" title="Peso del ticker en el portafolio (look-through ETF)">W Fondo</th>
+      <th style="background:var(--accent);color:#fff;text-align:center" title="Peso del ticker en MEXTRAC09">W Bench</th>
+      <th style="background:var(--accent);color:#fff;text-align:center" title="w_P,i - w_B,i">Diff (W)</th>
+      <th style="background:var(--accent);color:#fff;text-align:center" title="Retorno del ticker en el período (real)">R Ticker</th>
+      <th style="background:var(--accent);color:#fff;text-align:center" title="Retorno del sector en el benchmark">R Bench Sector</th>
+      <th style="background:var(--accent);color:#fff;text-align:center" title="(w_P-w_B)(R_B,s-R_B)">Allocation</th>
+      <th style="background:var(--accent);color:#fff;text-align:center" title="w_B(R_P,i-R_B,s)">Selection</th>
+      <th style="background:var(--accent);color:#fff;text-align:center" title="(w_P-w_B)(R_P,i-R_B,s)">Interaction</th>
+      <th style="background:var(--accent);color:#fff;text-align:center" title="AA + SS + Int">Total</th>
     </tr></thead><tbody id="attr-tbody2"></tbody></table></div>
   </div>`;
 }
@@ -1998,39 +2241,100 @@ function calcAtribucion(period){
   }
   rows.sort((a,b)=>Math.abs(b.total)-Math.abs(a.total));
 
-  // ── Ticker-level selection (aproximación: última foto del período) ──
-  const posStart=buildPosAt(startH.date);
+  // ── Ticker-level: AA/SS/Int por emisora (intra-sector, Carino-aggregated) ──
+  // Para cada día t y cada ticker i en sector s:
+  //   AA_i = (w_P,i - w_B,i) * (R_B,s - R_B)    ← Brinson-Fachler
+  //   SS_i = w_B,i * (R_P,i - R_B,s)
+  //   Int_i = (w_P,i - w_B,i) * (R_P,i - R_B,s)
+  // Cada efecto se escala por el factor Carino del día y se acumula.
+  // Σ AA_i = Σ AA_sector y lo mismo para SS, Int. Identidad exacta.
+  const tickerAgg={};   // ticker → {sec, aa, ss, inter, wf_sum, wb_sum, count, rf_sum, rbSec_sum}
+  const ensureT=(t,sec)=>{
+    if(!tickerAgg[t])tickerAgg[t]={sec,aa:0,ss:0,inter:0,wf_sum:0,wb_sum:0,count:0,rf_sum:0,rbSec_sum:0};
+  };
   const totalMexW=Object.values(MEXTRAC_W).reduce((s,v)=>s+v,0);
-  let investedStart=0;
-  for(const t in posStart){
-    const p=localPrice(t,startH.date);
-    if(p==null||p<=0)continue;
-    investedStart+=posStart[t].titulos*p;
-  }
-  const tickerRows=[];
-  if(investedStart>0){
-    const sectorData={};
-    for(const sec in sectorAgg){
-      const a=sectorAgg[sec];
-      sectorData[sec]={rb:a.wCount>0?a.rb_sum/a.wCount:0};
+
+  for(const dbhb of dailyBHB){
+    const rP_t=dbhb.rPort, rB_t=dbhb.rBench;
+    const k=_carinoFactor(rP_t,rB_t,R_P,R_B);
+    const Rb_day=rB_t;  // retorno total del benchmark ese día
+
+    // Reconstruir holdings y benchmark por ticker para ESE día (mismo posEnd que en _bhbSinglePeriod)
+    const posEnd=buildPosAt(dbhb.d0);
+    const snap=fundValueAt(dbhb.d0);
+    const tf=snap.totalFondo;
+    if(tf<=0)continue;
+
+    const realMap={};
+    let etfVal=0;
+    for(const t in posEnd){
+      const p=localPrice(t,dbhb.d0);
+      if(p==null)continue;
+      const vm=posEnd[t].titulos*p;
+      if(vm<=0)continue;
+      if(t==='MEXTRAC09'){etfVal=vm;continue;}
+      realMap[t]=(realMap[t]||0)+vm;
     }
-    for(const t in posStart){
-      if(t==='MEXTRAC09')continue;
-      const p0=localPrice(t,startH.date);
-      const p1=localPrice(t,endH.date);
-      if(p0==null||p0<=0)continue;
-      const vm0=posStart[t].titulos*p0;
-      if(vm0<=0)continue;
-      const wf=vm0/investedStart;
-      const wb=(MEXTRAC_W[t]||0)/totalMexW;
+    if(etfVal>0){
+      for(const bt in MEXTRAC_W){
+        realMap[bt]=(realMap[bt]||0)+etfVal*(MEXTRAC_W[bt]/totalMexW);
+      }
+    }
+
+    // Calcular R_B,s (retorno del sector en el benchmark) para ese día
+    const rbSec={};
+    for(const bt in MEXTRAC_W){
+      const sec=UNIVERSO.find(u=>u.t===bt)?.s||'Otros';
+      const wbPct=(MEXTRAC_W[bt]/totalMexW)*100;
+      const p0=localPrice(bt,dbhb.d0),p1=localPrice(bt,dbhb.d1);
+      if(p0==null||p0<=0||p1==null)continue;
+      const r=(p1-p0)/p0*100;
+      if(!rbSec[sec])rbSec[sec]={sumWR:0,sumW:0};
+      rbSec[sec].sumWR+=wbPct*r;
+      rbSec[sec].sumW+=wbPct;
+    }
+    const rbSecVal=sec=>rbSec[sec]&&rbSec[sec].sumW>0?rbSec[sec].sumWR/rbSec[sec].sumW:0;
+
+    // Universo del día: tickers tenidos + benchmark
+    const universe=new Set([...Object.keys(realMap),...Object.keys(MEXTRAC_W)]);
+    for(const t of universe){
       const sec=UNIVERSO.find(u=>u.t===t)?.s||'Otros';
-      const rf=p1!=null?(p1-p0)/p0*100:0;
-      const rbSec=sectorData[sec]?sectorData[sec].rb:0;
-      const selContrib=wb*(rf-rbSec);
-      tickerRows.push({ticker:t,sec,wf:wf*100,wb:wb*100,rf,rbSec,selContrib});
+      const wP=(realMap[t]||0)/tf*100;
+      const wB=((MEXTRAC_W[t]||0)/totalMexW)*100;
+      const p0=localPrice(t,dbhb.d0),p1=localPrice(t,dbhb.d1);
+      let rP_i=0;
+      if(p0!=null&&p0>0&&p1!=null)rP_i=(p1-p0)/p0*100;
+      const rB_s=rbSecVal(sec);
+
+      const aa=((wP-wB)/100)*((rB_s-Rb_day));   // Brinson-Fachler intra-sector
+      const ss=(wB/100)*(rP_i-rB_s);
+      const inter=((wP-wB)/100)*(rP_i-rB_s);
+
+      ensureT(t,sec);
+      tickerAgg[t].aa+=aa*k;
+      tickerAgg[t].ss+=ss*k;
+      tickerAgg[t].inter+=inter*k;
+      tickerAgg[t].wf_sum+=wP;
+      tickerAgg[t].wb_sum+=wB;
+      tickerAgg[t].count+=1;
+      tickerAgg[t].rf_sum+=rP_i;
+      tickerAgg[t].rbSec_sum+=rB_s;
     }
-    tickerRows.sort((a,b)=>Math.abs(b.selContrib)-Math.abs(a.selContrib));
   }
+
+  const tickerRows=[];
+  for(const t in tickerAgg){
+    const a=tickerAgg[t];
+    const wf=a.count>0?a.wf_sum/a.count:0;
+    const wb=a.count>0?a.wb_sum/a.count:0;
+    const rf=a.count>0?a.rf_sum/a.count:0;
+    const rbSec=a.count>0?a.rbSec_sum/a.count:0;
+    const total=a.aa+a.ss+a.inter;
+    // Filtrar tickers sin exposición real ni en bench
+    if(wf<0.001&&wb<0.001)continue;
+    tickerRows.push({ticker:t,sec:a.sec,wf,wb,wDiff:wf-wb,rf,rbSec,aa:a.aa,ss:a.ss,inter:a.inter,total});
+  }
+  tickerRows.sort((a,b)=>Math.abs(b.total)-Math.abs(a.total));
 
   return{
     rPort:R_P, rBench:R_B, activeRet,
@@ -2108,16 +2412,37 @@ function renderAtribucion(){
   </tr>`;
   document.getElementById('attr-tbody-unif').innerHTML=unifRows+totalRow;
 
-  // ── Ticker selection table ──
-  document.getElementById('attr-tbody2').innerHTML=d.tickerRows.slice(0,15).map(r=>`<tr>
+  // ── Performance Attribution por emisora (Carino-aggregated) ──
+  // Mostrar TODAS las filas con efecto material (top contribuyentes y detractores)
+  const tickerRowsToShow=d.tickerRows.filter(r=>Math.abs(r.total)>0.001||r.wf>0.5||r.wb>0.5);
+  const tbodyRows=tickerRowsToShow.map(r=>`<tr>
     <td class="lbl mono">${r.ticker}</td>
-    <td class="dim">${r.sec}</td>
-    <td class="mono">${r.wf.toFixed(2)}%</td>
-    <td class="mono">${r.wb.toFixed(2)}%</td>
-    <td class="mono" style="color:${cc2(r.rf)}">${pn(r.rf)}</td>
-    <td class="mono" style="color:${cc2(r.rbSec)}">${pn(r.rbSec)}</td>
-    <td class="mono" style="font-weight:700;color:${cc2(r.selContrib)}">${pn(r.selContrib)}</td>
+    <td class="dim" style="font-size:11px">${r.sec}</td>
+    <td class="mono" style="text-align:center">${pw(r.wf)}</td>
+    <td class="mono" style="text-align:center">${pw(r.wb)}</td>
+    <td class="mono" style="text-align:center;color:${cc2(r.wDiff)}">${pn(r.wDiff)}</td>
+    <td class="mono" style="text-align:center;color:${cc2(r.rf)}">${pn(r.rf)}</td>
+    <td class="mono" style="text-align:center;color:${cc2(r.rbSec)}">${pn(r.rbSec)}</td>
+    <td class="mono" style="text-align:center;font-weight:600;color:${cc2(r.aa)}">${pn(r.aa)}</td>
+    <td class="mono" style="text-align:center;font-weight:600;color:${cc2(r.ss)}">${pn(r.ss)}</td>
+    <td class="mono" style="text-align:center;font-weight:600;color:${cc2(r.inter)}">${pn(r.inter)}</td>
+    <td class="mono" style="text-align:center;font-weight:700;color:${cc2(r.total)}">${pn(r.total)}</td>
   </tr>`).join('');
+
+  // Fila TOTAL (suma por ticker = suma por sector → identidad cierra)
+  const sumAA=d.tickerRows.reduce((a,r)=>a+r.aa,0);
+  const sumSS=d.tickerRows.reduce((a,r)=>a+r.ss,0);
+  const sumInter=d.tickerRows.reduce((a,r)=>a+r.inter,0);
+  const sumTotal=sumAA+sumSS+sumInter;
+  const totalRowTicker=`<tr style="border-top:2px solid var(--line2);background:var(--accent2);font-weight:700">
+    <td class="lbl" style="color:var(--accent)" colspan="7">TOTAL · Σ Total por emisora = Retorno activo</td>
+    <td class="mono" style="text-align:center;color:${cc2(sumAA)};font-size:14px">${pn(sumAA)}</td>
+    <td class="mono" style="text-align:center;color:${cc2(sumSS)};font-size:14px">${pn(sumSS)}</td>
+    <td class="mono" style="text-align:center;color:${cc2(sumInter)};font-size:14px">${pn(sumInter)}</td>
+    <td class="mono" style="text-align:center;color:${cc2(sumTotal)};font-size:14px">${pn(sumTotal)}</td>
+  </tr>`;
+
+  document.getElementById('attr-tbody2').innerHTML=tbodyRows+totalRowTicker;
 }
 
 function initAtribucionCharts(){renderAtribucion();}
@@ -3091,6 +3416,17 @@ async function exportToExcel(evt){
       attrRows.push(['TOTAL',+sumWf.toFixed(4),+sumWb.toFixed(4),+(sumWf-sumWb).toFixed(4),+attrD.totAA.toFixed(4),+attrD.totSS.toFixed(4),+attrD.totInt.toFixed(4),+attrD.totTotal.toFixed(4)]);
       attrRows.push(['RETORNO ACTIVO','','','','','','',+attrD.activeRet.toFixed(4)]);
       XLSX.utils.book_append_sheet(wb,XLSX.utils.aoa_to_sheet(attrRows),'Atribucion');
+
+      // Atribución por emisora (intra-sector, Carino-aggregated)
+      const tickRows=[['Ticker','Sector','W Fondo','W Bench','Diff (W)','R Ticker','R Bench Sector','Allocation','Selection','Interaction','Total']];
+      for(const r of attrD.tickerRows){
+        tickRows.push([r.ticker,r.sec,+r.wf.toFixed(4),+r.wb.toFixed(4),+r.wDiff.toFixed(4),+r.rf.toFixed(4),+r.rbSec.toFixed(4),+r.aa.toFixed(4),+r.ss.toFixed(4),+r.inter.toFixed(4),+r.total.toFixed(4)]);
+      }
+      const sAA=attrD.tickerRows.reduce((a,r)=>a+r.aa,0);
+      const sSS=attrD.tickerRows.reduce((a,r)=>a+r.ss,0);
+      const sInter=attrD.tickerRows.reduce((a,r)=>a+r.inter,0);
+      tickRows.push(['TOTAL','','','','','','',+sAA.toFixed(4),+sSS.toFixed(4),+sInter.toFixed(4),+(sAA+sSS+sInter).toFixed(4)]);
+      XLSX.utils.book_append_sheet(wb,XLSX.utils.aoa_to_sheet(tickRows),'Atribucion_Emisoras');
     }
 
     // Snapshot Diario — base Brinson con CASH como clase explícita
