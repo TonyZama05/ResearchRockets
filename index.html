@@ -1520,6 +1520,24 @@ function pgConfig(){
       </div>
     </div>
   </div>
+
+  <!-- ── Mantenimiento de PRICE_DB ── -->
+  <div class="card" style="max-width:520px">
+    <div class="sec-h"><div class="sec-h-bar" style="background:var(--amb)"></div><div class="sec-h-text">Mantenimiento de PRICE_DB</div></div>
+    <div style="background:var(--bg3);padding:10px 12px;border-radius:var(--r);font-size:11px;color:var(--txt2);margin-bottom:14px;line-height:1.5">
+      Limpia precios duplicados o desfasados en el catálogo de precios. Útil cuando hay que recargar precios de Refinitiv o resolver inconsistencias.
+    </div>
+    <div class="fg">
+      <label class="fl">Eliminar precios desde fecha (inclusive)</label>
+      <input type="date" id="pdb-cutoff" value="2026-04-23">
+      <div style="font-size:11px;color:var(--txt3);margin-top:4px">Borrará todos los precios cuya fecha sea ≥ esta fecha, en TODOS los tickers. Después puedes recargar el Excel de Refinitiv para repoblar.</div>
+    </div>
+    <div style="display:flex;gap:8px;flex-wrap:wrap;margin-top:10px">
+      <button class="btn btn-sm" onclick="auditPriceDB()" style="border-color:var(--blue);color:var(--blue)">🔍 Auditar duplicados</button>
+      <button class="btn btn-sm btn-danger" onclick="cleanPriceDB()">🗑️ Eliminar desde fecha</button>
+    </div>
+    <div id="pdb-audit-result" style="margin-top:12px;font-size:11px;font-family:var(--mono);max-height:200px;overflow-y:auto"></div>
+  </div>
   <div class="card" style="max-width:520px">
     <div class="sec-h"><div class="sec-h-bar" style="background:var(--blue)"></div><div class="sec-h-text">Sincronización en equipo &mdash; Firebase</div></div>
     <div style="background:var(--grn2);border:1px solid var(--grn3);border-radius:var(--r2);padding:14px 16px;margin-bottom:14px">
@@ -1895,6 +1913,91 @@ async function importExcelPrices(input){const status=document.getElementById('ex
   }
   save(); // persist to localStorage + Firebase
   const sorted=[...dates].sort();status.innerHTML=`<span style="color:var(--grn)">&#10003; ${count} precios cargados &middot; ${dates.size} fechas &middot; ultimo: ${sorted[sorted.length-1]}</span>`;input.value='';go(document.querySelector('.ni.active')?.textContent?.toLowerCase().trim().split(' ')[0]||'dashboard');}catch(e){status.innerHTML=`<span style="color:var(--red)">&#10005; Error: ${e.message}</span>`;console.error(e);}}
+
+// ────────────────────────────────────────────────────────────────────────────
+// MANTENIMIENTO DE PRICE_DB
+// auditPriceDB(): muestra estadísticas, fechas duplicadas/anómalas, cobertura
+// cleanPriceDB(): elimina precios desde una fecha (inclusive) en TODOS los tickers
+// ────────────────────────────────────────────────────────────────────────────
+function auditPriceDB(){
+  const out=document.getElementById('pdb-audit-result');
+  if(!out)return;
+  const tickers=Object.keys(PRICE_DB).sort();
+  const totalPrecios=tickers.reduce((s,t)=>s+Object.keys(PRICE_DB[t]).length,0);
+
+  // Última fecha por ticker
+  const ultPorTicker={};
+  for(const t of tickers){
+    const fechas=Object.keys(PRICE_DB[t]).sort();
+    ultPorTicker[t]=fechas[fechas.length-1]||'(vacío)';
+  }
+  // Agrupar tickers por última fecha
+  const grupos={};
+  for(const t of tickers){
+    const u=ultPorTicker[t];
+    if(!grupos[u])grupos[u]=[];
+    grupos[u].push(t);
+  }
+  const fechasOrdenadas=Object.keys(grupos).sort().reverse();
+
+  // Posibles duplicados entre PRICE_DB y S.preciosOverlay (overlay sobreescribe DB)
+  const overlapsConOverlay=[];
+  if(S.preciosOverlay){
+    for(const t in S.preciosOverlay){
+      for(const f in S.preciosOverlay[t]){
+        const v0=PRICE_DB[t]?.[f], v1=S.preciosOverlay[t][f];
+        if(v0!=null&&v1!=null&&Math.abs(v0-v1)>0.01)overlapsConOverlay.push({t,f,v0,v1});
+      }
+    }
+  }
+
+  let html=`<div style="color:var(--accent);font-weight:600;margin-bottom:6px">📊 PRICE_DB: ${tickers.length} tickers · ${totalPrecios} precios totales</div>`;
+  html+=`<div style="margin-bottom:8px;color:var(--txt2)">Última fecha por ticker (top fechas):</div>`;
+  for(const f of fechasOrdenadas.slice(0,5)){
+    html+=`<div style="margin-left:8px"><b>${f}</b>: ${grupos[f].length} ticker${grupos[f].length===1?'':'s'} <span style="color:var(--txt3)">(${grupos[f].slice(0,8).join(', ')}${grupos[f].length>8?'...':''})</span></div>`;
+  }
+  if(overlapsConOverlay.length){
+    html+=`<div style="color:var(--amb);margin-top:8px;font-weight:600">⚠ ${overlapsConOverlay.length} discrepancias entre PRICE_DB base y overlay:</div>`;
+    for(const o of overlapsConOverlay.slice(0,10)){
+      html+=`<div style="margin-left:8px;color:var(--txt2)">${o.t} ${o.f}: base=${o.v0} overlay=${o.v1}</div>`;
+    }
+    if(overlapsConOverlay.length>10)html+=`<div style="margin-left:8px;color:var(--txt3)">... y ${overlapsConOverlay.length-10} más</div>`;
+  }else{
+    html+=`<div style="color:var(--grn);margin-top:8px">✓ Sin discrepancias entre base y overlay</div>`;
+  }
+  out.innerHTML=html;
+}
+
+function cleanPriceDB(){
+  const cutoffEl=document.getElementById('pdb-cutoff');
+  const cutoff=cutoffEl?cutoffEl.value:null;
+  if(!cutoff){alert('Selecciona una fecha de corte');return;}
+  if(!confirm(`¿Eliminar TODOS los precios desde ${cutoff} (inclusive)?\n\nEsto afecta:\n- PRICE_DB base\n- S.preciosOverlay (precios cargados manualmente)\n\nLas órdenes y otros datos NO se tocan.`))return;
+
+  let removidos=0;
+  for(const t in PRICE_DB){
+    for(const f in PRICE_DB[t]){
+      if(f>=cutoff){delete PRICE_DB[t][f];removidos++;}
+    }
+  }
+  if(S.preciosOverlay){
+    for(const t in S.preciosOverlay){
+      for(const f in S.preciosOverlay[t]){
+        if(f>=cutoff){delete S.preciosOverlay[t][f];removidos++;}
+      }
+    }
+  }
+  // Reconstruir ALL_DATES
+  const allFechas=new Set();
+  for(const t in PRICE_DB)for(const f in PRICE_DB[t])allFechas.add(f);
+  if(S.preciosOverlay)for(const t in S.preciosOverlay)for(const f in S.preciosOverlay[t])allFechas.add(f);
+  ALL_DATES.length=0;
+  ALL_DATES.push(...[...allFechas].sort());
+
+  save();
+  const out=document.getElementById('pdb-audit-result');
+  if(out)out.innerHTML=`<div style="color:var(--grn);font-weight:600">✓ ${removidos} precio${removidos===1?'':'s'} eliminado${removidos===1?'':'s'} desde ${cutoff}.</div><div style="color:var(--txt2);margin-top:4px">Ahora carga el Excel de Refinitiv para repoblar los precios faltantes.</div>`;
+}
 
 // ESTADISTICOS
 function calcIRT(hist,flujos){if(!hist.length)return[];const result=[];let adjustedBase=hist[0].totalFondo,divAccum=0;for(let i=0;i<hist.length;i++){const h=hist[i];const dayDiv=(flujos||[]).filter(f=>f.fecha===h.date&&f.tipo==='dividendo_efectivo').reduce((s,f)=>s+f.monto,0);divAccum+=dayDiv;const irt=adjustedBase>0?(h.totalFondo+divAccum-adjustedBase)/adjustedBase*100:0;result.push({date:h.date,irt,totalFondo:h.totalFondo,divAccum});}return result;}
@@ -3337,11 +3440,33 @@ async function exportToExcel(evt){
   const btn=evt&&evt.target?evt.target:null;
   const btnLabelOriginal=btn?btn.innerHTML:'';
   if(btn){btn.textContent='Generando...';btn.disabled=true;}
-  const toExcelDate=iso=>{if(!iso)return'';const p=String(iso).split('-').map(Number);if(p.length!==3||p.some(Number.isNaN))return iso;return new Date(p[0],p[1]-1,p[2]);};
+  // Excel serial date: días desde 1899-12-30 (epoch de Excel).
+  // Calculado manualmente para evitar conversiones UTC/TZ que desfasan -1 día en MX.
+  const toExcelDate=iso=>{
+    if(!iso)return'';
+    const p=String(iso).split('-').map(Number);
+    if(p.length!==3||p.some(Number.isNaN))return iso;
+    // Días desde 1899-12-30 al [y,m,d] en zona horaria UTC para evitar drift
+    const utcMs=Date.UTC(p[0],p[1]-1,p[2]);
+    const epochMs=Date.UTC(1899,11,30);
+    const days=Math.round((utcMs-epochMs)/86400000);
+    return days;
+  };
   const formatSheet=(ws,dateCols=[])=>{
     const range=XLSX.utils.decode_range(ws['!ref']||'A1');
     for(let R=1;R<=range.e.r;R++){
-      dateCols.forEach(C=>{const ref=XLSX.utils.encode_cell({r:R,c:C});if(ws[ref]&&ws[ref].v instanceof Date){ws[ref].t='d';ws[ref].z='dd-mm-yyyy';}});
+      dateCols.forEach(C=>{
+        const ref=XLSX.utils.encode_cell({r:R,c:C});
+        if(!ws[ref])return;
+        // Si ya es Date object → marcar como 'd'. Si es número (serial) → marcar como 'n' con formato fecha.
+        if(ws[ref].v instanceof Date){
+          ws[ref].t='d';
+          ws[ref].z='dd-mm-yyyy';
+        }else if(typeof ws[ref].v==='number'){
+          ws[ref].t='n';
+          ws[ref].z='dd-mm-yyyy';
+        }
+      });
     }
     return ws;
   };
