@@ -232,7 +232,7 @@ canvas{display:block;width:100%!important}
 <div class="overlay" id="m-precio-dia">
   <div class="modal" style="width:520px;max-width:95vw">
     <div class="modal-h"><div class="modal-t">&#128229; Precios del d&iacute;a</div><button class="modal-x" onclick="closeModal('m-precio-dia')">&#10005;</button></div>
-    <div style="font-size:12px;color:var(--txt2);margin-bottom:12px">Pega los precios directamente desde Excel/Refinitiv. Soporta dos formatos y acepta fechas en <b>DD-MM-AAAA</b>, <b>DD/MM/AAAA</b> o <b>AAAA-MM-DD</b>:<br><span style="font-family:var(--mono);background:var(--bg3);padding:2px 6px;border-radius:4px;font-size:11px">[tab]MEXTRAC09[tab]AMXB... / Fecha[tab]precio[tab]precio...</span><br><span style="color:var(--txt3);font-size:11px">o vertical: TICKER[tab]PRECIO por l&iacute;nea. Los precios se guardan autom&aacute;ticamente.</span></div>
+    <div style="font-size:12px;color:var(--txt2);margin-bottom:12px">Pega los precios directamente desde Excel/Refinitiv. Soporta dos formatos y acepta fechas en <b>DD-MM-AAAA</b> (con gui&oacute;n), <b>MM/DD/AAAA</b> (con diagonal, formato americano) o <b>AAAA-MM-DD</b> (ISO):<br><span style="font-family:var(--mono);background:var(--bg3);padding:2px 6px;border-radius:4px;font-size:11px">[tab]MEXTRAC09[tab]AMXB... / Fecha[tab]precio[tab]precio...</span><br><span style="color:var(--txt3);font-size:11px">o vertical: TICKER[tab]PRECIO por l&iacute;nea. Los precios se guardan autom&aacute;ticamente.</span></div>
     <div id="pdia-fecha-row" style="display:flex;align-items:center;gap:10px;margin-bottom:10px"><label style="font-size:12px;font-weight:600;color:var(--txt2);flex-shrink:0">Fecha:</label><input type="date" id="pdia-fecha" style="flex:1;font-size:12px"></div>
     <textarea id="pdia-data" rows="14" placeholder="[tab]MEXTRAC09[tab]AMXB[tab]ASURB...&#10;14-04-2026[tab]66.16[tab]22.7[tab]588.56...&#10;&#10;&#9; o vertical:&#10;AMXB&#9;22.46&#10;FEMSAUBD&#9;188.02" style="font-family:var(--mono);font-size:12px;resize:vertical;width:100%;box-sizing:border-box"></textarea>
     <div id="pdia-preview" style="font-size:11px;color:var(--txt3);margin-top:6px;min-height:18px"></div>
@@ -466,7 +466,16 @@ const fm=n=>n==null||isNaN(n)?'—':'$'+Math.round(n).toLocaleString('es-MX');
 function parseISODate(str){if(!str||typeof str!=='string'||str.length<10)return null;const d=new Date(str.substring(0,10)+'T12:00:00');return isNaN(d.getTime())?null:d;}
 function diffDays(a,b){const da=parseISODate(a),db=parseISODate(b);if(!da||!db)return 0;return Math.round((db-da)/86400000);}
 const cc=n=>n>0?'g':n<0?'r':'d';
-const today=()=>new Date().toISOString().split('T')[0];
+// today(): fecha local YYYY-MM-DD. Construida manualmente para evitar el shift de
+// `toISOString()` (que convierte a UTC y desfasa -1 día en MX cuando es noche local).
+function todayLocalStr(){
+  const d=new Date();
+  const y=d.getFullYear();
+  const m=String(d.getMonth()+1).padStart(2,'0');
+  const dd=String(d.getDate()).padStart(2,'0');
+  return `${y}-${m}-${dd}`;
+}
+const today=()=>todayLocalStr();
 
 // PRICE OVERLAY
 const PRICE_OVERLAY_KEY='rr_price_day';
@@ -687,7 +696,7 @@ function buildHistorical(){
   if(!ord.length)return[];
 
   // Block future fechaInicio — no history until the date arrives
-  const todayStr=new Date().toISOString().split('T')[0];
+  const todayStr=todayLocalStr();
   const fechaRef=S.fechaInicio||'2026-04-13';
   if(fechaRef>todayStr)return[];
 
@@ -780,7 +789,7 @@ function calcMetrics(){
   const fechaRef=S.fechaInicio||'2026-04-13';
 
   // ── si fechaInicio es futuro → devolver métricas vacías ──────────────────
-  const _cmToday=new Date().toISOString().split('T')[0];
+  const _cmToday=todayLocalStr();
   if(fechaRef>_cmToday){
     const _p=buildPos(),_vp=portVal(_p);
     const _ct=(S.ordenes||[]).filter(o=>o.tipo==='compra').reduce((s,o)=>s+o.titulos*o.precio+(o.comision||0)+(o.iva||0),0);
@@ -1522,7 +1531,7 @@ function renderTreemap(){
       const _pRef2=localPrice(t,_fRef2)||(p.costoTotal>0?p.costoTotal/p.titulos:0);
       rend=_pRef2>0?(p.precioActual-_pRef2)/_pRef2*100:0;
     }
-    else{const daysBack=period==='1w'?7:30;const ref=new Date();ref.setDate(ref.getDate()-daysBack);const refP=localPrice(t,ref.toISOString().split('T')[0]);rend=refP&&p.precioActual?(p.precioActual-refP)/refP*100:0;}
+    else{const daysBack=period==='1w'?7:30;const ref=new Date();ref.setHours(12,0,0,0);ref.setDate(ref.getDate()-daysBack);const refY=ref.getFullYear(),refM=String(ref.getMonth()+1).padStart(2,'0'),refD=String(ref.getDate()).padStart(2,'0');const refP=localPrice(t,`${refY}-${refM}-${refD}`);rend=refP&&p.precioActual?(p.precioActual-refP)/refP*100:0;}
     items.push({ticker:t,value:vm,rend});}
   if(!items.length){container.innerHTML='<div class="empty" style="height:180px;display:flex;align-items:center;justify-content:center">Sin posiciones para mostrar</div>';return;}
   const W=container.offsetWidth||600;const H=220;container.style.height=H+'px';
@@ -1706,9 +1715,9 @@ function openEditarOP(id){
   document.getElementById('op-edit-footer').innerHTML=`<button class="btn" onclick="closeModal('m-op-edit')">Cancelar</button><button class="btn" onclick="addEjecucion('${id}')" style="border-color:var(--blue);color:var(--blue)">+ Agregar tramo</button><button class="btn btn-p" onclick="guardarEjecucionesOP('${id}')">Confirmar ejecucion</button>`;
   document.getElementById('m-op-edit').classList.add('open');
 }
-function renderEjecucionesEditor(op){const body=document.getElementById('op-edit-body');const totalEjec=(op.ejecuciones||[]).reduce((s,e)=>s+(+e.titulos||0),0);const restante=op.titulos-totalEjec;body.innerHTML=`<div style="margin-bottom:10px;font-size:12px;color:var(--txt2)">Títulos solicitados: <b>${op.titulos.toLocaleString('es-MX')}</b> &middot; Ejecutados: <b style="color:${totalEjec===op.titulos?'var(--grn)':'var(--amb)'}">${totalEjec.toLocaleString('es-MX')}</b> &middot; Pendiente: <b style="color:${restante===0?'var(--grn)':'var(--red)'}">${restante.toLocaleString('es-MX')}</b></div><table style="width:100%;font-size:12px"><thead><tr><th style="text-align:left;padding:4px 8px;color:var(--txt3);font-weight:600">Títulos</th><th style="text-align:left;padding:4px 8px;color:var(--txt3);font-weight:600">Precio</th><th style="text-align:left;padding:4px 8px;color:var(--txt3);font-weight:600">Fecha</th><th></th></tr></thead><tbody id="ejec-rows">${(op.ejecuciones||[]).map((e,i)=>`<tr><td style="padding:4px 8px"><input type="number" id="ejec-t-${i}" value="${e.titulos}" min="1" style="width:90px"></td><td style="padding:4px 8px"><input type="number" id="ejec-p-${i}" value="${e.precio}" step="0.0001" min="0" style="width:100px"></td><td style="padding:4px 8px"><input type="date" id="ejec-f-${i}" value="${e.fecha||op.fecha}" style="width:130px"></td><td style="padding:4px 8px">${op.ejecuciones.length>1?`<button class="btn btn-sm" style="color:var(--red);border-color:var(--red)" onclick="removeEjecucion(${i})">&#10005;</button>`:''}</td></tr>`).join('')}</tbody></table>`;}
+function renderEjecucionesEditor(op){const body=document.getElementById('op-edit-body');const totalEjec=(op.ejecuciones||[]).reduce((s,e)=>s+(+e.titulos||0),0);const restante=op.titulos-totalEjec;body.innerHTML=`<div style="margin-bottom:10px;font-size:12px;color:var(--txt2)">Títulos solicitados: <b>${op.titulos.toLocaleString('es-MX')}</b> &middot; Ejecutados: <b style="color:${totalEjec===op.titulos?'var(--grn)':'var(--amb)'}">${totalEjec.toLocaleString('es-MX')}</b> &middot; Pendiente: <b style="color:${restante===0?'var(--grn)':'var(--red)'}">${restante.toLocaleString('es-MX')}</b></div><table style="width:100%;font-size:12px"><thead><tr><th style="text-align:left;padding:4px 8px;color:var(--txt3);font-weight:600">Títulos</th><th style="text-align:left;padding:4px 8px;color:var(--txt3);font-weight:600">Precio</th><th style="text-align:left;padding:4px 8px;color:var(--txt3);font-weight:600">Fecha</th><th></th></tr></thead><tbody id="ejec-rows">${(op.ejecuciones||[]).map((e,i)=>`<tr><td style="padding:4px 8px"><input type="number" id="ejec-t-${i}" value="${e.titulos}" min="1" style="width:90px"></td><td style="padding:4px 8px"><input type="number" id="ejec-p-${i}" value="${e.precio}" step="0.0001" min="0" style="width:100px"></td><td style="padding:4px 8px"><input type="date" id="ejec-f-${i}" value="${e.fecha||op.fecha}" style="width:130px"></td><td style="padding:4px 8px">${op.ejecuciones.length>1?`<button class="btn btn-sm" style="color:var(--red);border-color:var(--red)" onclick="removeEjecucion('${op.id}',${i})">&#10005;</button>`:''}</td></tr>`).join('')}</tbody></table>`;}
 function addEjecucion(id){const op=getOP(id);if(!op)return;syncEjecuciones(op);op.ejecuciones.push({titulos:'',precio:'',fecha:op.fecha});renderEjecucionesEditor(op);document.getElementById('op-edit-footer').innerHTML=`<button class="btn" onclick="closeModal('m-op-edit')">Cancelar</button><button class="btn" onclick="addEjecucion('${id}')" style="border-color:var(--blue);color:var(--blue)">+ Agregar tramo</button><button class="btn btn-p" onclick="guardarEjecucionesOP('${id}')">Confirmar ejecucion</button>`;}
-function removeEjecucion(idx){const op=(S.ordenesProceso||[]).find(o=>o.estado==='proceso'&&o.ejecuciones&&o.ejecuciones.length>idx);if(!op)return;syncEjecuciones(op);op.ejecuciones.splice(idx,1);renderEjecucionesEditor(op);}
+function removeEjecucion(id,idx){const op=getOP(id);if(!op||!op.ejecuciones||op.ejecuciones.length<=idx)return;syncEjecuciones(op);op.ejecuciones.splice(idx,1);renderEjecucionesEditor(op);}
 function syncEjecuciones(op){(op.ejecuciones||[]).forEach((_,i)=>{op.ejecuciones[i].titulos=parseInt(document.getElementById('ejec-t-'+i)?.value)||0;op.ejecuciones[i].precio=parseFloat(document.getElementById('ejec-p-'+i)?.value)||0;op.ejecuciones[i].fecha=document.getElementById('ejec-f-'+i)?.value||op.fecha;});}
 function guardarEjecucionesOP(id){const op=getOP(id);if(!op)return;syncEjecuciones(op);const al=document.getElementById('op-edit-alert');const totalEjec=op.ejecuciones.reduce((s,e)=>s+(+e.titulos||0),0);if(totalEjec===0){al.innerHTML='<div class="alert a-err">Ingresa al menos un tramo con titulos y precio.</div>';return;}if(op.ejecuciones.some(e=>!(+e.precio>0))){al.innerHTML='<div class="alert a-err">Todos los tramos deben tener precio valido.</div>';return;}if(totalEjec>op.titulos){al.innerHTML=`<div class="alert a-err">Los titulos ejecutados (${totalEjec.toLocaleString()}) superan los solicitados (${op.titulos.toLocaleString()}).</div>`;return;}confirmarOP(id);}
 function confirmarOP(id){
@@ -1718,7 +1727,7 @@ function confirmarOP(id){
 }
 
 // MODALES DE PRECIOS
-async function openPreciosDia(){const d=new Date().toISOString().split('T')[0];document.getElementById('pdia-fecha').value=d;document.getElementById('pdia-data').value='';document.getElementById('pdia-preview').innerHTML='';document.getElementById('pdia-alert').innerHTML='';document.getElementById('m-precio-dia').classList.add('open');document.getElementById('pdia-data').oninput=previewPreciosDia;}
+async function openPreciosDia(){const d=todayLocalStr();document.getElementById('pdia-fecha').value=d;document.getElementById('pdia-data').value='';document.getElementById('pdia-preview').innerHTML='';document.getElementById('pdia-alert').innerHTML='';document.getElementById('m-precio-dia').classList.add('open');document.getElementById('pdia-data').oninput=previewPreciosDia;}
 
 // ── Parser universal de precios ──────────────────────────────────────────────
 function isValidYMD(y,m,d){
@@ -1748,13 +1757,17 @@ function parseDate(s){
     if(isValidYMD(y,d,mo))return toISODate(y,d,mo);
     return null;
   }
+  // Slash separator: prefer MM/DD/YYYY (American format)
+  // Convención del tracker: con diagonal "/" se asume formato americano (MM/DD/YYYY).
+  // Con guión "-" se asume formato mexicano DD-MM-YYYY (ver bloque arriba).
+  // Cuando uno de los dígitos es >12, queda inequívoco y se respeta la posición que sí es día.
   m=s.match(/^(\d{1,2})\/(\d{1,2})\/(\d{4})$/);
   if(m){
     const a=+m[1],b=+m[2],y=+m[3];
-    if(a>12&&isValidYMD(y,b,a))return toISODate(y,b,a);
-    if(b>12&&isValidYMD(y,a,b))return toISODate(y,a,b);
-    if(isValidYMD(y,b,a))return toISODate(y,b,a);
-    if(isValidYMD(y,a,b))return toISODate(y,a,b);
+    if(b>12&&isValidYMD(y,a,b))return toISODate(y,a,b); // b es día → MM/DD/YYYY
+    if(a>12&&isValidYMD(y,b,a))return toISODate(y,b,a); // a es día → DD/MM/YYYY (caso atípico con /)
+    if(isValidYMD(y,a,b))return toISODate(y,a,b);       // default ambiguo: MM/DD (americano)
+    if(isValidYMD(y,b,a))return toISODate(y,b,a);       // fallback: DD/MM
     return null;
   }
   return null;
@@ -1790,9 +1803,7 @@ function parsePreciosPaste(raw,fallbackFecha){
     // If majority are ticker-like and no date/numbers → this is the header row
     if(tickerCells.length>=2&&dateCells.length===0&&numCells.length===0){
       headerRowIdx=i;
-      // Skip the first cell if it's empty (leading tab)
-      headerTickers=cells.map(cleanTicker).filter((t,idx)=>idx===0?(t!==''&&t!=='FECHA'):true);
-      // If first cell is empty/FECHA, tickers start from idx 1
+      // Si la primera celda está vacía o dice FECHA, los tickers empiezan en idx 1
       const firstCellEmpty=cells[0]===''||cells[0].toUpperCase()==='FECHA';
       headerTickers=firstCellEmpty?cells.slice(1).map(cleanTicker):cells.map(cleanTicker);
       break;
@@ -1936,7 +1947,7 @@ function updateBenchPreview(fecha){if(!fecha)return;const mexDB={...(PRICE_DB['M
 function saveConfig(){
   const cap=parseFloat(document.getElementById('c-cap').value);const fecha=document.getElementById('c-fecha').value;const com=parseFloat(document.getElementById('c-com').value)||0.30;
   if(!cap||cap<=0){alert('Capital invalido.');return;}if(!fecha){alert('Ingresa la fecha de inicio de gestión.');return;}
-  const _todayLimit=new Date().toISOString().split('T')[0];
+  const _todayLimit=todayLocalStr();
   if(fecha>_todayLimit){alert('La fecha de inicio no puede ser en el futuro.\nLas métricas empezarán automáticamente cuando llegue esa fecha.');return;}
   const mexDB={...(PRICE_DB['MEXTRAC09']||{}),...(S.preciosOverlay?.['MEXTRAC09']||{})};const mexDates=Object.keys(mexDB).sort();let benchDate=null;for(const d of mexDates){if(d<=fecha)benchDate=d;else break;}
   // Fallback: use latest available MEXTRAC price if none found at/before fechaInicio
@@ -3708,7 +3719,7 @@ async function exportToExcel(evt){
     ];
     XLSX.utils.book_append_sheet(wb,XLSX.utils.aoa_to_sheet(valRows),'Validaciones');
 
-    const date=new Date().toISOString().split('T')[0];
+    const date=todayLocalStr();
     XLSX.writeFile(wb,`ResearchRockets_SSOT_${date}.xlsx`);
     if(btn){btn.textContent='✓ Exportado';setTimeout(()=>{btn.innerHTML=btnLabelOriginal||'&#128229; Exportar Excel';btn.disabled=false;},2500);}
   }catch(e){
