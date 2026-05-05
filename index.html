@@ -3722,6 +3722,7 @@ async function exportToExcel(evt){
 // ═══════════════════════════════════════════════════════════════════════════
 // STOCK PICKING vs MARKET TIMING
 // Descomposición: Retorno Activo = Efecto Timing + Efecto Stockpicking
+// Método profesor: índice aditivo base 100 (IDX_t = IDX_{t-1} + REND_t).
 //   Efecto Timing       = TIMING_idx  − BMK_idx     (cash management)
 //   Efecto Stockpicking = FONDO_idx   − TIMING_idx  (selección de emisoras)
 // REND_TIM(t) = REND_BMK(t) × (1 − nivelDesinv(t-1))
@@ -3753,9 +3754,11 @@ function calcStockVsTiming(){
     const nivelDesinv=prev.totalFondo>0?prev.efectivo/prev.totalFondo:0;
     const rendTim=rendBmk*(1-nivelDesinv);
 
-    mexIdx*=(1+rendBmk/100);
-    timIdx*=(1+rendTim/100);
-    fondoIdx*=(1+rendFondo/100);
+    // Método del Excel del profesor: acumulación aritmética en índice base 100.
+    // Si REND BMK = +0.25%, el índice pasa de 100.00 a 100.25.
+    mexIdx+=rendBmk;
+    timIdx+=rendTim;
+    fondoIdx+=rendFondo;
 
     rows.push({
       t:i,date:cur.date,
@@ -3784,7 +3787,26 @@ function pgStockTiming(){
   if(!d||!d.rows.length){
     return`<div class="card"><div class="empty" style="padding:40px;text-align:center;color:var(--txt3)">Sin historial suficiente. Registra órdenes y precios para ver el análisis Stock Picking vs Timing.</div></div>`;
   }
-  const checkSum=(d.efectoTiming+d.efectoStockpicking).toFixed(4);
+  // Cuadre visual fijo en puntos base (2 decimales) para que NO haya desfase.
+  // Regla: el Total visual manda; Stock Picking se redondea normal; Timing se calcula como residual visual.
+  // Ejemplo: total=-1.13% y stock=-1.15% => timing=(−113 − −115)/100 = +0.02%.
+  const bp=n=>Math.round((Number(n)||0)*100); // % -> puntos base visibles
+  const fbp=b=>b==null||isNaN(b)?'—':(b>=0?'+':'')+(b/100).toFixed(2)+'%';
+  const totalBp=bp(d.totalActivo);
+  const stockBp=bp(d.efectoStockpicking);
+  const timingBp=totalBp-stockBp;
+  const sumBp=timingBp+stockBp;
+  const totalVis=totalBp/100;
+  const stockVis=stockBp/100;
+  const timingVis=timingBp/100;
+  const sumVis=sumBp/100;
+  const auditRows=d.rows.slice(1);
+  const maxGapRendTim=auditRows.length?Math.max(...auditRows.map(r=>Math.abs(r.rendTim-(r.rendBmk*(1-r.nivelDesinv))))):0;
+  const maxGapMex=auditRows.length?Math.max(...auditRows.map((r,idx)=>Math.abs(r.mexIdx-(d.rows[idx].mexIdx+r.rendBmk)))):0;
+  const maxGapTim=auditRows.length?Math.max(...auditRows.map((r,idx)=>Math.abs(r.timIdx-(d.rows[idx].timIdx+r.rendTim)))):0;
+  const maxGapFondo=auditRows.length?Math.max(...auditRows.map((r,idx)=>Math.abs(r.fondoIdx-(d.rows[idx].fondoIdx+r.rendFondo)))):0;
+  const auditOk=(maxGapRendTim<1e-9&&maxGapMex<1e-9&&maxGapTim<1e-9&&maxGapFondo<1e-9&&sumBp===totalBp);
+  const auditPill=ok=>`<span class="pill ${ok?'p-buy':'p-sell'}">${ok?'OK':'REVISAR'}</span>`;
   return`
   <div class="sg4">
     ${stCard(fp(d.rendBmkAcum),'Rendimiento MEXTRAC','Benchmark puro (100% invertido)',d.rendBmkAcum>=0?'stat-grn':'stat-red')}
@@ -3796,9 +3818,9 @@ function pgStockTiming(){
   <div class="card">
     <div class="sec-h"><div class="sec-h-bar" style="background:var(--purple)"></div><div class="sec-h-text">Descomposición del retorno activo</div><span class="sec-h-sub">Total = Efecto Timing + Efecto Stock Picking</span></div>
     <div class="sg3" style="gap:12px">
-      ${miStat(fp(d.efectoTiming),'Efecto Market Timing','TIMING − MEXTRAC · habilidad de gestionar cash',d.efectoTiming>=0?'var(--grn)':'var(--red)')}
-      ${miStat(fp(d.efectoStockpicking),'Efecto Stock Picking','FONDO − TIMING · habilidad de seleccionar emisoras',d.efectoStockpicking>=0?'var(--grn)':'var(--red)')}
-      ${miStat(fp(d.totalActivo),'Total = Timing + Stockpicking',`Verificación: ${fp(d.efectoTiming)} + ${fp(d.efectoStockpicking)} = ${fp(parseFloat(checkSum))}`,d.totalActivo>=0?'var(--grn)':'var(--red)')}
+      ${miStat(fbp(timingBp),'Efecto Market Timing','TIMING − MEXTRAC · residual visual para cuadre',timingVis>=0?'var(--grn)':'var(--red)')}
+      ${miStat(fbp(stockBp),'Efecto Stock Picking','FONDO − TIMING · habilidad de seleccionar emisoras',stockVis>=0?'var(--grn)':'var(--red)')}
+      ${miStat(fbp(totalBp),'Total = Timing + Stockpicking',`Verificación: ${fbp(timingBp)} + ${fbp(stockBp)} = ${fbp(sumBp)}`,totalVis>=0?'var(--grn)':'var(--red)')}
     </div>
     <div style="margin-top:16px;background:var(--bg3);padding:12px 16px;border-radius:var(--r);font-size:12px;color:var(--txt2);line-height:1.7">
       <b>Cómo leer esto:</b><br>
@@ -3807,6 +3829,17 @@ function pgStockTiming(){
       • Si <b>|Stockpicking| &gt;&gt; |Timing|</b> → tu valor agregado vive en la selección de emisoras.<br>
       • Cash promedio: <b>${(d.nivelDesinvProm*100).toFixed(2)}%</b> · Min: <b>${(d.nivelDesinvMin*100).toFixed(2)}%</b> · Max: <b>${(d.nivelDesinvMax*100).toFixed(2)}%</b>
     </div>
+  </div>
+
+  <div class="card">
+    <div class="sec-h"><div class="sec-h-bar" style="background:var(--grn)"></div><div class="sec-h-text">Auditoría de cuadre — método profesor</div><span class="sec-h-sub">${auditOk?'Sin diferencias':'Revisar diferencias'}</span></div>
+    <div class="tw"><table><thead><tr><th>Check</th><th>Regla</th><th style="text-align:right">Estado</th></tr></thead><tbody>
+      <tr><td class="lbl">Rendimiento timing</td><td class="dim">REND TIM = REND BMK × (1 − NIVEL DESINV)</td><td style="text-align:right">${auditPill(maxGapRendTim<1e-9)}</td></tr>
+      <tr><td class="lbl">Índice MEXTRAC</td><td class="dim">MEXTRAC IDX = MEXTRAC IDX anterior + REND BMK</td><td style="text-align:right">${auditPill(maxGapMex<1e-9)}</td></tr>
+      <tr><td class="lbl">Índice TIMING</td><td class="dim">TIMING IDX = TIMING IDX anterior + REND TIM</td><td style="text-align:right">${auditPill(maxGapTim<1e-9)}</td></tr>
+      <tr><td class="lbl">Índice FONDO</td><td class="dim">FONDO IDX = FONDO IDX anterior + REND FONDO</td><td style="text-align:right">${auditPill(maxGapFondo<1e-9)}</td></tr>
+      <tr><td class="lbl">Descomposición visual</td><td class="dim">Timing + Stock Picking = Total con 2 decimales</td><td style="text-align:right">${auditPill(sumBp===totalBp)}</td></tr>
+    </tbody></table></div>
   </div>
 
   <div class="card">
