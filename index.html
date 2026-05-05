@@ -147,6 +147,7 @@ canvas{display:block;width:100%!important}
     <button class="ni" onclick="go('riesgo')"><svg viewBox="0 0 16 16"><path d="M8 2l1.5 4H14l-3.7 2.7 1.4 4.3L8 11l-3.7 2 1.4-4.3L2 6h4.5z"/></svg>Riesgo</button>
     <button class="ni" onclick="go('analytics')"><svg viewBox="0 0 16 16"><circle cx="8" cy="8" r="6"/><path d="M8 5v3l2 2"/></svg>Analytics</button>
     <button class="ni" onclick="go('atribucion')"><svg viewBox="0 0 16 16"><path d="M2 14l3-8 3 4 2-6 4 10" stroke-linecap="round" stroke-linejoin="round"/></svg>Atribuci&oacute;n</button>
+    <button class="ni" onclick="go('stocktiming')"><svg viewBox="0 0 16 16"><path d="M2 12L6 7L9 10L14 3M14 3H10M14 3V7" stroke-linecap="round" stroke-linejoin="round"/></svg>Stock vs Timing</button>
     <button class="ni" onclick="go('snapshot')"><svg viewBox="0 0 16 16"><rect x="2" y="3" width="12" height="10" rx="1.5"/><circle cx="8" cy="8" r="2.5"/><path d="M6 3l1-1h2l1 1"/></svg>Snapshot Diario</button>
     <button class="ni" onclick="go('infocoef')"><svg viewBox="0 0 16 16"><circle cx="4.5" cy="11" r="1.3"/><circle cx="8" cy="6" r="1.3"/><circle cx="11.5" cy="9" r="1.3"/><path d="M2 14L14 2" stroke-dasharray="2 2"/></svg>IC &amp; Fund. Law</button>
     <div class="nav-section">Gesti&oacute;n</div>
@@ -873,11 +874,11 @@ function sortTable(tid,col,type='str'){
 function th(label,tid,col,type='str'){return`<th onclick="sortTable('${tid}',${col},'${type}')">${label}</th>`;}
 
 // ROUTING - No universo page
-const PAGES=['dashboard','ordenes','posicion','rendimiento','riesgo','analytics','atribucion','snapshot','infocoef','flujos','estadisticos','config'];
+const PAGES=['dashboard','ordenes','posicion','rendimiento','riesgo','analytics','atribucion','stocktiming','snapshot','infocoef','flujos','estadisticos','config'];
 let chartInst=[];
 function go(page){
   document.querySelectorAll('.ni').forEach((el,i)=>el.classList.toggle('active',i===PAGES.indexOf(page)));
-  const titles={dashboard:'Dashboard',ordenes:'Órdenes',posicion:'Posición actual',rendimiento:'Rendimiento',riesgo:'Riesgo & Prospectivos',analytics:'Analytics',atribucion:'Performance Attribution',snapshot:'Snapshot Diario',infocoef:'Information Coefficient & Fundamental Law',flujos:'Flujos & Ajustes de mercado',estadisticos:'Estadísticos & Medidas',config:'Configuración'};
+  const titles={dashboard:'Dashboard',ordenes:'Órdenes',posicion:'Posición actual',rendimiento:'Rendimiento',riesgo:'Riesgo & Prospectivos',analytics:'Analytics',atribucion:'Performance Attribution',stocktiming:'Stock Picking vs Market Timing',snapshot:'Snapshot Diario',infocoef:'Information Coefficient & Fundamental Law',flujos:'Flujos & Ajustes de mercado',estadisticos:'Estadísticos & Medidas',config:'Configuración'};
   document.getElementById('tb-title').textContent=titles[page]||page;
   document.getElementById('tb-date').textContent=new Date().toLocaleDateString('es-MX',{weekday:'long',year:'numeric',month:'long',day:'numeric'});
   // Sidebar: siempre muestra el capital asignado (V0 fijo)
@@ -889,7 +890,7 @@ function go(page){
     if(_sSub)_sSub.textContent='';
   }
   chartInst.forEach(c=>{try{c.destroy();}catch(e){}});chartInst=[];
-  const renders={dashboard:pgDash,ordenes:pgÓrdenes,posicion:pgPosicion,rendimiento:pgRendimiento,riesgo:pgRiesgo,analytics:pgAnalytics,atribucion:pgAtribucion,snapshot:pgSnapshot,infocoef:pgInfoCoef,flujos:pgFlujos,estadisticos:pgEstadísticos,config:pgConfig};
+  const renders={dashboard:pgDash,ordenes:pgÓrdenes,posicion:pgPosicion,rendimiento:pgRendimiento,riesgo:pgRiesgo,analytics:pgAnalytics,atribucion:pgAtribucion,stocktiming:pgStockTiming,snapshot:pgSnapshot,infocoef:pgInfoCoef,flujos:pgFlujos,estadisticos:pgEstadísticos,config:pgConfig};
   try{
     document.getElementById('content').innerHTML=(renders[page]||pgDash)();
   }catch(err){
@@ -903,6 +904,7 @@ function go(page){
   }
   if(page==='analytics')setTimeout(initCharts,50);
   if(page==='atribucion')setTimeout(initAtribucionCharts,50);
+  if(page==='stocktiming')setTimeout(initStockTiming,50);
   if(page==='snapshot')setTimeout(initSnapshot,50);
   if(page==='infocoef')setTimeout(initInfoCoef,50);
   if(page==='posicion')setTimeout(initPosicion,50);
@@ -1322,8 +1324,49 @@ function initRendChart(){
 
 // RIESGO
 function pgRiesgo(){
-  const m=calcMetrics();const e=m.hist.length>=3;const vp=e?m.stdDev/Math.sqrt(252)*1.645:0;
-  const hist=m.hist;const pos=buildPos();const totalFondo=m.totalFondo;
+  const m=calcMetrics();
+  const e=m.hist.length>=3;
+  const hist=m.hist;
+  const pos=buildPos();
+  const totalFondo=m.totalFondo;
+
+  // σ diaria del fondo y VaR paramétrico absoluto (95%, una cola)
+  const stdDailyFondo=e?m.stdDev/Math.sqrt(252):0;
+  const vp=stdDailyFondo*1.645;
+
+  // Series diarias para cálculos relativos
+  const rd=[],rb=[],rA=[];
+  for(let i=1;i<hist.length;i++){
+    if(hist[i-1].totalFondo<=0)continue;
+    const f=(hist[i].totalFondo-hist[i-1].totalFondo)/hist[i-1].totalFondo*100;
+    let bch=0;
+    if(hist[i-1].mexPrice&&hist[i].mexPrice&&hist[i-1].mexPrice>0){
+      bch=(hist[i].mexPrice-hist[i-1].mexPrice)/hist[i-1].mexPrice*100;
+    }
+    rd.push(f);rb.push(bch);rA.push(f-bch);
+  }
+  const N=rA.length;
+  const teDaily=rA.length>=2?stdDev(rA):0;
+  const teEfec=teDaily*Math.sqrt(N);                          // TE al plazo (no anualizado)
+  const retActivoAcum=m.retActivo!=null?m.retActivo:0;
+  const irEfec=teEfec>0?retActivoAcum/teEfec:0;               // IR efectivo al plazo
+  const varRelParam=teDaily*1.645;                            // VaR paramétrico relativo diario
+  const varRelHist=rA.length>=10?[...rA].sort((a,b)=>a-b)[Math.floor(rA.length*0.05)]:null;
+
+  // Riesgo sistemático y específico: σ²p = β²σ²m + σ²ε
+  const stdDailyBench=rb.length>=2?stdDev(rb):0;
+  const sigmaP=stdDailyFondo;
+  const sigmaM=stdDailyBench;
+  const beta=m.beta;
+  const sysDaily=beta*sigmaM;
+  const espVarDaily=sigmaP*sigmaP-sysDaily*sysDaily;
+  const espDaily=espVarDaily>0?Math.sqrt(espVarDaily):0;
+  const sysAnual=sysDaily*Math.sqrt(252);
+  const espAnual=espDaily*Math.sqrt(252);
+  const pctSys=sigmaP>0?Math.pow(sysDaily/sigmaP,2)*100:0;
+  const pctEsp=sigmaP>0?Math.max(0,(espVarDaily/(sigmaP*sigmaP))*100):0;
+
+  // Prospectivos (composición actual × historia)
   let prospRets=[];
   if(hist.length>=5&&totalFondo>0){
     for(let i=1;i<hist.length;i++){
@@ -1335,21 +1378,50 @@ function pgRiesgo(){
   const prospStd=prospRets.length>1?stdDev(prospRets.map(r=>r.portRet))*Math.sqrt(252):0;
   const prospTE=prospRets.length>1?stdDev(prospRets.map(r=>r.activo))*Math.sqrt(252):0;
   const prospBeta=prospRets.length>1?betaCalc(prospRets.map(r=>r.portRet),prospRets.map(r=>r.benchRet)):1;
+
   return`
   <div class="sg2">
     <div class="card"><div class="sec-h"><div class="sec-h-bar"></div><div class="sec-h-text">Medidas absolutas &mdash; históricas</div></div>
-      ${rskRow('Desv. estandar (anualizada)',e?f2(m.stdDev)+'%':'&mdash;','Volatilidad del portafolio',m.stdDev>25?'var(--red)':m.stdDev>15?'var(--amb)':'var(--grn)')}
-      ${rskRow('VaR histórico 95% (diario)',m.hist.length>=10?f2(m.varH)+'%':'&mdash;','Percentil 5% de retornos históricos','var(--red)')}
-      ${rskRow('VaR parametrico 95% (diario)',e?'-'+f2(vp)+'%':'&mdash;','Z=1.645 x sigma diaria','var(--red)')}
-      ${rskRow('Rendimiento promedio diario',e?f2(mean(m.hist.slice(1).map((h,i)=>m.hist[i].totalFondo>0?(h.totalFondo-m.hist[i].totalFondo)/m.hist[i].totalFondo*100:0)),4)+'%':'&mdash;','Media aritmetica diaria','var(--txt2)')}
+      ${rskRow('Desv. estandar (anualizada)',e?f2(m.stdDev)+'%':'&mdash;','Volatilidad total del portafolio',m.stdDev>25?'var(--red)':m.stdDev>15?'var(--amb)':'var(--grn)')}
+      ${rskRow('VaR histórico 95% absoluto (diario)',m.hist.length>=10?f2(m.varH)+'%':'&mdash;','Percentil 5% de retornos diarios','var(--red)')}
+      ${rskRow('VaR parametrico 95% absoluto (diario)',e?'-'+f2(vp)+'%':'&mdash;','Z=1.645 × σ diaria del fondo','var(--red)')}
+      ${rskRow('Rendimiento promedio diario',e?f2(mean(rd),4)+'%':'&mdash;','Media aritmetica diaria','var(--txt2)')}
     </div>
     <div class="card"><div class="sec-h"><div class="sec-h-bar"></div><div class="sec-h-text">Medidas relativas &mdash; históricas</div></div>
       ${rskRow('Beta vs MEXTRAC',e?f2(m.beta):'&mdash;','Sensibilidad al mercado',m.beta>1.2?'var(--red)':m.beta<0.8?'var(--amb)':'var(--grn)')}
-      ${rskRow('Tracking error (anualizado)',e?f2(m.te)+'%':'&mdash;','Desv. estandar retorno activo','var(--txt2)')}
-      ${rskRow('Razón de información (IR)',e?f2(m.ir):'&mdash;','Retorno activo / Tracking error',m.ir>0.5?'var(--grn)':m.ir>0?'var(--amb)':'var(--red)')}
+      ${rskRow('Tracking Error (anualizado)',e?f2(m.te)+'%':'&mdash;','σ(retorno activo) × √252','var(--txt2)')}
+      ${rskRow('Tracking Error efectivo (al plazo)',e?f2(teEfec)+'%':'&mdash;',`σ(retorno activo) × √${N}`,'var(--txt2)')}
+      ${rskRow('Razón de Información (anualizada)',e?f2(m.ir):'&mdash;','Rend. activo anual / TE anual',m.ir>0.5?'var(--grn)':m.ir>0?'var(--amb)':'var(--red)')}
+      ${rskRow('Razón de Información efectiva (al plazo)',e?f2(irEfec):'&mdash;',`${fp(retActivoAcum)} / TE efectivo`,irEfec>0.5?'var(--grn)':irEfec>0?'var(--amb)':'var(--red)')}
       ${rskRow('Alfa (retorno activo acum.)',e?fp(m.retActivo):'&mdash;','Alpha generado vs benchmark',m.retActivo>=0?'var(--grn)':'var(--red)')}
+      ${rskRow('VaR histórico 95% relativo (diario)',varRelHist!=null?f2(varRelHist)+'%':'&mdash;','Peor retorno activo histórico al 5%','var(--red)')}
+      ${rskRow('VaR paramétrico 95% relativo (diario)',e?'-'+f2(varRelParam)+'%':'&mdash;','Z=1.645 × TE diario','var(--red)')}
     </div>
   </div>
+
+  <div class="card">
+    <div class="sec-h"><div class="sec-h-bar" style="background:var(--purple)"></div><div class="sec-h-text">Descomposición del riesgo total &mdash; sistemático vs específico</div><span class="sec-h-sub">σ²p = β²σ²m + σ²específico</span></div>
+    <div class="sg3" style="gap:12px">
+      ${miStat(e?f2(sysAnual)+'%':'&mdash;','Riesgo sistemático (no específico)','β × σ_mercado · anualizado',sysAnual>15?'var(--red)':'var(--amb)')}
+      ${miStat(e?f2(espAnual)+'%':'&mdash;','Riesgo específico (idiosincrático)','√(σ²p − β²σ²m) · anualizado','var(--blue)')}
+      ${miStat(e?f2(m.stdDev)+'%':'&mdash;','Riesgo total','σp anualizado',m.stdDev>25?'var(--red)':'var(--grn)')}
+    </div>
+    <div style="margin-top:14px">
+      <div style="display:flex;justify-content:space-between;font-size:11px;color:var(--txt3);margin-bottom:4px">
+        <span>Composición % de la varianza total</span>
+        <span><b>Sistemático ${pctSys.toFixed(1)}%</b> · <b>Específico ${pctEsp.toFixed(1)}%</b></span>
+      </div>
+      <div style="display:flex;height:18px;border-radius:99px;overflow:hidden;border:1px solid var(--line)">
+        <div style="background:var(--amb);width:${pctSys.toFixed(1)}%;display:flex;align-items:center;justify-content:center;color:#fff;font-size:11px;font-weight:600">${pctSys>10?pctSys.toFixed(0)+'%':''}</div>
+        <div style="background:var(--blue);width:${pctEsp.toFixed(1)}%;display:flex;align-items:center;justify-content:center;color:#fff;font-size:11px;font-weight:600">${pctEsp>10?pctEsp.toFixed(0)+'%':''}</div>
+      </div>
+      <div style="font-size:11px;color:var(--txt3);margin-top:8px;line-height:1.6">
+        <b>Sistemático</b>: volatilidad explicada por movimientos del mercado (no diversificable).<br>
+        <b>Específico</b>: volatilidad de las apuestas activas &mdash; donde se gana o pierde el alpha.
+      </div>
+    </div>
+  </div>
+
   <div class="sg3">
     ${miStat(prospRets.length>=3?f2(prospStd)+'%':'&mdash;','Desv. estandar prospectiva','Con composicion actual x hist. reciente',prospStd>25?'var(--red)':prospStd>15?'var(--amb)':'var(--grn)')}
     ${miStat(prospRets.length>=3?f2(prospTE)+'%':'&mdash;','Tracking error prospectivo','TE con composicion actual','var(--txt2)')}
@@ -3645,6 +3717,162 @@ async function exportToExcel(evt){
     alert('Error al exportar: '+(e?.message||e));
     if(btn){btn.textContent='Error al exportar';setTimeout(()=>{btn.innerHTML=btnLabelOriginal||'&#128229; Exportar Excel';btn.disabled=false;},2500);}
   }
+}
+
+// ═══════════════════════════════════════════════════════════════════════════
+// STOCK PICKING vs MARKET TIMING
+// Descomposición: Retorno Activo = Efecto Timing + Efecto Stockpicking
+//   Efecto Timing       = TIMING_idx  − BMK_idx     (cash management)
+//   Efecto Stockpicking = FONDO_idx   − TIMING_idx  (selección de emisoras)
+// REND_TIM(t) = REND_BMK(t) × (1 − nivelDesinv(t-1))
+//   donde nivelDesinv(t-1) = efectivo / totalFondo al CIERRE del día anterior
+//   (= el cash con el que ENTRAS al día t, que es lo que afecta el retorno).
+// ═══════════════════════════════════════════════════════════════════════════
+function calcStockVsTiming(){
+  const m=calcMetrics();
+  const hist=m.hist||[];
+  if(hist.length<2)return null;
+
+  const rows=[];
+  let mexIdx=100,timIdx=100,fondoIdx=100;
+
+  // Día 0: nivel desinv informativo (cash al cierre del propio día 0)
+  rows.push({
+    t:0,date:hist[0].date,
+    rendBmk:0,rendTim:0,rendFondo:0,
+    nivelDesinv:hist[0].totalFondo>0?hist[0].efectivo/hist[0].totalFondo:0,
+    mexIdx:100,timIdx:100,fondoIdx:100,
+    valFondo:hist[0].totalFondo,efectivo:hist[0].efectivo,mexPrice:hist[0].mexPrice
+  });
+
+  for(let i=1;i<hist.length;i++){
+    const prev=hist[i-1],cur=hist[i];
+    const rendBmk=(prev.mexPrice&&cur.mexPrice&&prev.mexPrice>0)?(cur.mexPrice-prev.mexPrice)/prev.mexPrice*100:0;
+    const rendFondo=prev.totalFondo>0?(cur.totalFondo-prev.totalFondo)/prev.totalFondo*100:0;
+    // Nivel desinversión = cash al inicio del día t = cash al cierre del día t-1
+    const nivelDesinv=prev.totalFondo>0?prev.efectivo/prev.totalFondo:0;
+    const rendTim=rendBmk*(1-nivelDesinv);
+
+    mexIdx*=(1+rendBmk/100);
+    timIdx*=(1+rendTim/100);
+    fondoIdx*=(1+rendFondo/100);
+
+    rows.push({
+      t:i,date:cur.date,
+      rendBmk,rendTim,rendFondo,nivelDesinv,
+      mexIdx,timIdx,fondoIdx,
+      valFondo:cur.totalFondo,efectivo:cur.efectivo,mexPrice:cur.mexPrice
+    });
+  }
+
+  const last=rows[rows.length-1];
+  const rendBmkAcum=last.mexIdx-100;
+  const rendTimAcum=last.timIdx-100;
+  const rendFondoAcum=last.fondoIdx-100;
+  const efectoTiming=rendTimAcum-rendBmkAcum;
+  const efectoStockpicking=rendFondoAcum-rendTimAcum;
+  const totalActivo=rendFondoAcum-rendBmkAcum;
+  const nivelDesinvProm=rows.length>0?rows.reduce((s,r)=>s+r.nivelDesinv,0)/rows.length:0;
+  const nivelDesinvMin=Math.min(...rows.map(r=>r.nivelDesinv));
+  const nivelDesinvMax=Math.max(...rows.map(r=>r.nivelDesinv));
+
+  return{rows,rendBmkAcum,rendTimAcum,rendFondoAcum,efectoTiming,efectoStockpicking,totalActivo,nivelDesinvProm,nivelDesinvMin,nivelDesinvMax};
+}
+
+function pgStockTiming(){
+  const d=calcStockVsTiming();
+  if(!d||!d.rows.length){
+    return`<div class="card"><div class="empty" style="padding:40px;text-align:center;color:var(--txt3)">Sin historial suficiente. Registra órdenes y precios para ver el análisis Stock Picking vs Timing.</div></div>`;
+  }
+  const checkSum=(d.efectoTiming+d.efectoStockpicking).toFixed(4);
+  return`
+  <div class="sg4">
+    ${stCard(fp(d.rendBmkAcum),'Rendimiento MEXTRAC','Benchmark puro (100% invertido)',d.rendBmkAcum>=0?'stat-grn':'stat-red')}
+    ${stCard(fp(d.rendTimAcum),'Rendimiento TIMING',`MEXTRAC × (1 − cash prom. ${(d.nivelDesinvProm*100).toFixed(2)}%)`,d.rendTimAcum>=0?'stat-grn':'stat-red')}
+    ${stCard(fp(d.rendFondoAcum),'Rendimiento Fondo Real','Tu portafolio Research Rockets',d.rendFondoAcum>=0?'stat-grn':'stat-red')}
+    ${stCard(fp(d.totalActivo),'Retorno activo total','Fondo − MEXTRAC',d.totalActivo>=0?'stat-grn':'stat-red')}
+  </div>
+
+  <div class="card">
+    <div class="sec-h"><div class="sec-h-bar" style="background:var(--purple)"></div><div class="sec-h-text">Descomposición del retorno activo</div><span class="sec-h-sub">Total = Efecto Timing + Efecto Stock Picking</span></div>
+    <div class="sg3" style="gap:12px">
+      ${miStat(fp(d.efectoTiming),'Efecto Market Timing','TIMING − MEXTRAC · habilidad de gestionar cash',d.efectoTiming>=0?'var(--grn)':'var(--red)')}
+      ${miStat(fp(d.efectoStockpicking),'Efecto Stock Picking','FONDO − TIMING · habilidad de seleccionar emisoras',d.efectoStockpicking>=0?'var(--grn)':'var(--red)')}
+      ${miStat(fp(d.totalActivo),'Total = Timing + Stockpicking',`Verificación: ${fp(d.efectoTiming)} + ${fp(d.efectoStockpicking)} = ${fp(parseFloat(checkSum))}`,d.totalActivo>=0?'var(--grn)':'var(--red)')}
+    </div>
+    <div style="margin-top:16px;background:var(--bg3);padding:12px 16px;border-radius:var(--r);font-size:12px;color:var(--txt2);line-height:1.7">
+      <b>Cómo leer esto:</b><br>
+      • <b>Efecto Timing &gt; 0</b> → tu nivel de cash ayudó (mantuviste cash en mercados bajistas o invertiste en alcistas).<br>
+      • <b>Efecto Stock Picking &gt; 0</b> → tu selección de emisoras venció al ETF MEXTRAC (alpha por selección).<br>
+      • Si <b>|Stockpicking| &gt;&gt; |Timing|</b> → tu valor agregado vive en la selección de emisoras.<br>
+      • Cash promedio: <b>${(d.nivelDesinvProm*100).toFixed(2)}%</b> · Min: <b>${(d.nivelDesinvMin*100).toFixed(2)}%</b> · Max: <b>${(d.nivelDesinvMax*100).toFixed(2)}%</b>
+    </div>
+  </div>
+
+  <div class="card">
+    <div class="sec-h"><div class="sec-h-bar"></div><div class="sec-h-text">Comparativa de índices (base 100)</div></div>
+    <div style="position:relative;height:340px"><canvas id="st-chart" style="width:100%!important;height:340px!important"></canvas></div>
+  </div>
+
+  <div class="card">
+    <div class="sec-h"><div class="sec-h-bar" style="background:var(--accent)"></div><div class="sec-h-text">Tabla diaria &mdash; formato Excel del profesor</div><span class="sec-h-sub">NIVEL DESINV = cash real al inicio de cada día</span></div>
+    <div class="tw"><table id="tbl-st"><thead><tr style="background:var(--accent);color:#fff">
+      <th style="background:var(--accent);color:#fff">T</th>
+      <th style="background:var(--accent);color:#fff">Fecha</th>
+      <th style="background:var(--accent);color:#fff;text-align:right">REND BMK</th>
+      <th style="background:var(--accent);color:#fff;text-align:right">NIVEL DESINV</th>
+      <th style="background:var(--accent);color:#fff;text-align:right">REND TIM</th>
+      <th style="background:var(--accent);color:#fff;text-align:right">REND FONDO</th>
+      <th style="background:var(--accent);color:#fff;text-align:right">MEXTRAC IDX</th>
+      <th style="background:var(--accent);color:#fff;text-align:right">TIMING IDX</th>
+      <th style="background:var(--accent);color:#fff;text-align:right">FONDO IDX</th>
+    </tr></thead><tbody>
+    ${d.rows.map(r=>`<tr>
+      <td class="mono">${r.t}</td>
+      <td class="mono">${r.date}</td>
+      <td class="mono ${cc(r.rendBmk)}" style="text-align:right">${r.t===0?'&mdash;':fp(r.rendBmk,2)}</td>
+      <td class="mono" style="text-align:right;color:var(--amb)">${(r.nivelDesinv*100).toFixed(2)}%</td>
+      <td class="mono ${cc(r.rendTim)}" style="text-align:right">${r.t===0?'&mdash;':fp(r.rendTim,2)}</td>
+      <td class="mono ${cc(r.rendFondo)}" style="text-align:right">${r.t===0?'&mdash;':fp(r.rendFondo,2)}</td>
+      <td class="mono" style="text-align:right">${r.mexIdx.toFixed(4)}</td>
+      <td class="mono" style="text-align:right">${r.timIdx.toFixed(4)}</td>
+      <td class="mono" style="text-align:right">${r.fondoIdx.toFixed(4)}</td>
+    </tr>`).join('')}
+    </tbody></table></div>
+  </div>`;
+}
+
+function initStockTiming(){
+  const d=calcStockVsTiming();
+  if(!d)return;
+  const ctx=document.getElementById('st-chart');
+  if(!ctx)return;
+  Chart.getChart(ctx)?.destroy();
+  const labels=d.rows.map(r=>r.date);
+  const c=new Chart(ctx,{
+    type:'line',
+    data:{labels,datasets:[
+      {label:'MEXTRAC (benchmark)',data:d.rows.map(r=>+r.mexIdx.toFixed(4)),
+       borderColor:'#5B21B6',backgroundColor:'rgba(91,33,182,.04)',borderWidth:2,pointRadius:0,tension:.3,borderDash:[5,3]},
+      {label:'TIMING (sólo cash mgmt)',data:d.rows.map(r=>+r.timIdx.toFixed(4)),
+       borderColor:'#B54708',backgroundColor:'rgba(181,71,8,.04)',borderWidth:2,pointRadius:0,tension:.3},
+      {label:'FONDO REAL (Research Rockets)',data:d.rows.map(r=>+r.fondoIdx.toFixed(4)),
+       borderColor:'#0C4A6E',backgroundColor:'rgba(12,74,110,.07)',borderWidth:2.5,pointRadius:0,tension:.3,fill:true}
+    ]},
+    options:{
+      responsive:true,maintainAspectRatio:false,interaction:{mode:'index',intersect:false},
+      plugins:{
+        legend:{labels:{color:'#475467',font:{size:12,family:'Geist'}}},
+        tooltip:{backgroundColor:'#fff',titleColor:'#101828',bodyColor:'#475467',borderColor:'#E4E7EC',borderWidth:1,padding:10,
+          callbacks:{label:c=>`${c.dataset.label}: ${c.parsed.y.toFixed(4)} (${(c.parsed.y-100>=0?'+':'')+(c.parsed.y-100).toFixed(2)}%)`}}
+      },
+      scales:{
+        x:{ticks:{color:'#98A2B3',font:{size:11},maxTicksLimit:10},grid:{color:'rgba(0,0,0,.04)'}},
+        y:{ticks:{color:'#98A2B3',font:{size:11},callback:v=>v.toFixed(2)},grid:{color:'rgba(0,0,0,.04)'},grace:'5%',title:{display:true,text:'Índice base 100',color:'#98A2B3',font:{size:10}}}
+      }
+    }
+  });
+  chartInst.push(c);
 }
 
 go('dashboard');
