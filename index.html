@@ -1334,24 +1334,23 @@ function pgRiesgo(){
   const stdDailyFondo=e?m.stdDev/Math.sqrt(252):0;
   const vp=stdDailyFondo*1.645;
 
-  // Series diarias para cálculos relativos
+  // Series diarias para cálculos relativos: solo pares válidos (fondo y benchmark)
   const rd=[],rb=[],rA=[];
   for(let i=1;i<hist.length;i++){
     if(hist[i-1].totalFondo<=0)continue;
+    if(!hist[i-1].mexPrice||!hist[i].mexPrice||hist[i-1].mexPrice<=0)continue;
     const f=(hist[i].totalFondo-hist[i-1].totalFondo)/hist[i-1].totalFondo*100;
-    let bch=0;
-    if(hist[i-1].mexPrice&&hist[i].mexPrice&&hist[i-1].mexPrice>0){
-      bch=(hist[i].mexPrice-hist[i-1].mexPrice)/hist[i-1].mexPrice*100;
-    }
+    const bch=(hist[i].mexPrice-hist[i-1].mexPrice)/hist[i-1].mexPrice*100;
     rd.push(f);rb.push(bch);rA.push(f-bch);
   }
   const N=rA.length;
-  const teDaily=rA.length>=2?stdDev(rA):0;
+  const teDaily=N>=2?stdDev(rA):0;
   const teEfec=teDaily*Math.sqrt(N);                          // TE al plazo (no anualizado)
   const retActivoAcum=m.retActivo!=null?m.retActivo:0;
   const irEfec=teEfec>0?retActivoAcum/teEfec:0;               // IR efectivo al plazo
   const varRelParam=teDaily*1.645;                            // VaR paramétrico relativo diario
-  const varRelHist=rA.length>=10?[...rA].sort((a,b)=>a-b)[Math.floor(rA.length*0.05)]:null;
+  // VaR histórico relativo: percentil 5 de retornos activos. Umbral alineado al VaR absoluto (≥5 retornos).
+  const varRelHist=N>=5?[...rA].sort((a,b)=>a-b)[Math.floor(N*0.05)]:null;
 
   // Riesgo sistemático y específico: σ²p = β²σ²m + σ²ε
   const stdDailyBench=rb.length>=2?stdDev(rb):0;
