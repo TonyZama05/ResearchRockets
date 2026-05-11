@@ -3832,38 +3832,21 @@ function pgStockTiming(){
       ${miStat(fbp(stockBp),'Efecto Stock Picking','FONDO − TIMING · habilidad de seleccionar emisoras',stockVis>=0?'var(--grn)':'var(--red)')}
       ${miStat(fbp(totalBp),'Total = Timing + Stockpicking',`Verificación: ${fbp(timingBp)} + ${fbp(stockBp)} = ${fbp(sumBp)}`,totalVis>=0?'var(--grn)':'var(--red)')}
     </div>
-    <div style="margin-top:16px;background:var(--bg3);padding:12px 16px;border-radius:var(--r);font-size:12px;color:var(--txt2);line-height:1.7">
-      <b>Cómo leer esto:</b><br>
-      • <b>Efecto Timing &gt; 0</b> → tu nivel de cash ayudó (mantuviste cash en mercados bajistas o invertiste en alcistas).<br>
-      • <b>Efecto Stock Picking &gt; 0</b> → tu selección de emisoras venció al ETF MEXTRAC (alpha por selección).<br>
-      • Si <b>|Stockpicking| &gt;&gt; |Timing|</b> → tu valor agregado vive en la selección de emisoras.<br>
-      • Cash promedio: <b>${(d.nivelDesinvProm*100).toFixed(2)}%</b> · Min: <b>${(d.nivelDesinvMin*100).toFixed(2)}%</b> · Max: <b>${(d.nivelDesinvMax*100).toFixed(2)}%</b>
-    </div>
   </div>
 
   <div class="card">
-    <div class="sec-h"><div class="sec-h-bar" style="background:var(--grn)"></div><div class="sec-h-text">Auditoría de cuadre — método profesor</div><span class="sec-h-sub">${auditOk?'Sin diferencias':'Revisar diferencias'}</span></div>
-    <div class="tw"><table><thead><tr><th>Check</th><th>Regla</th><th style="text-align:right">Estado</th></tr></thead><tbody>
-      <tr><td class="lbl">Rendimiento timing</td><td class="dim">REND TIM = REND BMK × (1 − NIVEL DESINV)</td><td style="text-align:right">${auditPill(maxGapRendTim<1e-9)}</td></tr>
-      <tr><td class="lbl">Índice MEXTRAC</td><td class="dim">MEXTRAC IDX = MEXTRAC IDX anterior + REND BMK</td><td style="text-align:right">${auditPill(maxGapMex<1e-9)}</td></tr>
-      <tr><td class="lbl">Índice TIMING</td><td class="dim">TIMING IDX = TIMING IDX anterior + REND TIM</td><td style="text-align:right">${auditPill(maxGapTim<1e-9)}</td></tr>
-      <tr><td class="lbl">Índice FONDO</td><td class="dim">FONDO IDX = FONDO IDX anterior + REND FONDO</td><td style="text-align:right">${auditPill(maxGapFondo<1e-9)}</td></tr>
-      <tr><td class="lbl">Descomposición visual</td><td class="dim">Timing + Stock Picking = Total con 2 decimales</td><td style="text-align:right">${auditPill(sumBp===totalBp)}</td></tr>
-    </tbody></table></div>
-  </div>
-
-  <div class="card">
-    <div class="sec-h"><div class="sec-h-bar"></div><div class="sec-h-text">Comparativa de índices (base 100)</div></div>
+    <div class="sec-h"><div class="sec-h-bar"></div><div class="sec-h-text">Comparativa de índices y nivel de desinversión</div></div>
     <div style="position:relative;height:340px"><canvas id="st-chart" style="width:100%!important;height:340px!important"></canvas></div>
   </div>
 
   <div class="card">
-    <div class="sec-h"><div class="sec-h-bar" style="background:var(--accent)"></div><div class="sec-h-text">Tabla diaria &mdash; formato Excel del profesor</div><span class="sec-h-sub">NIVEL DESINV = cash real al inicio de cada día</span></div>
+    <div class="sec-h"><div class="sec-h-bar" style="background:var(--accent)"></div><div class="sec-h-text">Tabla diaria</div><span class="sec-h-sub">DESINV = cash inicial · INV = capital invertido</span></div>
     <div class="tw"><table id="tbl-st"><thead><tr style="background:var(--accent);color:#fff">
       <th style="background:var(--accent);color:#fff">T</th>
       <th style="background:var(--accent);color:#fff">Fecha</th>
       <th style="background:var(--accent);color:#fff;text-align:right">REND BMK</th>
       <th style="background:var(--accent);color:#fff;text-align:right">NIVEL DESINV</th>
+      <th style="background:var(--accent);color:#fff;text-align:right">NIVEL INV</th>
       <th style="background:var(--accent);color:#fff;text-align:right">REND TIM</th>
       <th style="background:var(--accent);color:#fff;text-align:right">REND FONDO</th>
       <th style="background:var(--accent);color:#fff;text-align:right">MEXTRAC IDX</th>
@@ -3875,6 +3858,7 @@ function pgStockTiming(){
       <td class="mono">${r.date}</td>
       <td class="mono ${cc(r.rendBmk)}" style="text-align:right">${r.t===0?'&mdash;':fp(r.rendBmk,2)}</td>
       <td class="mono" style="text-align:right;color:var(--amb)">${(r.nivelDesinv*100).toFixed(2)}%</td>
+      <td class="mono" style="text-align:right;color:var(--grn)">${((1-r.nivelDesinv)*100).toFixed(2)}%</td>
       <td class="mono ${cc(r.rendTim)}" style="text-align:right">${r.t===0?'&mdash;':fp(r.rendTim,2)}</td>
       <td class="mono ${cc(r.rendFondo)}" style="text-align:right">${r.t===0?'&mdash;':fp(r.rendFondo,2)}</td>
       <td class="mono" style="text-align:right">${r.mexIdx.toFixed(4)}</td>
@@ -3899,6 +3883,8 @@ function initStockTiming(){
        borderColor:'#5B21B6',backgroundColor:'rgba(91,33,182,.04)',borderWidth:2,pointRadius:0,tension:.3,borderDash:[5,3]},
       {label:'TIMING (sólo cash mgmt)',data:d.rows.map(r=>+r.timIdx.toFixed(4)),
        borderColor:'#B54708',backgroundColor:'rgba(181,71,8,.04)',borderWidth:2,pointRadius:0,tension:.3},
+      {type:'bar',label:'NIVEL DESINV (%)',data:d.rows.map(r=>+(r.nivelDesinv*100).toFixed(2)),
+       yAxisID:'y1',borderColor:'#98A2B3',backgroundColor:'rgba(152,162,179,.22)',borderWidth:1,barPercentage:.55,categoryPercentage:.7},
       {label:'FONDO REAL (Research Rockets)',data:d.rows.map(r=>+r.fondoIdx.toFixed(4)),
        borderColor:'#0C4A6E',backgroundColor:'rgba(12,74,110,.07)',borderWidth:2.5,pointRadius:0,tension:.3,fill:true}
     ]},
@@ -3907,11 +3893,12 @@ function initStockTiming(){
       plugins:{
         legend:{labels:{color:'#475467',font:{size:12,family:'Geist'}}},
         tooltip:{backgroundColor:'#fff',titleColor:'#101828',bodyColor:'#475467',borderColor:'#E4E7EC',borderWidth:1,padding:10,
-          callbacks:{label:c=>`${c.dataset.label}: ${c.parsed.y.toFixed(4)} (${(c.parsed.y-100>=0?'+':'')+(c.parsed.y-100).toFixed(2)}%)`}}
+          callbacks:{label:c=>c.dataset.yAxisID==='y1'?`${c.dataset.label}: ${c.parsed.y.toFixed(2)}%`:`${c.dataset.label}: ${c.parsed.y.toFixed(4)} (${(c.parsed.y-100>=0?'+':'')+(c.parsed.y-100).toFixed(2)}%)`}}
       },
       scales:{
         x:{ticks:{color:'#98A2B3',font:{size:11},maxTicksLimit:10},grid:{color:'rgba(0,0,0,.04)'}},
-        y:{ticks:{color:'#98A2B3',font:{size:11},callback:v=>v.toFixed(2)},grid:{color:'rgba(0,0,0,.04)'},grace:'5%',title:{display:true,text:'Índice base 100',color:'#98A2B3',font:{size:10}}}
+        y:{ticks:{color:'#98A2B3',font:{size:11},callback:v=>v.toFixed(2)},grid:{color:'rgba(0,0,0,.04)'},grace:'5%',title:{display:true,text:'Índice base 100',color:'#98A2B3',font:{size:10}}},
+        y1:{position:'right',min:0,suggestedMax:Math.max(10,Math.ceil(Math.max(...d.rows.map(r=>r.nivelDesinv*100))*1.25)),ticks:{color:'#98A2B3',font:{size:11},callback:v=>v.toFixed(0)+'%'},grid:{drawOnChartArea:false},title:{display:true,text:'Nivel desinv (%)',color:'#98A2B3',font:{size:10}}}
       }
     }
   });
