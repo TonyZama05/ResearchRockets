@@ -3875,6 +3875,31 @@ function initStockTiming(){
   const ctx=document.getElementById('st-chart');
   if(!ctx)return;
   Chart.getChart(ctx)?.destroy();
+  const desinvBarLabels={
+    id:'desinvBarLabels',
+    afterDatasetsDraw(chart){
+      const dsIndex=chart.data.datasets.findIndex(ds=>ds.label==='NIVEL DESINV (%)');
+      if(dsIndex<0) return;
+      const meta=chart.getDatasetMeta(dsIndex);
+      const ds=chart.data.datasets[dsIndex];
+      const {ctx}=chart;
+      ctx.save();
+      ctx.fillStyle='#667085';
+      ctx.font='600 10px Geist, sans-serif';
+      ctx.textAlign='center';
+      ctx.textBaseline='middle';
+      meta.data.forEach((bar,i)=>{
+        const value=ds.data[i];
+        if(value==null) return;
+        const props=bar.getProps(['x','y','base','width'], true);
+        const centerX=props.x;
+        const centerY=(props.y+props.base)/2;
+        ctx.fillText(Number(value).toFixed(2)+'%', centerX, centerY);
+      });
+      ctx.restore();
+    }
+  };
+
   const labels=d.rows.map(r=>r.date);
   const c=new Chart(ctx,{
     type:'line',
@@ -3884,10 +3909,11 @@ function initStockTiming(){
       {label:'TIMING (sólo cash mgmt)',data:d.rows.map(r=>+r.timIdx.toFixed(4)),
        borderColor:'#B54708',backgroundColor:'rgba(181,71,8,.04)',borderWidth:2,pointRadius:0,tension:.3},
       {type:'bar',label:'NIVEL DESINV (%)',data:d.rows.map(r=>+(r.nivelDesinv*100).toFixed(2)),
-       yAxisID:'y1',borderColor:'#98A2B3',backgroundColor:'rgba(152,162,179,.22)',borderWidth:1,barPercentage:.55,categoryPercentage:.7},
+       yAxisID:'y1',borderColor:'rgba(152,162,179,.75)',backgroundColor:'rgba(152,162,179,.28)',borderWidth:1,barPercentage:.55,categoryPercentage:.7},
       {label:'FONDO REAL (Research Rockets)',data:d.rows.map(r=>+r.fondoIdx.toFixed(4)),
        borderColor:'#0C4A6E',backgroundColor:'rgba(12,74,110,.07)',borderWidth:2.5,pointRadius:0,tension:.3,fill:true}
     ]},
+    plugins:[desinvBarLabels],
     options:{
       responsive:true,maintainAspectRatio:false,interaction:{mode:'index',intersect:false},
       plugins:{
