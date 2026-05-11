@@ -3883,8 +3883,8 @@ function initStockTiming(){
        borderColor:'#5B21B6',backgroundColor:'rgba(91,33,182,.04)',borderWidth:2,pointRadius:0,tension:.3,borderDash:[5,3]},
       {label:'TIMING (sólo cash mgmt)',data:d.rows.map(r=>+r.timIdx.toFixed(4)),
        borderColor:'#B54708',backgroundColor:'rgba(181,71,8,.04)',borderWidth:2,pointRadius:0,tension:.3},
-      {type:'bar',label:'NIVEL DESINV (%)',data:d.rows.map(r=>+(r.nivelDesinv*100).toFixed(2)),
-       yAxisID:'y1',borderColor:'#98A2B3',backgroundColor:'rgba(152,162,179,.22)',borderWidth:1,barPercentage:.55,categoryPercentage:.7},
+      {label:'NIVEL DESINV (%)',data:d.rows.map(r=>+(r.nivelDesinv*100).toFixed(2)),
+       yAxisID:'y1',borderColor:'#98A2B3',backgroundColor:'rgba(152,162,179,.22)',borderWidth:1.6,pointRadius:0,tension:.25,fill:true},
       {label:'FONDO REAL (Research Rockets)',data:d.rows.map(r=>+r.fondoIdx.toFixed(4)),
        borderColor:'#0C4A6E',backgroundColor:'rgba(12,74,110,.07)',borderWidth:2.5,pointRadius:0,tension:.3,fill:true}
     ]},
