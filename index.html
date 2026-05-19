@@ -2140,21 +2140,49 @@ function pgEstadísticos(){
 // ═══════════════════════════════════════════════════════════════════════════
 // PERFORMANCE ATTRIBUTION  (Brinson-Hood-Beebower)
 // ═══════════════════════════════════════════════════════════════════════════
+// Estado de ordenamiento para la tabla "por emisora":
+//   'default'      → orden original (|total| desc)
+//   'contrib-desc' → Contribución mayor a menor
+//   'contrib-asc'  → Contribución menor a mayor
+let _attrTickerSort='default';
+
+// Click en header de "Contribución": cicla default → desc → asc → default
+function sortAttrTickerByContrib(){
+  if(_attrTickerSort==='default')_attrTickerSort='contrib-desc';
+  else if(_attrTickerSort==='contrib-desc')_attrTickerSort='contrib-asc';
+  else _attrTickerSort='default';
+  renderAtribucion();
+}
+
+// Cambio en inputs de fecha → fuerza modo "Personalizado" y re-renderiza.
+function onAttrDateChange(){
+  const sel=document.getElementById('attr-period');
+  if(sel)sel.value='custom';
+  renderAtribucion();
+}
+
 function pgAtribucion(){
   const m=calcMetrics();
   return`
   <!-- Header -->
   <div class="card" style="padding:14px 20px">
-    <div style="display:flex;align-items:center;gap:0">
+    <div style="display:flex;align-items:center;gap:0;flex-wrap:wrap;row-gap:8px">
       <div class="sec-h-bar" style="background:var(--purple);width:4px;height:20px;border-radius:2px;margin-right:10px;flex-shrink:0"></div>
       <div class="sec-h-text">Performance Attribution &mdash; Brinson-Fachler</div>
-      <div style="display:flex;gap:8px;align-items:center;flex-shrink:0">
+      <div style="display:flex;gap:8px;align-items:center;flex-shrink:0;margin-left:14px">
         <span style="font-size:11px;color:var(--txt3)">Período:</span>
         <select id="attr-period" onchange="renderAtribucion()" style="width:auto;padding:4px 10px;font-size:12px">
           <option value="acum">Acumulado (gestión)</option>
           <option value="week">Semanal</option>
           <option value="day">Diario (último día)</option>
+          <option value="custom">Personalizado</option>
         </select>
+      </div>
+      <div style="display:flex;gap:6px;align-items:center;flex-shrink:0;margin-left:14px">
+        <span style="font-size:11px;color:var(--txt3)">Desde:</span>
+        <input type="date" id="attr-date-from" onchange="onAttrDateChange()" style="width:auto;padding:4px 8px;font-size:12px">
+        <span style="font-size:11px;color:var(--txt3);margin-left:6px">Hasta:</span>
+        <input type="date" id="attr-date-to" onchange="onAttrDateChange()" style="width:auto;padding:4px 8px;font-size:12px">
       </div>
     </div>
   </div>
@@ -2214,7 +2242,7 @@ function pgAtribucion(){
       <th style="background:var(--accent);color:#fff;text-align:center" title="w_B(R_P,i-R_B,s)">Selection</th>
       <th style="background:var(--accent);color:#fff;text-align:center" title="(w_P-w_B)(R_P,i-R_B,s)">Interaction</th>
       <th style="background:var(--accent);color:#fff;text-align:center" title="AA + SS + Int">Total</th>
-      <th style="background:var(--accent);color:#fff;text-align:center" title="(w_P-w_B)(r_P,i-R_B) · Σ por ticker = Activo modelo BHB">Contribución</th>
+      <th id="th-attr-contrib" onclick="sortAttrTickerByContrib()" style="background:var(--accent);color:#fff;text-align:center;cursor:pointer;user-select:none" title="(w_P-w_B)(r_P,i-R_B) · Click para ordenar de mayor a menor">Contribución <span id="attr-sort-ind-contrib" style="font-size:9px;opacity:.85;margin-left:3px">⇅</span></th>
     </tr></thead><tbody id="attr-tbody2"></tbody></table></div>
   </div>`;
 }
@@ -2406,6 +2434,26 @@ function calcAtribucion(period){
       }
     }
     endIdx=hist.length-1;
+  }else if(period==='custom'){
+    // Rango personalizado: leer inputs de fecha (YYYY-MM-DD).
+    // startIdx = mayor i con hist[i].date <= fromVal (ancla previa al período).
+    // endIdx   = mayor i con hist[i].date <= toVal   (último día del período).
+    const fromVal=document.getElementById('attr-date-from')?.value||'';
+    const toVal=document.getElementById('attr-date-to')?.value||'';
+    if(fromVal){
+      let idx=0;
+      for(let i=0;i<hist.length;i++){
+        if(hist[i].date<=fromVal)idx=i; else break;
+      }
+      startIdx=idx;
+    }
+    if(toVal){
+      let idx=hist.length-1;
+      for(let i=hist.length-1;i>=0;i--){
+        if(hist[i].date<=toVal){idx=i;break;}
+      }
+      endIdx=idx;
+    }
   }
 
   const startH=hist[startIdx],endH=hist[endIdx];
@@ -2533,9 +2581,34 @@ function renderAtribucion(){
   const period=document.getElementById('attr-period')?.value||'acum';
   const d=calcAtribucion(period);
   if(!d){
-    document.getElementById('attr-summary-cards').innerHTML='<div class="empty" style="grid-column:1/-1">Sin datos suficientes. Registra órdenes para ver la atribución.</div>';
+    document.getElementById('attr-summary-cards').innerHTML='<div class="empty" style="grid-column:1/-1">Sin datos suficientes. Registra órdenes o ajusta el rango de fechas.</div>';
+    // Limpiar tablas y gráfico para no dejar contenido stale
+    const _u=document.getElementById('attr-tbody-unif'); if(_u)_u.innerHTML='';
+    const _t=document.getElementById('attr-tbody2');     if(_t)_t.innerHTML='';
     return;
   }
+
+  // Sincronizar inputs de fecha con el rango realmente usado.
+  // Solo auto-rellena cuando NO estamos en modo "Personalizado" (para no pisar lo que el usuario tecleó).
+  const _fromInp=document.getElementById('attr-date-from');
+  const _toInp  =document.getElementById('attr-date-to');
+  if(period!=='custom'){
+    if(_fromInp)_fromInp.value=d.startDate;
+    if(_toInp)  _toInp.value  =d.endDate;
+  }else{
+    // En custom, si los inputs están vacíos (primera vez que se entra al modo), pre-rellena con el rango efectivo.
+    if(_fromInp && !_fromInp.value)_fromInp.value=d.startDate;
+    if(_toInp   && !_toInp.value)  _toInp.value  =d.endDate;
+  }
+
+  // Indicador visual de orden en header "Contribución"
+  const _ind=document.getElementById('attr-sort-ind-contrib');
+  if(_ind){
+    _ind.textContent = _attrTickerSort==='contrib-desc'?'▼'
+                     : _attrTickerSort==='contrib-asc' ?'▲'
+                     : '⇅';
+  }
+
   const cc2=n=>n>0?'var(--grn)':n<0?'var(--red)':'var(--txt3)';
   const pn=n=>n==null||isNaN(n)?'—':(n>=0?'+':'')+n.toFixed(2)+'%';
   const pw=n=>n==null||isNaN(n)?'—':n.toFixed(2)+'%';
@@ -2597,7 +2670,14 @@ function renderAtribucion(){
 
   // ── Performance Attribution por emisora (Carino-aggregated) ──
   // Mostrar TODAS las filas con efecto material (top contribuyentes y detractores)
-  const tickerRowsToShow=d.tickerRows.filter(r=>Math.abs(r.total)>0.001||r.wf>0.5||r.wb>0.5);
+  // Aplicar orden según _attrTickerSort (click en header "Contribución" lo cambia)
+  let _tickerSorted=[...d.tickerRows];
+  if(_attrTickerSort==='contrib-desc'){
+    _tickerSorted.sort((a,b)=>b.contribAct-a.contribAct);
+  }else if(_attrTickerSort==='contrib-asc'){
+    _tickerSorted.sort((a,b)=>a.contribAct-b.contribAct);
+  } // 'default': respeta el orden devuelto por calcAtribucion (|total| desc)
+  const tickerRowsToShow=_tickerSorted.filter(r=>Math.abs(r.total)>0.001||r.wf>0.5||r.wb>0.5);
   const tbodyRows=tickerRowsToShow.map(r=>`<tr>
     <td class="lbl mono">${r.ticker}</td>
     <td class="dim" style="font-size:11px">${r.sec}</td>
