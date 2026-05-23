@@ -144,10 +144,12 @@ canvas{display:block;width:100%!important}
     <button class="ni" onclick="go('posicion')"><svg viewBox="0 0 16 16"><path d="M1 12l4-4 3 3 4-5 3 2"/></svg>Posici&oacute;n</button>
     <div class="nav-section">An&aacute;lisis</div>
     <button class="ni" onclick="go('rendimiento')"><svg viewBox="0 0 16 16"><rect x="1" y="8" width="3" height="6"/><rect x="6" y="4" width="3" height="10"/><rect x="11" y="1" width="3" height="13"/></svg>Rendimiento</button>
+    <button class="ni" onclick="go('resumensem')"><svg viewBox="0 0 16 16"><rect x="1.5" y="2" width="13" height="12" rx="1.5"/><path d="M1.5 6h13M5 2v12M9 2v12"/></svg>Resumen Semanal</button>
     <button class="ni" onclick="go('riesgo')"><svg viewBox="0 0 16 16"><path d="M8 2l1.5 4H14l-3.7 2.7 1.4 4.3L8 11l-3.7 2 1.4-4.3L2 6h4.5z"/></svg>Riesgo</button>
     <button class="ni" onclick="go('analytics')"><svg viewBox="0 0 16 16"><circle cx="8" cy="8" r="6"/><path d="M8 5v3l2 2"/></svg>Analytics</button>
     <button class="ni" onclick="go('atribucion')"><svg viewBox="0 0 16 16"><path d="M2 14l3-8 3 4 2-6 4 10" stroke-linecap="round" stroke-linejoin="round"/></svg>Atribuci&oacute;n</button>
     <button class="ni" onclick="go('stocktiming')"><svg viewBox="0 0 16 16"><path d="M2 12L6 7L9 10L14 3M14 3H10M14 3V7" stroke-linecap="round" stroke-linejoin="round"/></svg>Stock vs Timing</button>
+    <button class="ni" onclick="go('bestworst')"><svg viewBox="0 0 16 16"><path d="M3 13l3-6 3 3 4-7" stroke-linecap="round" stroke-linejoin="round"/><circle cx="13" cy="3" r="1.5" fill="currentColor"/><circle cx="6" cy="7" r="1.5" fill="currentColor"/></svg>Best / Worst</button>
     <button class="ni" onclick="go('snapshot')"><svg viewBox="0 0 16 16"><rect x="2" y="3" width="12" height="10" rx="1.5"/><circle cx="8" cy="8" r="2.5"/><path d="M6 3l1-1h2l1 1"/></svg>Snapshot Diario</button>
     <button class="ni" onclick="go('infocoef')"><svg viewBox="0 0 16 16"><circle cx="4.5" cy="11" r="1.3"/><circle cx="8" cy="6" r="1.3"/><circle cx="11.5" cy="9" r="1.3"/><path d="M2 14L14 2" stroke-dasharray="2 2"/></svg>IC &amp; Fund. Law</button>
     <div class="nav-section">Gesti&oacute;n</div>
@@ -883,11 +885,11 @@ function sortTable(tid,col,type='str'){
 function th(label,tid,col,type='str'){return`<th onclick="sortTable('${tid}',${col},'${type}')">${label}</th>`;}
 
 // ROUTING - No universo page
-const PAGES=['dashboard','ordenes','posicion','rendimiento','riesgo','analytics','atribucion','stocktiming','snapshot','infocoef','flujos','estadisticos','config'];
+const PAGES=['dashboard','ordenes','posicion','rendimiento','resumensem','riesgo','analytics','atribucion','stocktiming','bestworst','snapshot','infocoef','flujos','estadisticos','config'];
 let chartInst=[];
 function go(page){
   document.querySelectorAll('.ni').forEach((el,i)=>el.classList.toggle('active',i===PAGES.indexOf(page)));
-  const titles={dashboard:'Dashboard',ordenes:'Órdenes',posicion:'Posición actual',rendimiento:'Rendimiento',riesgo:'Riesgo & Prospectivos',analytics:'Analytics',atribucion:'Performance Attribution',stocktiming:'Stock Picking vs Market Timing',snapshot:'Snapshot Diario',infocoef:'Information Coefficient & Fundamental Law',flujos:'Flujos & Ajustes de mercado',estadisticos:'Estadísticos & Medidas',config:'Configuración'};
+  const titles={dashboard:'Dashboard',ordenes:'Órdenes',posicion:'Posición actual',rendimiento:'Rendimiento',resumensem:'Resumen Semanal',riesgo:'Riesgo & Prospectivos',analytics:'Analytics',atribucion:'Performance Attribution',stocktiming:'Stock Picking vs Market Timing',bestworst:'Best Trade vs Worst Trade',snapshot:'Snapshot Diario',infocoef:'Information Coefficient & Fundamental Law',flujos:'Flujos & Ajustes de mercado',estadisticos:'Estadísticos & Medidas',config:'Configuración'};
   document.getElementById('tb-title').textContent=titles[page]||page;
   document.getElementById('tb-date').textContent=new Date().toLocaleDateString('es-MX',{weekday:'long',year:'numeric',month:'long',day:'numeric'});
   // Sidebar: siempre muestra el capital asignado (V0 fijo)
@@ -899,7 +901,7 @@ function go(page){
     if(_sSub)_sSub.textContent='';
   }
   chartInst.forEach(c=>{try{c.destroy();}catch(e){}});chartInst=[];
-  const renders={dashboard:pgDash,ordenes:pgÓrdenes,posicion:pgPosicion,rendimiento:pgRendimiento,riesgo:pgRiesgo,analytics:pgAnalytics,atribucion:pgAtribucion,stocktiming:pgStockTiming,snapshot:pgSnapshot,infocoef:pgInfoCoef,flujos:pgFlujos,estadisticos:pgEstadísticos,config:pgConfig};
+  const renders={dashboard:pgDash,ordenes:pgÓrdenes,posicion:pgPosicion,rendimiento:pgRendimiento,resumensem:pgResumenSemanal,riesgo:pgRiesgo,analytics:pgAnalytics,atribucion:pgAtribucion,stocktiming:pgStockTiming,bestworst:pgBestWorst,snapshot:pgSnapshot,infocoef:pgInfoCoef,flujos:pgFlujos,estadisticos:pgEstadísticos,config:pgConfig};
   try{
     document.getElementById('content').innerHTML=(renders[page]||pgDash)();
   }catch(err){
@@ -918,6 +920,8 @@ function go(page){
   if(page==='infocoef')setTimeout(initInfoCoef,50);
   if(page==='posicion')setTimeout(initPosicion,50);
   if(page==='rendimiento')setTimeout(initRendChart,50);
+  if(page==='resumensem')setTimeout(initResumenSemanal,50);
+  if(page==='bestworst')setTimeout(initBestWorst,50);
   if(page==='config')setTimeout(()=>{
     const f=document.getElementById('c-fecha');
     if(f)updateBenchPreview(f.value);
@@ -1327,7 +1331,7 @@ function initRendChart(){
   const firstMexPrice=hist.find(h=>h.mexPrice!=null)?.mexPrice;
   const benchBase100=hist.map(h=>h.mexPrice!=null&&firstMexPrice?+(100*h.mexPrice/firstMexPrice).toFixed(3):null);
   ctx.parentElement.style.height='320px';ctx.style.height='320px';
-  const chart=new Chart(ctx,{type:'line',data:{labels,datasets:[{label:'Research Rockets',data:portBase100,borderColor:'#0C4A6E',backgroundColor:'rgba(12,74,110,.06)',borderWidth:2.5,pointRadius:0,tension:.3,fill:true},{label:'MEXTRAC',data:benchBase100,borderColor:'#5B21B6',backgroundColor:'transparent',borderWidth:1.5,pointRadius:0,tension:.3,borderDash:[4,3],fill:false,spanGaps:true}]},options:{responsive:true,maintainAspectRatio:false,interaction:{mode:'index',intersect:false},plugins:{legend:{labels:{color:'#475467',font:{size:12,family:'Geist'}}},tooltip:{backgroundColor:'#fff',titleColor:'#101828',bodyColor:'#475467',borderColor:'#E4E7EC',borderWidth:1,padding:10,callbacks:{label:ctx=>`${ctx.dataset.label}: ${ctx.parsed.y.toFixed(2)} (${(ctx.parsed.y-100).toFixed(2)}%)`}}},scales:{x:{ticks:{color:'#98A2B3',font:{size:11},maxTicksLimit:10},grid:{color:'rgba(0,0,0,.04)'}},y:{ticks:{color:'#98A2B3',font:{size:11}},grid:{color:'rgba(0,0,0,.04)'},grace:'5%',title:{display:true,text:'Base 100',color:'#98A2B3',font:{size:10}}}},layout:{padding:{right:75}}},plugins:[endLabelPlugin('base100')]});
+  const chart=new Chart(ctx,{type:'line',data:{labels,datasets:[{label:'Research Rockets',data:portBase100,borderColor:'#0C4A6E',backgroundColor:'rgba(12,74,110,.06)',borderWidth:2.5,pointRadius:0,tension:0,fill:true},{label:'MEXTRAC',data:benchBase100,borderColor:'#5B21B6',backgroundColor:'transparent',borderWidth:1.5,pointRadius:0,tension:0,borderDash:[4,3],fill:false,spanGaps:true}]},options:{responsive:true,maintainAspectRatio:false,interaction:{mode:'index',intersect:false},plugins:{legend:{labels:{color:'#475467',font:{size:12,family:'Geist'}}},tooltip:{backgroundColor:'#fff',titleColor:'#101828',bodyColor:'#475467',borderColor:'#E4E7EC',borderWidth:1,padding:10,callbacks:{label:ctx=>`${ctx.dataset.label}: ${ctx.parsed.y.toFixed(2)} (${(ctx.parsed.y-100).toFixed(2)}%)`}}},scales:{x:{ticks:{color:'#98A2B3',font:{size:11},maxTicksLimit:10},grid:{color:'rgba(0,0,0,.04)'}},y:{ticks:{color:'#98A2B3',font:{size:11}},grid:{color:'rgba(0,0,0,.04)'},grace:'5%',title:{display:true,text:'Base 100',color:'#98A2B3',font:{size:10}}}},layout:{padding:{right:75}}},plugins:[endLabelPlugin('base100')]});
   chartInst.push(chart);
 }
 
@@ -1489,12 +1493,12 @@ function initCharts(){
     const mexStart=hist.find(h=>h.mexPrice!=null)?.mexPrice;
     const mexRelData=hist.map(h=>h.mexPrice&&mexStart?+(V0base*h.mexPrice/mexStart).toFixed(0):null);
     const c=new Chart(ctx1,{type:'line',data:{labels,datasets:[
-      {label:'Research Rockets',data:hist.map(h=>+h.totalFondo.toFixed(0)),borderColor:'#0C4A6E',backgroundColor:'rgba(12,74,110,.07)',borderWidth:2,pointRadius:0,tension:.3,fill:true},
-      {label:'MEXTRAC (relativo)',data:mexRelData,borderColor:'#5B21B6',backgroundColor:'transparent',borderWidth:1.5,pointRadius:0,tension:.3,borderDash:[5,3],spanGaps:true}
+      {label:'Research Rockets',data:hist.map(h=>+h.totalFondo.toFixed(0)),borderColor:'#0C4A6E',backgroundColor:'rgba(12,74,110,.07)',borderWidth:2,pointRadius:0,tension:0,fill:true},
+      {label:'MEXTRAC (relativo)',data:mexRelData,borderColor:'#5B21B6',backgroundColor:'transparent',borderWidth:1.5,pointRadius:0,tension:0,borderDash:[5,3],spanGaps:true}
     ]},options:{...chartOpts('$'),layout:{padding:{right:80}}},plugins:[endLabelPlugin('$')]});chartInst.push(c);
   }
   const ctx2=document.getElementById('rend-chart2');
-  if(ctx2){const portB100=hist.map(h=>+(100+h.rendAcum).toFixed(3));const firstMexP=hist.find(h=>h.mexPrice!=null)?.mexPrice;const benchB100=hist.map(h=>h.mexPrice!=null&&firstMexP?+(100*h.mexPrice/firstMexP).toFixed(3):null);const optsB100=chartOpts('base100');optsB100.scales.y.ticks.callback=v=>`${v.toFixed(0)}`;optsB100.plugins.tooltip.callbacks={label:c=>`${c.dataset.label}: ${c.parsed.y.toFixed(2)} (${(c.parsed.y-100).toFixed(2)}%)`};const c=new Chart(ctx2,{type:'line',data:{labels,datasets:[{label:'Fondo',data:portB100,borderColor:'#027A48',backgroundColor:'rgba(2,122,72,.06)',borderWidth:2,pointRadius:0,tension:.3,fill:true},{label:'MEXTRAC',data:benchB100,borderColor:'#5B21B6',backgroundColor:'transparent',borderWidth:1.5,pointRadius:0,tension:.3,borderDash:[5,3],spanGaps:true}]},options:{...optsB100,layout:{padding:{right:70}}},plugins:[endLabelPlugin('base100')]});chartInst.push(c);}
+  if(ctx2){const portB100=hist.map(h=>+(100+h.rendAcum).toFixed(3));const firstMexP=hist.find(h=>h.mexPrice!=null)?.mexPrice;const benchB100=hist.map(h=>h.mexPrice!=null&&firstMexP?+(100*h.mexPrice/firstMexP).toFixed(3):null);const optsB100=chartOpts('base100');optsB100.scales.y.ticks.callback=v=>`${v.toFixed(0)}`;optsB100.plugins.tooltip.callbacks={label:c=>`${c.dataset.label}: ${c.parsed.y.toFixed(2)} (${(c.parsed.y-100).toFixed(2)}%)`};const c=new Chart(ctx2,{type:'line',data:{labels,datasets:[{label:'Fondo',data:portB100,borderColor:'#027A48',backgroundColor:'rgba(2,122,72,.06)',borderWidth:2,pointRadius:0,tension:0,fill:true},{label:'MEXTRAC',data:benchB100,borderColor:'#5B21B6',backgroundColor:'transparent',borderWidth:1.5,pointRadius:0,tension:0,borderDash:[5,3],spanGaps:true}]},options:{...optsB100,layout:{padding:{right:70}}},plugins:[endLabelPlugin('base100')]});chartInst.push(c);}
   const ctx3=document.getElementById('pnl-chart');
   if(ctx3){const pnlData=hist.map((h,i)=>i===0?0:+(h.totalFondo-hist[i-1].totalFondo).toFixed(0));const c=new Chart(ctx3,{type:'bar',data:{labels,datasets:[{label:'P&L diario',data:pnlData,backgroundColor:pnlData.map(v=>v>=0?'rgba(2,122,72,.6)':'rgba(180,35,24,.6)'),borderRadius:2,borderWidth:0}]},options:chartOpts('$',false)});chartInst.push(c);}
   renderTreemap();renderDonuts(m);renderDecomposedDonuts(m);
@@ -3045,7 +3049,11 @@ function initSnapshot(){renderSnapshot();}
 
 // ═══════════════════════════════════════════════════════════════════════════
 // INFORMATION COEFFICIENT (Grinold-Kahn implícito) + FUNDAMENTAL LAW
-// IC_t = Spearman((w_P,i,t - w_B,i,t), (r_i,t - r̄_B,t)) por día
+// IC_t = Pearson((w_P,i,t - w_B,i,t), (r_i,t - r̄_B,t)) por día
+//   (cambiado de Spearman→Pearson 2026-05: el signo del IC queda atado
+//    al signo del retorno activo realizado del día, eliminando el
+//    "falso positivo" de la Ley de Grinold cuando los rankings coinciden
+//    pero las magnitudes en pesos producen pérdida)
 // IR_teórico = IC × √(Breadth × Frecuencia)
 // ═══════════════════════════════════════════════════════════════════════════
 
@@ -3108,7 +3116,7 @@ function calcInfoCoefficient(period){
   if(!startH||!endH||startIdx>=endIdx)return null;
 
   // ════════════════════════════════════════════════════════════════════
-  // BLOQUE 1 — IC diario (Spearman cross-sectional) por cada día t→t+1
+  // BLOQUE 1 — IC diario (Pearson cross-sectional, dollar-aware) por cada día t→t+1
   // ════════════════════════════════════════════════════════════════════
   const dailyIC=[];
   const activeRetsArr=[]; // r_fondo - r_bench por día (para TE/IR efectivo)
@@ -3162,7 +3170,15 @@ function calcInfoCoefficient(period){
       excess.push(r-rBar);
     }
     if(bets.length<3)continue;
-    const ic=_spearman(bets,excess);
+    // ───────────────────────────────────────────────────────────────
+    // FIX (sign alignment): IC = Pearson(bet, excess), no Spearman.
+    // Razón: el AR realizado del día ≈ Σ bet_i × excess_i; al centrar,
+    // el numerador de Pearson es exactamente esa suma → el signo del IC
+    // queda atado al signo del AR realizado. Spearman es rank-based y
+    // puede salir positivo aun cuando el AR realizado es negativo,
+    // generando el "falso positivo" en la Ley de Grinold.
+    // ───────────────────────────────────────────────────────────────
+    const ic=_pearson(bets,excess);
     if(ic==null||isNaN(ic))continue;
     const breadth=bets.filter(b=>Math.abs(b)>1e-4).length;
 
@@ -3647,6 +3663,9 @@ async function exportToExcel(evt){
     const wb=XLSX.utils.book_new();
     const ord=S.ordenes||[];
 
+    // Fase competitiva: arranca 17 abril 2026 (Capital inicial y atribuciones diarias se anclan aquí)
+    const FASE_COMP_INICIO='2026-04-17';
+
     const ordRows=[['Fecha','Tipo','Ticker','Títulos','Precio','Valor','Comisión','IVA','Razón','Fase']];
     for(const o of ord){
       ordRows.push([toExcelDate(o.fecha),o.tipo,o.ticker,o.titulos,o.precio,o.titulos*o.precio,o.comision||0,o.iva||0,o.razon||'',o.isEtf?'ETF':'Acción']);
@@ -3674,9 +3693,17 @@ async function exportToExcel(evt){
     }
     XLSX.utils.book_append_sheet(wb,formatSheet(XLSX.utils.aoa_to_sheet(histRows),[0]),'Rendimiento');
 
+    // Capital inicial = totalFondo en la primera fecha del historial >= FASE_COMP_INICIO
+    let _capFase=null,_capFaseDate=null;
+    for(const h of (m.hist||[])){
+      if(h.date>=FASE_COMP_INICIO){_capFase=h.totalFondo;_capFaseDate=h.date;break;}
+    }
+    if(_capFase==null){_capFase=S.capitalInicial;_capFaseDate=FASE_COMP_INICIO;}
+
     const metRows=[
       ['Métrica','Valor','Descripción'],
-      ['Capital inicial',S.capitalInicial,'MXN asignado por BBVA'],
+      ['Capital inicial',+(+_capFase).toFixed(2),'MXN al '+_capFaseDate+' (inicio fase competitiva)'],
+      ['Capital BBVA asignado',S.capitalInicial,'MXN entregados originalmente por BBVA'],
       ['Valor fondo',+m.totalFondo.toFixed(2),'Portafolio + efectivo actual'],
       ['Rend. acumulado %',+m.rendAcum.toFixed(4),'Desde fecha de inicio de gestión'],
       ['Rend. benchmark %',m.rendBench!=null?+m.rendBench.toFixed(4):'','MEXTRAC09 mismo período'],
@@ -3716,6 +3743,39 @@ async function exportToExcel(evt){
       const sContrib=attrD.tickerRows.reduce((a,r)=>a+(r.contribAct||0),0);
       tickRows.push(['TOTAL','','','','','','',+sAA.toFixed(4),+sSS.toFixed(4),+sInter.toFixed(4),+(sAA+sSS+sInter).toFixed(4),+sContrib.toFixed(4)]);
       XLSX.utils.book_append_sheet(wb,XLSX.utils.aoa_to_sheet(tickRows),'Atribucion_Emisoras');
+
+      // Atribución por sectores DIARIA — desde fase competitiva (cambio #2)
+      // Una fila por (fecha, sector) usando _bhbSinglePeriod por par consecutivo de días
+      const secDiariaRows=[['Fecha','Asset Class','Portfolio Weight (wpi)','Benchmark Weight (wbi)','Weight Difference (wpi-wbi)','Allocation Effect','Selection Effect','Interaction Effect','Total']];
+      const emiDiariaRows=[['Fecha','Ticker','Sector','W Fondo','W Bench','Diff (W)','R Ticker','R Bench Sector','Allocation','Selection','Interaction','Total','Contribución']];
+      for(let _i=1;_i<hist.length;_i++){
+        const _prev=hist[_i-1],_cur=hist[_i];
+        if(_cur.date<FASE_COMP_INICIO)continue;
+        const _bhb=_bhbSinglePeriod(_prev.date,_cur.date);
+        if(!_bhb)continue;
+        // Sectores
+        let _sWp=0,_sWb=0,_sAA=0,_sSS=0,_sInt=0,_sTot=0;
+        for(const _sec in _bhb.sectors){
+          const _s=_bhb.sectors[_sec];
+          const _wDiff=_s.wp-_s.wb;
+          const _tot=_s.aa+_s.ss+_s.inter;
+          secDiariaRows.push([toExcelDate(_cur.date),_sec,+_s.wp.toFixed(4),+_s.wb.toFixed(4),+_wDiff.toFixed(4),+_s.aa.toFixed(4),+_s.ss.toFixed(4),+_s.inter.toFixed(4),+_tot.toFixed(4)]);
+          _sWp+=_s.wp;_sWb+=_s.wb;_sAA+=_s.aa;_sSS+=_s.ss;_sInt+=_s.inter;_sTot+=_tot;
+        }
+        secDiariaRows.push([toExcelDate(_cur.date),'TOTAL',+_sWp.toFixed(4),+_sWb.toFixed(4),+(_sWp-_sWb).toFixed(4),+_sAA.toFixed(4),+_sSS.toFixed(4),+_sInt.toFixed(4),+_sTot.toFixed(4)]);
+        // Emisoras
+        let _eAA=0,_eSS=0,_eInt=0,_eContrib=0;
+        for(const _tk in _bhb.tickerEffects){
+          const _x=_bhb.tickerEffects[_tk];
+          const _wDiff=_x.wP-_x.wB;
+          const _tot=_x.aa+_x.ss+_x.inter;
+          emiDiariaRows.push([toExcelDate(_cur.date),_x.ticker,_x.sec,+_x.wP.toFixed(4),+_x.wB.toFixed(4),+_wDiff.toFixed(4),+_x.r.toFixed(4),+_x.rbSec.toFixed(4),+_x.aa.toFixed(4),+_x.ss.toFixed(4),+_x.inter.toFixed(4),+_tot.toFixed(4),+(_x.contribAct||0).toFixed(4)]);
+          _eAA+=_x.aa;_eSS+=_x.ss;_eInt+=_x.inter;_eContrib+=(_x.contribAct||0);
+        }
+        emiDiariaRows.push([toExcelDate(_cur.date),'TOTAL','','','','','',+_eAA.toFixed(4),+_eSS.toFixed(4),+_eInt.toFixed(4),+(_eAA+_eSS+_eInt).toFixed(4),+_eContrib.toFixed(4)]);
+      }
+      XLSX.utils.book_append_sheet(wb,formatSheet(XLSX.utils.aoa_to_sheet(secDiariaRows),[0]),'Atribucion_Sectores_Diaria');
+      XLSX.utils.book_append_sheet(wb,formatSheet(XLSX.utils.aoa_to_sheet(emiDiariaRows),[0]),'Atribucion_Emisoras_Diaria');
     }
 
     // Snapshot Diario — base Brinson con CASH como clase explícita
@@ -3768,27 +3828,24 @@ async function exportToExcel(evt){
       XLSX.utils.book_append_sheet(wb,formatSheet(XLSX.utils.aoa_to_sheet(flRows),[0]),'Flujos');
     }
 
-    // Soporte mínimo auditable
-    const soporteRows=[['Sección','Campo 1','Campo 2','Campo 3','Campo 4','Campo 5','Campo 6','Campo 7']];
-    for(const ticker of Object.keys(PRICE_DB).sort()){
-      const serie=PRICE_DB[ticker]||{};
-      for(const fecha of Object.keys(serie).sort()){
-        soporteRows.push(['Precio Diario',ticker,toExcelDate(fecha),serie[fecha],'','','','']);
+    // Soporte = matriz de precios (cambio #4): fechas en filas, tickers en columnas
+    // Una sola hoja, sin duplicar lo que ya está en Posicion / Rendimiento / Snapshot
+    const _allTickers=Object.keys(PRICE_DB).sort();
+    const _allDatesSet=new Set();
+    for(const _t of _allTickers){
+      for(const _d of Object.keys(PRICE_DB[_t]||{}))_allDatesSet.add(_d);
+    }
+    const _allDates=[..._allDatesSet].sort();
+    const soporteRows=[['Fecha',..._allTickers]];
+    for(const _d of _allDates){
+      const _row=[toExcelDate(_d)];
+      for(const _t of _allTickers){
+        const _p=(PRICE_DB[_t]||{})[_d];
+        _row.push(_p!=null?+_p:'');
       }
+      soporteRows.push(_row);
     }
-    for(let i=0;i<hist.length;i++){
-      const h=hist[i];
-      const prev=hist[i-1];
-      const rf=(prev&&prev.totalFondo)?((h.totalFondo/prev.totalFondo)-1)*100:'';
-      const rb=(prev&&prev.mexPrice&&h.mexPrice)?((h.mexPrice/prev.mexPrice)-1)*100:'';
-      soporteRows.push(['Historial Fondo',toExcelDate(h.date),h.totalFondo,h.efectivo,h.portValue,rf,rb,h.retActivo!=null?+h.retActivo.toFixed(4):'']);
-    }
-    for(const t in pos){
-      const p=pos[t];const vm=p.titulos*p.precioActual;const pp=p.costoTotal>0?p.costoTotal/p.titulos:0;
-      soporteRows.push(['Peso Actual',t,p.titulos,+pp.toFixed(4),p.precioActual,+vm.toFixed(2),m.totalFondo>0?+(vm/m.totalFondo*100).toFixed(4):'','']);
-    }
-    if(m.efectivo>0)soporteRows.push(['Peso Actual','CASH','','','',+m.efectivo.toFixed(2),m.totalFondo>0?+(m.efectivo/m.totalFondo*100).toFixed(4):'','']);
-    XLSX.utils.book_append_sheet(wb,formatSheet(XLSX.utils.aoa_to_sheet(soporteRows),[2]),'Soporte');
+    XLSX.utils.book_append_sheet(wb,formatSheet(XLSX.utils.aoa_to_sheet(soporteRows),[0]),'Soporte');
 
     const invested=Object.values(pos||{}).reduce((s,p)=>s+((p.titulos||0)*(p.precioActual||0)),0);
     const pesoTotal=m.totalFondo>0?+(((invested+(m.efectivo||0))/m.totalFondo)*100).toFixed(6):'';
@@ -3920,6 +3977,16 @@ function pgStockTiming(){
   </div>
 
   <div class="card">
+    <div class="sec-h"><div class="sec-h-bar" style="background:var(--grn)"></div><div class="sec-h-text">Stock Picking vs Market Timing &mdash; contribución acumulada al alpha</div><span class="sec-h-sub">Áreas apiladas: la suma = retorno activo total acumulado vs MEXTRAC</span></div>
+    <div style="position:relative;height:340px"><canvas id="st-area-chart" style="width:100%!important;height:340px!important"></canvas></div>
+    <div style="display:flex;justify-content:center;gap:24px;margin-top:10px;font-size:11px;color:var(--txt3);flex-wrap:wrap">
+      <span><b style="color:#0C4A6E">■</b> STOCK PICKING (FONDO − TIMING) = ${fp(d.efectoStockpicking)}</span>
+      <span><b style="color:#B54708">■</b> MARKET TIMING (TIMING − MEXTRAC) = ${fp(d.efectoTiming)}</span>
+      <span><b style="color:var(--txt2)">Total acumulado</b> = ${fp(d.totalActivo)}</span>
+    </div>
+  </div>
+
+  <div class="card">
     <div class="sec-h"><div class="sec-h-bar" style="background:var(--accent)"></div><div class="sec-h-text">Tabla diaria</div><span class="sec-h-sub">DESINV = cash inicial · INV = capital invertido</span></div>
     <div class="tw"><table id="tbl-st"><thead><tr style="background:var(--accent);color:#fff">
       <th style="background:var(--accent);color:#fff">T</th>
@@ -3985,13 +4052,13 @@ function initStockTiming(){
     type:'line',
     data:{labels,datasets:[
       {label:'MEXTRAC (benchmark)',data:d.rows.map(r=>+r.mexIdx.toFixed(4)),
-       borderColor:'#5B21B6',backgroundColor:'rgba(91,33,182,.04)',borderWidth:2,pointRadius:0,tension:.3,borderDash:[5,3]},
+       borderColor:'#5B21B6',backgroundColor:'rgba(91,33,182,.04)',borderWidth:2,pointRadius:0,tension:0,borderDash:[5,3]},
       {label:'TIMING (sólo cash mgmt)',data:d.rows.map(r=>+r.timIdx.toFixed(4)),
-       borderColor:'#B54708',backgroundColor:'rgba(181,71,8,.04)',borderWidth:2,pointRadius:0,tension:.3},
+       borderColor:'#B54708',backgroundColor:'rgba(181,71,8,.04)',borderWidth:2,pointRadius:0,tension:0},
       {type:'bar',label:'NIVEL DESINV (%)',data:d.rows.map(r=>+(r.nivelDesinv*100).toFixed(2)),
        yAxisID:'y1',borderColor:'rgba(152,162,179,.75)',backgroundColor:'rgba(152,162,179,.28)',borderWidth:1,barPercentage:.55,categoryPercentage:.7},
       {label:'FONDO REAL (Research Rockets)',data:d.rows.map(r=>+r.fondoIdx.toFixed(4)),
-       borderColor:'#0C4A6E',backgroundColor:'rgba(12,74,110,.07)',borderWidth:2.5,pointRadius:0,tension:.3,fill:true}
+       borderColor:'#0C4A6E',backgroundColor:'rgba(12,74,110,.07)',borderWidth:2.5,pointRadius:0,tension:0,fill:true}
     ]},
     plugins:[desinvBarLabels],
     options:{
@@ -4009,7 +4076,564 @@ function initStockTiming(){
     }
   });
   chartInst.push(c);
+
+  // ── NEW: Stacked-area chart for Picking vs Timing contribution ──
+  const ctxA=document.getElementById('st-area-chart');
+  if(ctxA){
+    Chart.getChart(ctxA)?.destroy();
+    // Cumulative contributions over time:
+    //   timing_cum(t)  = timIdx(t)  - mexIdx(t)   (MEXTRAC × (1-cash) − MEXTRAC = cash drag effect)
+    //   picking_cum(t) = fondoIdx(t) - timIdx(t)  (fondo real − benchmark con cash mgmt = stock selection)
+    const labelsA=d.rows.map(r=>r.date);
+    const timingArr=d.rows.map(r=>+(r.timIdx-r.mexIdx).toFixed(4));
+    const pickingArr=d.rows.map(r=>+(r.fondoIdx-r.timIdx).toFixed(4));
+    const totalArr=d.rows.map(r=>+(r.fondoIdx-r.mexIdx).toFixed(4));
+    const cA=new Chart(ctxA,{
+      type:'line',
+      data:{labels:labelsA,datasets:[
+        {label:'Market Timing (cumulativo)',data:timingArr,
+         borderColor:'#B54708',backgroundColor:'rgba(181,71,8,.22)',
+         borderWidth:1.75,pointRadius:0,tension:0,fill:'origin',stack:'a'},
+        {label:'Stock Picking (cumulativo)',data:pickingArr,
+         borderColor:'#0C4A6E',backgroundColor:'rgba(12,74,110,.28)',
+         borderWidth:1.75,pointRadius:0,tension:0,fill:'-1',stack:'a'},
+        {label:'Total alpha (línea)',data:totalArr,
+         borderColor:'#101828',backgroundColor:'transparent',
+         borderWidth:2,pointRadius:0,tension:0,fill:false,borderDash:[3,3]}
+      ]},
+      options:{
+        responsive:true,maintainAspectRatio:false,
+        interaction:{mode:'index',intersect:false},
+        plugins:{
+          legend:{labels:{color:'#475467',font:{size:12,family:'Geist'}}},
+          tooltip:{backgroundColor:'#fff',titleColor:'#101828',bodyColor:'#475467',borderColor:'#E4E7EC',borderWidth:1,padding:10,
+            callbacks:{label:c=>`${c.dataset.label}: ${(c.parsed.y>=0?'+':'')+c.parsed.y.toFixed(2)}%`}}
+        },
+        scales:{
+          x:{ticks:{color:'#98A2B3',font:{size:11},maxTicksLimit:10},grid:{color:'rgba(0,0,0,.04)'}},
+          y:{stacked:false,ticks:{color:'#98A2B3',font:{size:11},callback:v=>(v>=0?'+':'')+v.toFixed(2)+'%'},grid:{color:'rgba(0,0,0,.04)'},title:{display:true,text:'Contribución acumulada (%)',color:'#98A2B3',font:{size:10}}}
+        }
+      }
+    });
+    chartInst.push(cA);
+  }
 }
+
+// ═══════════════════════════════════════════════════════════════════════════
+// RESUMEN SEMANAL (estilo Alpha Horizon)
+// Métricas comparativas en dos ventanas + tabla diaria con R.A acumulado
+// ═══════════════════════════════════════════════════════════════════════════
+function _calcWindowMetrics(hist, startIdx, endIdx){
+  // Cálculo de métricas para un sub-rango [startIdx, endIdx] del hist
+  if(!hist||startIdx<0||endIdx<startIdx||endIdx>=hist.length)return null;
+  const slice=hist.slice(startIdx,endIdx+1);
+  if(slice.length<2)return null;
+  const h0=slice[0], hN=slice[slice.length-1];
+  // rendimientos geométricos (= total return acumulado del rango)
+  const rendAbsGeom = h0.totalFondo>0 ? (hN.totalFondo/h0.totalFondo - 1)*100 : null;
+  const rendBenchGeom = (h0.mexPrice&&hN.mexPrice&&h0.mexPrice>0) ? (hN.mexPrice/h0.mexPrice - 1)*100 : null;
+  const rendActivo = (rendAbsGeom!=null&&rendBenchGeom!=null) ? (rendAbsGeom - rendBenchGeom) : null;
+  // series diarias (pares válidos fondo+benchmark)
+  const rd=[], rb=[], rA=[];
+  for(let i=startIdx+1;i<=endIdx;i++){
+    if(hist[i-1].totalFondo<=0)continue;
+    if(!hist[i-1].mexPrice||!hist[i].mexPrice||hist[i-1].mexPrice<=0)continue;
+    const f=(hist[i].totalFondo-hist[i-1].totalFondo)/hist[i-1].totalFondo*100;
+    const b=(hist[i].mexPrice-hist[i-1].mexPrice)/hist[i-1].mexPrice*100;
+    rd.push(f); rb.push(b); rA.push(f-b);
+  }
+  const N=rd.length;
+  const stdFondoAnual = N>=2 ? stdDev(rd)*Math.sqrt(252) : null;
+  const stdBenchDaily = N>=2 ? stdDev(rb) : 0;
+  const teDaily = N>=2 ? stdDev(rA) : 0;
+  const teAnual = teDaily*Math.sqrt(252);
+  const meanA = N>0 ? rA.reduce((a,b)=>a+b,0)/N : 0;
+  const sdA = N>=2 ? stdDev(rA) : 0;
+  const irEfec = sdA>0 ? (meanA/sdA)*Math.sqrt(252) : null;
+  // beta: cov(fondo,bench)/var(bench)
+  let beta=null;
+  if(N>=2){
+    const mf=rd.reduce((a,b)=>a+b,0)/N, mb=rb.reduce((a,b)=>a+b,0)/N;
+    let cov=0, varB=0;
+    for(let i=0;i<N;i++){cov+=(rd[i]-mf)*(rb[i]-mb); varB+=(rb[i]-mb)**2;}
+    beta = varB>0 ? cov/varB : null;
+  }
+  // Descomposición sistemático/específico (anualizado)
+  const sigmaPDaily = N>=2 ? stdDev(rd) : 0;
+  const sigmaMDaily = stdBenchDaily;
+  const sysDaily = (beta!=null) ? beta*sigmaMDaily : 0;
+  const espVar = sigmaPDaily*sigmaPDaily - sysDaily*sysDaily;
+  const espDaily = espVar>0 ? Math.sqrt(espVar) : 0;
+  const sysAnual = sysDaily*Math.sqrt(252);
+  const espAnual = espDaily*Math.sqrt(252);
+  // VaR absoluto al 95%
+  const varAbsParam = sigmaPDaily*1.645;
+  const varAbsHist = N>=5 ? -([...rd].sort((a,b)=>a-b)[Math.floor(N*0.05)]||0) : null;
+  // VaR relativo (en retorno activo)
+  const varRelParam = teDaily*1.645;
+  const varRelHist = N>=5 ? -([...rA].sort((a,b)=>a-b)[Math.floor(N*0.05)]||0) : null;
+  return{
+    h0,hN,N,
+    rendAbsGeom,rendBenchGeom,rendActivo,
+    teAnual,irEfec,beta,
+    sysAnual,espAnual,
+    varAbsParam,varAbsHist,
+    varRelParam,varRelHist,
+    rd,rb,rA
+  };
+}
+
+function pgResumenSemanal(){
+  const m=calcMetrics();
+  const hist=m.hist||[];
+  if(hist.length<3){
+    return`<div class="card"><div class="empty" style="padding:40px;text-align:center;color:var(--txt3)">Sin historial suficiente para el resumen semanal. Se requieren al menos 3 días de gestión.</div></div>`;
+  }
+  return`
+  <div class="card" style="padding:14px 20px">
+    <div style="display:flex;align-items:center;gap:14px;flex-wrap:wrap">
+      <div class="sec-h-bar" style="background:var(--accent);width:4px;height:20px;border-radius:2px;flex-shrink:0"></div>
+      <div class="sec-h-text">Resumen Semanal &middot; Visión comparativa de gestión</div>
+      <div class="a-info" style="margin:0;font-size:11px;padding:4px 10px;flex:1;min-width:240px">
+        Métricas calculadas con base diaria. Ventana corta = últimos N días hábiles, ventana larga = desde inicio configurado.
+      </div>
+      <div style="display:flex;gap:8px;align-items:center;flex-shrink:0">
+        <span style="font-size:11px;color:var(--txt3)">Ventana corta:</span>
+        <select id="rs-corta" onchange="renderResumenSemanal()" style="width:auto;padding:4px 10px;font-size:12px">
+          <option value="5" selected>Últimos 5 días</option>
+          <option value="10">Últimos 10 días</option>
+          <option value="20">Últimos 20 días</option>
+        </select>
+      </div>
+    </div>
+  </div>
+
+  <div style="display:grid;grid-template-columns:minmax(360px,1fr) 1.55fr;gap:14px;align-items:start">
+    <!-- Panel izquierdo: métricas comparativas -->
+    <div class="card" style="padding:0;overflow:hidden">
+      <div class="sec-h" style="border-bottom:1px solid var(--line);padding:14px 16px">
+        <div class="sec-h-bar" style="background:var(--accent)"></div>
+        <div class="sec-h-text">Análisis cuantitativo</div>
+      </div>
+      <div id="rs-metrics-block" style="padding:0"></div>
+    </div>
+
+    <!-- Panel derecho: tabla diaria -->
+    <div class="card" style="padding:0;overflow:hidden">
+      <div class="sec-h" style="border-bottom:1px solid var(--line);padding:14px 16px;display:flex;align-items:center">
+        <div class="sec-h-bar" style="background:var(--blue)"></div>
+        <div class="sec-h-text">Valuación del portafolio día con día</div>
+        <span class="sec-h-sub" style="margin-left:auto">R.A = Retorno Activo</span>
+      </div>
+      <div id="rs-table-block" style="padding:0;max-height:560px;overflow-y:auto"></div>
+    </div>
+  </div>
+
+  <!-- Mini-chart: evolución del R.A acumulado -->
+  <div class="card">
+    <div class="sec-h"><div class="sec-h-bar" style="background:var(--grn)"></div><div class="sec-h-text">Evolución del Retorno Activo acumulado</div><span class="sec-h-sub">Alpha diario y acumulado vs MEXTRAC09</span></div>
+    <div style="position:relative;height:280px"><canvas id="rs-ra-chart" style="width:100%!important;height:280px!important"></canvas></div>
+  </div>`;
+}
+
+function renderResumenSemanal(){
+  const m=calcMetrics();
+  const hist=m.hist||[];
+  if(hist.length<3)return;
+  const ndays=parseInt(document.getElementById('rs-corta')?.value||'5',10);
+
+  // Ventana corta: últimos N días hábiles del hist
+  const endIdx = hist.length-1;
+  const startIdxCorto = Math.max(0, endIdx - ndays);
+  const startIdxLargo = 0;
+
+  const metCorto = _calcWindowMetrics(hist, startIdxCorto, endIdx);
+  const metLargo = _calcWindowMetrics(hist, startIdxLargo, endIdx);
+
+  const fdate = s => s ? s.split('-').reverse().join('/') : '—';
+  const fpct = (n,d=2) => n==null||isNaN(n) ? '—' : (n>=0?'+':'')+n.toFixed(d)+'%';
+  const fnum = (n,d=2) => n==null||isNaN(n) ? '—' : n.toFixed(d);
+  const ccx  = n => n==null?'var(--txt3)':n>0?'var(--grn)':n<0?'var(--red)':'var(--txt3)';
+
+  const labCorto = metCorto ? `${fdate(metCorto.h0.date)} → ${fdate(metCorto.hN.date)}` : '—';
+  const labLargo = metLargo ? `${fdate(metLargo.h0.date)} → ${fdate(metLargo.hN.date)}` : '—';
+
+  // Helpers de fila
+  const row2 = (label, sublabel, v1, v2, fmt, sign) => {
+    const c1 = sign ? ccx(v1) : 'var(--txt)';
+    const c2 = sign ? ccx(v2) : 'var(--txt)';
+    return `<tr>
+      <td style="padding:10px 14px;font-size:12.5px;color:var(--txt);border-bottom:1px solid var(--line)">
+        <div style="font-weight:600">${label}</div>
+        ${sublabel?`<div style="font-size:10.5px;color:var(--txt3);font-style:italic;margin-top:2px">${sublabel}</div>`:''}
+      </td>
+      <td class="mono" style="padding:10px 12px;text-align:center;font-size:12.5px;color:${c1};border-bottom:1px solid var(--line);background:rgba(0,0,0,.015)">${fmt(v1)}</td>
+      <td class="mono" style="padding:10px 12px;text-align:center;font-size:12.5px;color:${c2};border-bottom:1px solid var(--line)">${fmt(v2)}</td>
+    </tr>`;
+  };
+  const row1 = (label, sublabel, v, fmt) => `<tr>
+    <td style="padding:10px 14px;font-size:12.5px;color:var(--txt);border-bottom:1px solid var(--line)">
+      <div style="font-weight:600">${label}</div>
+      ${sublabel?`<div style="font-size:10.5px;color:var(--txt3);font-style:italic;margin-top:2px">${sublabel}</div>`:''}
+    </td>
+    <td class="mono" colspan="2" style="padding:10px 12px;text-align:center;font-size:12.5px;color:var(--txt);border-bottom:1px solid var(--line);background:rgba(0,0,0,.005)">${fmt(v)}</td>
+  </tr>`;
+
+  const fmtPair = (p, h) => {
+    if(p==null && h==null) return '—';
+    const a = p==null ? '—' : p.toFixed(2)+'%';
+    const b = h==null ? '—' : h.toFixed(2)+'%';
+    return `${a} / ${b}`;
+  };
+
+  const html = `
+    <table style="width:100%;border-collapse:collapse">
+      <thead>
+        <tr style="background:linear-gradient(180deg,#1F3D5A 0%,#0F2438 100%);color:#fff">
+          <th style="padding:14px 12px;font-size:11px;font-weight:600;text-align:left;letter-spacing:.04em;text-transform:uppercase">Métrica</th>
+          <th style="padding:10px 12px;font-size:11px;font-weight:600;text-align:center;background:rgba(255,255,255,.06)">${labCorto}</th>
+          <th style="padding:10px 12px;font-size:11px;font-weight:600;text-align:center">${labLargo}</th>
+        </tr>
+      </thead>
+      <tbody>
+        ${row2('Rendimiento absoluto','(geométrico)', metCorto?.rendAbsGeom, metLargo?.rendAbsGeom, v=>fpct(v), true)}
+        ${row2('Rendimiento benchmark','(geométrico)', metCorto?.rendBenchGeom, metLargo?.rendBenchGeom, v=>fpct(v), true)}
+        ${row2('Rendimiento activo','', metCorto?.rendActivo, metLargo?.rendActivo, v=>fpct(v), true)}
+        ${row2('Tracking error','(anualizado)', metCorto?.teAnual, metLargo?.teAnual, v=>v==null?'—':fnum(v)+'%', false)}
+        ${row2('Information Ratio','(efectivo anualizado)', metCorto?.irEfec, metLargo?.irEfec, v=>fnum(v), true)}
+        ${row2('Beta','', metCorto?.beta, metLargo?.beta, v=>fnum(v), false)}
+        ${row1('Riesgo sistemático','(anualizado)', metLargo?.sysAnual, v=>v==null?'—':fnum(v)+'%')}
+        ${row1('Riesgo específico','(anualizado)', metLargo?.espAnual, v=>v==null?'—':fnum(v)+'%')}
+        ${row1('VaR absoluto','Paramétrico / histórico', null, _=>fmtPair(metLargo?.varAbsParam, metLargo?.varAbsHist))}
+        ${row1('VaR relativo','Paramétrico / histórico', null, _=>fmtPair(metLargo?.varRelParam, metLargo?.varRelHist))}
+      </tbody>
+    </table>
+    <div style="padding:10px 14px;font-size:10.5px;color:var(--txt3);font-style:italic">*cifras de VaR expresadas al 95% de confianza</div>
+  `;
+  document.getElementById('rs-metrics-block').innerHTML = html;
+
+  // Tabla diaria con R.A acumulado
+  const rows=[];
+  let raAcum=0;
+  let prevValid=null;
+  for(let i=0;i<hist.length;i++){
+    const h=hist[i];
+    if(i===0){
+      rows.push({date:h.date,total:h.totalFondo,rPort:null,rA:null,raAcum:null});
+      prevValid=h;
+      continue;
+    }
+    let rPort=null, rA=null;
+    if(prevValid && prevValid.totalFondo>0){
+      rPort = (h.totalFondo-prevValid.totalFondo)/prevValid.totalFondo*100;
+    }
+    if(prevValid && prevValid.mexPrice && h.mexPrice && prevValid.mexPrice>0 && rPort!=null){
+      const rB = (h.mexPrice-prevValid.mexPrice)/prevValid.mexPrice*100;
+      rA = rPort - rB;
+      raAcum += rA;
+    }
+    rows.push({date:h.date,total:h.totalFondo,rPort,rA,raAcum:rA!=null?raAcum:null});
+    prevValid=h;
+  }
+  // Mostrar últimas 30 filas (más recientes arriba)
+  const display = rows.slice(-30).reverse();
+  const tableHtml = `
+    <table style="width:100%;border-collapse:collapse">
+      <thead>
+        <tr style="background:linear-gradient(180deg,#1F3D5A 0%,#0F2438 100%);color:#fff;position:sticky;top:0;z-index:1">
+          <th style="padding:10px 12px;font-size:11px;font-weight:600;text-align:left;letter-spacing:.04em">Fecha</th>
+          <th style="padding:10px 12px;font-size:11px;font-weight:600;text-align:right;letter-spacing:.04em">Portafolio Total</th>
+          <th style="padding:10px 12px;font-size:11px;font-weight:600;text-align:right;letter-spacing:.04em">Ret. Port. % diario</th>
+          <th style="padding:10px 12px;font-size:11px;font-weight:600;text-align:right;letter-spacing:.04em">Ret. Activo</th>
+          <th style="padding:10px 12px;font-size:11px;font-weight:600;text-align:right;letter-spacing:.04em">R.A Acumulado</th>
+        </tr>
+      </thead>
+      <tbody>
+        ${display.map(r=>`<tr>
+          <td class="mono" style="padding:8px 12px;font-size:11.5px;border-bottom:1px solid var(--line);color:var(--txt2)">${fdate(r.date)}</td>
+          <td class="mono" style="padding:8px 12px;font-size:11.5px;text-align:right;border-bottom:1px solid var(--line);color:var(--txt)">${fm(r.total)}</td>
+          <td class="mono" style="padding:8px 12px;font-size:11.5px;text-align:right;border-bottom:1px solid var(--line);color:${ccx(r.rPort)}">${r.rPort!=null?fpct(r.rPort):'—'}</td>
+          <td class="mono" style="padding:8px 12px;font-size:11.5px;text-align:right;border-bottom:1px solid var(--line);color:${ccx(r.rA)}">${r.rA!=null?fpct(r.rA):'—'}</td>
+          <td class="mono" style="padding:8px 12px;font-size:11.5px;text-align:right;border-bottom:1px solid var(--line);color:${ccx(r.raAcum)};font-weight:600">${r.raAcum!=null?fpct(r.raAcum):'—'}</td>
+        </tr>`).join('')}
+      </tbody>
+    </table>
+  `;
+  document.getElementById('rs-table-block').innerHTML = tableHtml;
+
+  // Chart: evolución del R.A acumulado
+  const ctx = document.getElementById('rs-ra-chart');
+  if(ctx){
+    Chart.getChart(ctx)?.destroy();
+    const labels = rows.map(r=>r.date);
+    const raDaily = rows.map(r=>r.rA);
+    const raAcumArr = rows.map(r=>r.raAcum);
+    const c = new Chart(ctx,{
+      type:'line',
+      data:{labels,datasets:[
+        {type:'bar',label:'R.A diario (%)',data:raDaily,
+         backgroundColor:raDaily.map(v=>v==null?'rgba(0,0,0,0)':v>=0?'rgba(2,122,72,.5)':'rgba(180,35,24,.5)'),
+         borderWidth:0,yAxisID:'y1'},
+        {type:'line',label:'R.A acumulado (%)',data:raAcumArr,
+         borderColor:'#0C4A6E',backgroundColor:'rgba(12,74,110,.07)',
+         borderWidth:2.25,pointRadius:0,tension:0,fill:true,yAxisID:'y'}
+      ]},
+      options:{
+        responsive:true,maintainAspectRatio:false,
+        interaction:{mode:'index',intersect:false},
+        plugins:{
+          legend:{labels:{color:'#475467',font:{size:12,family:'Geist'}}},
+          tooltip:{backgroundColor:'#fff',titleColor:'#101828',bodyColor:'#475467',borderColor:'#E4E7EC',borderWidth:1,padding:10,
+            callbacks:{label:c=>`${c.dataset.label}: ${c.parsed.y==null?'—':(c.parsed.y>=0?'+':'')+c.parsed.y.toFixed(2)+'%'}`}}
+        },
+        scales:{
+          x:{ticks:{color:'#98A2B3',font:{size:11},maxTicksLimit:12},grid:{color:'rgba(0,0,0,.04)'}},
+          y:{position:'left',ticks:{color:'#98A2B3',font:{size:11},callback:v=>(v>=0?'+':'')+v.toFixed(1)+'%'},grid:{color:'rgba(0,0,0,.04)'},title:{display:true,text:'Acumulado',color:'#98A2B3',font:{size:10}}},
+          y1:{position:'right',ticks:{color:'#98A2B3',font:{size:11},callback:v=>(v>=0?'+':'')+v.toFixed(2)+'%'},grid:{drawOnChartArea:false},title:{display:true,text:'Diario',color:'#98A2B3',font:{size:10}}}
+        }
+      }
+    });
+    chartInst.push(c);
+  }
+}
+
+function initResumenSemanal(){ renderResumenSemanal(); }
+
+
+// ═══════════════════════════════════════════════════════════════════════════
+// BEST TRADE vs WORST TRADE (estilo BOC slide del prof)
+// Identifica mejor y peor operación cerrada por GANANCIA RELATIVA (alpha)
+// contra MEXTRAC09 durante el período de tenencia
+// ═══════════════════════════════════════════════════════════════════════════
+function _enrichClosedTrade(t){
+  // calcula ganancia relativa vs MEXTRAC09 durante la tenencia
+  const pBuy = localPrice('MEXTRAC09', t.fechaCompra);
+  const pSell = localPrice('MEXTRAC09', t.fechaVenta);
+  const rendBench = (pBuy && pSell && pBuy>0) ? (pSell-pBuy)/pBuy*100 : null;
+  const rendRel = rendBench!=null ? (t.rend - rendBench) : t.rend;
+  // días en posición (calendario)
+  let dias = null;
+  const d0 = parseISODate(t.fechaCompra);
+  const d1 = parseISODate(t.fechaVenta);
+  if(d0 && d1){ dias = Math.round((d1-d0)/(1000*60*60*24)); }
+  return { ...t, rendBench, rendRel, dias };
+}
+
+function _serieTradePrice(ticker, fechaCompra, fechaVenta){
+  // Construye serie de cierres entre fechas de compra y venta usando localPrice
+  const d0=parseISODate(fechaCompra), d1=parseISODate(fechaVenta);
+  if(!d0||!d1)return null;
+  const out=[];
+  const cur=new Date(d0.getTime());
+  while(cur<=d1){
+    const dow=cur.getDay();
+    if(dow!==0 && dow!==6){
+      const iso=cur.toISOString().split('T')[0];
+      const p=localPrice(ticker,iso);
+      if(p!=null) out.push({date:iso, price:p});
+    }
+    cur.setDate(cur.getDate()+1);
+  }
+  return out.length?out:null;
+}
+
+function pgBestWorst(){
+  const trades = buildTrades();
+  const cerradas = trades.cerradas || [];
+  if(!cerradas.length){
+    return`<div class="card"><div class="empty" style="padding:40px;text-align:center;color:var(--txt3)">Sin operaciones cerradas para analizar. Cuando vendas posiciones, aparecerán aquí los mejores y peores trades.</div></div>`;
+  }
+  const enriched = cerradas.map(_enrichClosedTrade);
+  // Ordenar por ganancia relativa
+  const byRel = [...enriched].sort((a,b)=> (b.rendRel??-Infinity) - (a.rendRel??-Infinity));
+  const best = byRel[0];
+  const worst = byRel[byRel.length-1];
+  // Top 5 / Bottom 5 para resumen
+  const top5 = byRel.slice(0, Math.min(5, byRel.length));
+  const bot5 = byRel.slice(-Math.min(5, byRel.length)).reverse();
+
+  // Stats agregados
+  const ganadoras = enriched.filter(t=>t.rendRel>0).length;
+  const hitRatio = enriched.length>0 ? (ganadoras/enriched.length)*100 : 0;
+  const relProm = enriched.length>0 ? enriched.reduce((s,t)=>s+(t.rendRel||0),0)/enriched.length : 0;
+  const totalAlpha = enriched.reduce((s,t)=>s+(t.rendRel||0)*(t.pctPortafolio||0)/100, 0); // contribución ponderada
+
+  const tickerName = t => UNIVERSO.find(e=>e.t===t)?.n || t;
+
+  const tradeCard = (label, t, color, sign) => {
+    if(!t) return `<div class="card" style="padding:16px"><div class="empty">Sin trade</div></div>`;
+    return `
+    <div class="card" style="padding:0;overflow:hidden;border-top:3px solid ${color}">
+      <div style="padding:12px 16px;background:${color};color:#fff;display:flex;align-items:center;gap:10px">
+        <div style="font-size:13px;font-weight:700;letter-spacing:.04em;text-transform:uppercase">${label}</div>
+        <div style="font-size:14px;font-weight:600;opacity:.95">${t.ticker} <span style="opacity:.75;font-size:11px;font-weight:400">· ${tickerName(t.ticker)}</span></div>
+      </div>
+      <div style="padding:12px 16px">
+        <div style="position:relative;height:200px;margin-bottom:14px"><canvas id="bw-chart-${sign}" style="width:100%!important;height:200px!important"></canvas></div>
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;font-size:12px">
+          <div>
+            <div style="color:var(--txt3);font-size:10.5px;text-transform:uppercase;letter-spacing:.04em;margin-bottom:2px">Precio inicial</div>
+            <div class="mono" style="font-size:15px;font-weight:700">$${f2(t.precioCompra,4)}</div>
+          </div>
+          <div>
+            <div style="color:var(--txt3);font-size:10.5px;text-transform:uppercase;letter-spacing:.04em;margin-bottom:2px">Precio venta</div>
+            <div class="mono" style="font-size:15px;font-weight:700">$${f2(t.precioVenta,4)}</div>
+          </div>
+          <div>
+            <div style="color:var(--txt3);font-size:10.5px;text-transform:uppercase;letter-spacing:.04em;margin-bottom:2px">Días en posición</div>
+            <div class="mono" style="font-size:15px;font-weight:700">${t.dias!=null?t.dias:'—'}</div>
+          </div>
+          <div>
+            <div style="color:var(--txt3);font-size:10.5px;text-transform:uppercase;letter-spacing:.04em;margin-bottom:2px">${sign==='best'?'Ganancia':'Pérdida'} relativa</div>
+            <div class="mono" style="font-size:18px;font-weight:800;color:${color}">${fp(t.rendRel)}</div>
+          </div>
+        </div>
+        <div style="margin-top:12px;padding:8px 10px;background:var(--bg3);border-radius:6px;font-size:11px;color:var(--txt2);line-height:1.6">
+          <div><b>Compra:</b> ${t.fechaCompra} · <b>Venta:</b> ${t.fechaVenta}</div>
+          <div><b>Rend. absoluto:</b> ${fp(t.rend)} · <b>Rend. MEXTRAC:</b> ${t.rendBench!=null?fp(t.rendBench):'—'} · <b>P&amp;L:</b> ${fm(t.pnl)}</div>
+        </div>
+      </div>
+    </div>`;
+  };
+
+  return `
+  <div class="sg4">
+    ${stCard(enriched.length.toString(),'Trades cerrados','Total operaciones realizadas','stat-acc')}
+    ${stCard(fp(relProm),'Ganancia rel. promedio','Alpha promedio por trade',relProm>=0?'stat-grn':'stat-red')}
+    ${stCard(f2(hitRatio)+'%','Hit ratio','% trades con alpha > 0',hitRatio>=50?'stat-grn':'stat-red')}
+    ${stCard(fp(totalAlpha),'Alpha total ponderado','Σ(rendRel × %portafolio)',totalAlpha>=0?'stat-grn':'stat-red')}
+  </div>
+
+  <div style="display:grid;grid-template-columns:1fr 1fr;gap:14px">
+    ${tradeCard('Best Trade', best, '#027A48', 'best')}
+    ${tradeCard('Worst Trade', worst, '#B42318', 'worst')}
+  </div>
+
+  <div class="sg2">
+    <div class="card">
+      <div class="sec-h"><div class="sec-h-bar" style="background:var(--grn)"></div><div class="sec-h-text">Top 5 trades (mayor alpha)</div></div>
+      <div class="tw"><table><thead><tr>
+        <th>Ticker</th><th>Compra</th><th>Venta</th><th style="text-align:right">Rend.</th><th style="text-align:right">Rend. MEX</th><th style="text-align:right">Alpha</th>
+      </tr></thead><tbody>
+        ${top5.map(t=>`<tr>
+          <td class="lbl">${t.ticker}</td>
+          <td class="mono">${t.fechaCompra}</td>
+          <td class="mono">${t.fechaVenta}</td>
+          <td class="mono ${cc(t.rend)}" style="text-align:right">${fp(t.rend)}</td>
+          <td class="mono ${t.rendBench!=null?cc(t.rendBench):'d'}" style="text-align:right">${t.rendBench!=null?fp(t.rendBench):'—'}</td>
+          <td class="mono ${cc(t.rendRel)}" style="text-align:right;font-weight:700">${fp(t.rendRel)}</td>
+        </tr>`).join('')}
+      </tbody></table></div>
+    </div>
+    <div class="card">
+      <div class="sec-h"><div class="sec-h-bar" style="background:var(--red)"></div><div class="sec-h-text">Bottom 5 trades (menor alpha)</div></div>
+      <div class="tw"><table><thead><tr>
+        <th>Ticker</th><th>Compra</th><th>Venta</th><th style="text-align:right">Rend.</th><th style="text-align:right">Rend. MEX</th><th style="text-align:right">Alpha</th>
+      </tr></thead><tbody>
+        ${bot5.map(t=>`<tr>
+          <td class="lbl">${t.ticker}</td>
+          <td class="mono">${t.fechaCompra}</td>
+          <td class="mono">${t.fechaVenta}</td>
+          <td class="mono ${cc(t.rend)}" style="text-align:right">${fp(t.rend)}</td>
+          <td class="mono ${t.rendBench!=null?cc(t.rendBench):'d'}" style="text-align:right">${t.rendBench!=null?fp(t.rendBench):'—'}</td>
+          <td class="mono ${cc(t.rendRel)}" style="text-align:right;font-weight:700">${fp(t.rendRel)}</td>
+        </tr>`).join('')}
+      </tbody></table></div>
+    </div>
+  </div>
+
+  <div class="card">
+    <div class="sec-h"><div class="sec-h-bar" style="background:var(--accent)"></div><div class="sec-h-text">Todas las operaciones cerradas</div><span class="sec-h-sub">Ordenadas por alpha (rendimiento relativo)</span></div>
+    <div class="tw"><table><thead><tr>
+      <th>#</th><th>Ticker</th><th>Compra</th><th>Venta</th><th style="text-align:right">Días</th>
+      <th style="text-align:right">P. compra</th><th style="text-align:right">P. venta</th>
+      <th style="text-align:right">P&amp;L</th><th style="text-align:right">Rend. abs.</th>
+      <th style="text-align:right">Rend. MEX</th><th style="text-align:right">Alpha</th>
+      <th style="text-align:right">% Portaf.</th>
+    </tr></thead><tbody>
+      ${byRel.map((t,i)=>`<tr>
+        <td class="mono">${i+1}</td>
+        <td class="lbl">${t.ticker}</td>
+        <td class="mono">${t.fechaCompra}</td>
+        <td class="mono">${t.fechaVenta}</td>
+        <td class="mono" style="text-align:right">${t.dias!=null?t.dias:'—'}</td>
+        <td class="mono" style="text-align:right">$${f2(t.precioCompra,4)}</td>
+        <td class="mono" style="text-align:right">$${f2(t.precioVenta,4)}</td>
+        <td class="mono ${cc(t.pnl)}" style="text-align:right">${fm(t.pnl)}</td>
+        <td class="mono ${cc(t.rend)}" style="text-align:right">${fp(t.rend)}</td>
+        <td class="mono ${t.rendBench!=null?cc(t.rendBench):'d'}" style="text-align:right">${t.rendBench!=null?fp(t.rendBench):'—'}</td>
+        <td class="mono ${cc(t.rendRel)}" style="text-align:right;font-weight:700">${fp(t.rendRel)}</td>
+        <td class="mono" style="text-align:right">${f2(t.pctPortafolio,1)}%</td>
+      </tr>`).join('')}
+    </tbody></table></div>
+  </div>`;
+}
+
+function initBestWorst(){
+  const trades = buildTrades();
+  const cerradas = trades.cerradas || [];
+  if(!cerradas.length) return;
+  const enriched = cerradas.map(_enrichClosedTrade);
+  const byRel = [...enriched].sort((a,b)=> (b.rendRel??-Infinity) - (a.rendRel??-Infinity));
+  const best = byRel[0];
+  const worst = byRel[byRel.length-1];
+
+  const drawTradeChart = (canvasId, t, lineColor) => {
+    const ctx = document.getElementById(canvasId);
+    if(!ctx || !t) return;
+    Chart.getChart(ctx)?.destroy();
+    const serie = _serieTradePrice(t.ticker, t.fechaCompra, t.fechaVenta);
+    if(!serie || serie.length<2){
+      // Fallback: show just buy and sell points
+      const labels = [t.fechaCompra, t.fechaVenta];
+      const data   = [t.precioCompra, t.precioVenta];
+      const c = new Chart(ctx,{
+        type:'line',
+        data:{labels,datasets:[{label:t.ticker,data,borderColor:lineColor,
+          backgroundColor:lineColor+'22',borderWidth:2.5,pointRadius:5,
+          pointBackgroundColor:lineColor,tension:0,fill:true}]},
+        options:{responsive:true,maintainAspectRatio:false,
+          plugins:{legend:{display:false},tooltip:{enabled:true}},
+          scales:{
+            x:{ticks:{color:'#98A2B3',font:{size:10}},grid:{color:'rgba(0,0,0,.04)'}},
+            y:{ticks:{color:'#98A2B3',font:{size:10},callback:v=>'$'+v.toFixed(2)},grid:{color:'rgba(0,0,0,.04)'}}
+          }
+        }
+      });
+      chartInst.push(c);
+      return;
+    }
+    const labels = serie.map(p=>p.date);
+    const data   = serie.map(p=>p.price);
+    // Marca compra y venta como puntos resaltados
+    const pointBg = serie.map((p,i)=>{
+      if(i===0) return '#027A48';
+      if(i===serie.length-1) return '#B42318';
+      return 'transparent';
+    });
+    const pointRad = serie.map((p,i)=>(i===0||i===serie.length-1)?5:0);
+    const c = new Chart(ctx,{
+      type:'line',
+      data:{labels,datasets:[{label:t.ticker,data,borderColor:lineColor,
+        backgroundColor:lineColor+'15',borderWidth:2,pointRadius:pointRad,
+        pointBackgroundColor:pointBg,pointBorderColor:pointBg,
+        tension:0,fill:true}]},
+      options:{responsive:true,maintainAspectRatio:false,
+        plugins:{legend:{display:false},
+          tooltip:{backgroundColor:'#fff',titleColor:'#101828',bodyColor:'#475467',borderColor:'#E4E7EC',borderWidth:1,padding:8,
+            callbacks:{label:c=>`${c.dataset.label}: $${c.parsed.y.toFixed(4)}`}}},
+        scales:{
+          x:{ticks:{color:'#98A2B3',font:{size:10},maxTicksLimit:6},grid:{color:'rgba(0,0,0,.04)'}},
+          y:{ticks:{color:'#98A2B3',font:{size:10},callback:v=>'$'+v.toFixed(2)},grid:{color:'rgba(0,0,0,.04)'}}
+        }
+      }
+    });
+    chartInst.push(c);
+  };
+  drawTradeChart('bw-chart-best', best, '#027A48');
+  drawTradeChart('bw-chart-worst', worst, '#B42318');
+}
+
 
 go('dashboard');
 </script>
