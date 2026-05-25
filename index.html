@@ -3273,14 +3273,30 @@ function calcInfoCoefficient(period){
   // BLOQUE 4 — Fundamental Law: IR_ley = TC × IC × √Breadth
   // (Versión Grinold original, sin √Frecuencia — coincide con slide Apex)
   // ════════════════════════════════════════════════════════════════════
-  const IR_ley_crudo=(TC!=null?TC:0)*icMean*Math.sqrt(breadthAvg*N);
-  const IR_ley_anual=(TC!=null?TC:0)*icMean*Math.sqrt(breadthAvg);
+  // Producto crudo: matemáticamente TC×IC×√B (puede dar positivo si TC e IC
+  // son ambos negativos — "dos errores se cancelan" — lo cual es engañoso
+  // cuando el alfa realizada fue negativa).
+  const IR_ley_producto=(TC!=null?TC:0)*icMean*Math.sqrt(breadthAvg);
+  const IR_ley_producto_crudo=(TC!=null?TC:0)*icMean*Math.sqrt(breadthAvg*N);
 
-  // Rendimiento benchmark del período (real)
+  // Rendimiento benchmark del período (real) — necesario para signo cumulativo
   let rBenchPeriod=null;
   if(startH.mexPrice&&endH.mexPrice&&startH.mexPrice>0){
     rBenchPeriod=(endH.mexPrice-startH.mexPrice)/startH.mexPrice*100;
   }
+  // Alfa CUMULATIVA (geométrica): es el signo que el usuario ve en dashboard / stock-picking chart.
+  // Si está disponible, anclar IR de la Ley a este signo (no al IR efectivo diario, que puede
+  // ser positivo por promedio aritmético aunque el alfa cumulativa sea negativa).
+  let rPortPeriod=null,cumActive=null;
+  if(startH&&endH&&startH.totalFondo>0&&endH.totalFondo>0){
+    rPortPeriod=(endH.totalFondo/startH.totalFondo-1)*100;
+    if(rBenchPeriod!=null)cumActive=rPortPeriod-rBenchPeriod;
+  }
+  // IR mostrado: signo del alfa cumulativa realizada × magnitud del producto.
+  // Fallback al IR efectivo si no hay datos cumulativos.
+  const _signReal=cumActive!=null?(cumActive>=0?1:-1):(IR_efectivo>=0?1:-1);
+  const IR_ley_anual=_signReal*Math.abs(IR_ley_producto);
+  const IR_ley_crudo=_signReal*Math.abs(IR_ley_producto_crudo);
 
   return{
     period,
@@ -3289,7 +3305,7 @@ function calcInfoCoefficient(period){
     rBenchPeriod,
     alfaDiariaBps,TE_anual,IR_efectivo,
     icMean,TC,nTC,breadthAvg,N,
-    IR_ley_crudo,IR_ley_anual,
+    IR_ley_crudo,IR_ley_anual,IR_ley_producto,
     dailyIC
   };
 }
@@ -3387,8 +3403,8 @@ function renderInfoCoef(){
   // Disclaimer banner si hay problemas de inferencia
   const warnings=[];
   if(d.N<10)warnings.push(`<b>N = ${d.N} días</b> — inferencia estadística débil (recomendado N ≥ 20)`);
-  if(d.IR_efectivo!=null&&d.IR_ley_anual!=null&&Math.sign(d.IR_efectivo)!==Math.sign(d.IR_ley_anual)&&Math.abs(d.IR_ley_anual)>0.05){
-    warnings.push(`Signos discrepantes: <b>IR Efectivo ${d.IR_efectivo>=0?'+':''}${d.IR_efectivo.toFixed(2)}</b> vs <b>IR Ley ${d.IR_ley_anual>=0?'+':''}${d.IR_ley_anual.toFixed(2)}</b> — la Ley de Grinold cancela TC×IC negativos; el IR Efectivo refleja la realización`);
+  if(d.TC!=null&&d.IR_ley_producto!=null&&Math.sign(d.IR_ley_producto)!==Math.sign(d.IR_efectivo)&&Math.abs(d.IR_ley_producto)>0.05&&Math.abs(d.IR_efectivo)>0.05){
+    warnings.push(`<b>TC e IC con signos opuestos al alfa realizado</b>: producto crudo TC×IC×√B = ${d.IR_ley_producto>=0?'+':''}${d.IR_ley_producto.toFixed(2)}, pero alfa realizada es ${d.IR_efectivo>=0?'+':''}${d.IR_efectivo.toFixed(2)}. El IR de la Ley se muestra con el signo del alfa realizado para no engañar; revisa si tu metodología de forecast/implementación tiene sesgo sistemático`);
   }
   if(Math.abs(d.IR_efectivo)>5){
     warnings.push(`IR Efectivo magnitud >5: con N pequeño, el TE diario se aproxima a cero y dispara el IR al anualizar (×√252). Interpretar con cautela`);
@@ -3977,13 +3993,8 @@ function pgStockTiming(){
   </div>
 
   <div class="card">
-    <div class="sec-h"><div class="sec-h-bar" style="background:var(--grn)"></div><div class="sec-h-text">Stock Picking vs Market Timing &mdash; contribución acumulada al alpha</div><span class="sec-h-sub">Áreas apiladas: la suma = retorno activo total acumulado vs MEXTRAC</span></div>
+    <div class="sec-h"><div class="sec-h-bar" style="background:var(--grn)"></div><div class="sec-h-text">Composición del portafolio &mdash; efectivo y carteras por sector</div><span class="sec-h-sub">Área apilada al 100%: cómo evoluciona el peso de cada sector y el cash día a día</span></div>
     <div style="position:relative;height:340px"><canvas id="st-area-chart" style="width:100%!important;height:340px!important"></canvas></div>
-    <div style="display:flex;justify-content:center;gap:24px;margin-top:10px;font-size:11px;color:var(--txt3);flex-wrap:wrap">
-      <span><b style="color:#0C4A6E">■</b> STOCK PICKING (FONDO − TIMING) = ${fp(d.efectoStockpicking)}</span>
-      <span><b style="color:#B54708">■</b> MARKET TIMING (TIMING − MEXTRAC) = ${fp(d.efectoTiming)}</span>
-      <span><b style="color:var(--txt2)">Total acumulado</b> = ${fp(d.totalActivo)}</span>
-    </div>
   </div>
 
   <div class="card">
@@ -4077,45 +4088,106 @@ function initStockTiming(){
   });
   chartInst.push(c);
 
-  // ── NEW: Stacked-area chart for Picking vs Timing contribution ──
+  // ── Stacked area: composición de portafolio por sector + cash (al 100%) ──
   const ctxA=document.getElementById('st-area-chart');
   if(ctxA){
     Chart.getChart(ctxA)?.destroy();
-    // Cumulative contributions over time:
-    //   timing_cum(t)  = timIdx(t)  - mexIdx(t)   (MEXTRAC × (1-cash) − MEXTRAC = cash drag effect)
-    //   picking_cum(t) = fondoIdx(t) - timIdx(t)  (fondo real − benchmark con cash mgmt = stock selection)
-    const labelsA=d.rows.map(r=>r.date);
-    const timingArr=d.rows.map(r=>+(r.timIdx-r.mexIdx).toFixed(4));
-    const pickingArr=d.rows.map(r=>+(r.fondoIdx-r.timIdx).toFixed(4));
-    const totalArr=d.rows.map(r=>+(r.fondoIdx-r.mexIdx).toFixed(4));
-    const cA=new Chart(ctxA,{
-      type:'line',
-      data:{labels:labelsA,datasets:[
-        {label:'Market Timing (cumulativo)',data:timingArr,
-         borderColor:'#B54708',backgroundColor:'rgba(181,71,8,.22)',
-         borderWidth:1.75,pointRadius:0,tension:0,fill:'origin',stack:'a'},
-        {label:'Stock Picking (cumulativo)',data:pickingArr,
-         borderColor:'#0C4A6E',backgroundColor:'rgba(12,74,110,.28)',
-         borderWidth:1.75,pointRadius:0,tension:0,fill:'-1',stack:'a'},
-        {label:'Total alpha (línea)',data:totalArr,
-         borderColor:'#101828',backgroundColor:'transparent',
-         borderWidth:2,pointRadius:0,tension:0,fill:false,borderDash:[3,3]}
-      ]},
-      options:{
-        responsive:true,maintainAspectRatio:false,
-        interaction:{mode:'index',intersect:false},
-        plugins:{
-          legend:{labels:{color:'#475467',font:{size:12,family:'Geist'}}},
-          tooltip:{backgroundColor:'#fff',titleColor:'#101828',bodyColor:'#475467',borderColor:'#E4E7EC',borderWidth:1,padding:10,
-            callbacks:{label:c=>`${c.dataset.label}: ${(c.parsed.y>=0?'+':'')+c.parsed.y.toFixed(2)}%`}}
-        },
-        scales:{
-          x:{ticks:{color:'#98A2B3',font:{size:11},maxTicksLimit:10},grid:{color:'rgba(0,0,0,.04)'}},
-          y:{stacked:false,ticks:{color:'#98A2B3',font:{size:11},callback:v=>(v>=0?'+':'')+v.toFixed(2)+'%'},grid:{color:'rgba(0,0,0,.04)'},title:{display:true,text:'Contribución acumulada (%)',color:'#98A2B3',font:{size:10}}}
-        }
+    // Construir serie diaria de pesos sectoriales + cash usando snapshot history
+    const snapHist=(typeof buildSnapshotHistory==='function')?buildSnapshotHistory():[];
+    const labelsA=[];
+    const sectorSeries={}; // sector -> array de %
+    const cashSeries=[];
+    // Detectar todos los sectores que aparecen al menos una vez
+    const allSecs=new Set();
+    const perDate=[];
+    for(const h of snapHist){
+      const s=(typeof buildSnapshotForDate==='function')?buildSnapshotForDate(h.date):null;
+      if(!s||!s.rows)continue;
+      const totalF=h.totalFondo||0;
+      if(totalF<=0)continue;
+      const secMap={};
+      for(const r of s.rows){
+        const sec=r.sector||'Otros';
+        secMap[sec]=(secMap[sec]||0)+(r.vm||0);
+        allSecs.add(sec);
       }
-    });
-    chartInst.push(cA);
+      const cashPct=(h.efectivo||0)/totalF*100;
+      const secPct={};
+      for(const sec in secMap)secPct[sec]=secMap[sec]/totalF*100;
+      perDate.push({date:h.date,secPct,cashPct});
+    }
+    if(perDate.length){
+      // Orden de sectores: por peso promedio descendente (los más grandes abajo del stack)
+      const avgPerSec={};
+      for(const sec of allSecs){
+        let sum=0,n=0;
+        for(const d of perDate){sum+=(d.secPct[sec]||0);n++;}
+        avgPerSec[sec]=n>0?sum/n:0;
+      }
+      const orderedSecs=[...allSecs].sort((a,b)=>avgPerSec[b]-avgPerSec[a]);
+      // Paleta multi-hue con tonos fríos (azules/teales/indigos) dominantes + cash en gris oscuro
+      const palette={
+        'Consumer Staples':'#0C4A6E',      // navy profundo
+        'Financials':'#1E40AF',            // azul royal
+        'Industrials':'#0EA5E9',           // sky blue
+        'Materials':'#0891B2',             // cyan
+        'Communication Services':'#6366F1',// indigo
+        'Consumer Discretionary':'#7C3AED',// violeta
+        'Health Care':'#14B8A6',           // teal
+        'Energy':'#F59E0B',                // amber (acento cálido)
+        'Real Estate':'#DB2777',           // pink (acento)
+        'Utilities':'#84CC16',             // lime
+        'ETF':'#94A3B8',                   // slate
+        'Otros':'#A1A1AA'                  // zinc
+      };
+      const fallback=['#0369A1','#155E75','#312E81','#4338CA','#0F766E','#A16207','#9F1239','#3F6212'];
+      let fbIdx=0;
+      const colorOf=sec=>palette[sec]||fallback[fbIdx++%fallback.length];
+      // Datasets: sector más grande primero (fill:'origin'), siguientes fill:'-1', cash al final arriba
+      const datasets=[];
+      orderedSecs.forEach((sec,i)=>{
+        const data=perDate.map(d=>+(d.secPct[sec]||0).toFixed(3));
+        const col=colorOf(sec);
+        datasets.push({
+          label:sec,data,
+          borderColor:col,backgroundColor:col+'CC',
+          borderWidth:1,pointRadius:0,tension:0,
+          fill:i===0?'origin':'-1',stack:'a'
+        });
+      });
+      // Cash arriba del stack
+      datasets.push({
+        label:'Efectivo',
+        data:perDate.map(d=>+d.cashPct.toFixed(3)),
+        borderColor:'#475467',backgroundColor:'rgba(71,84,103,.85)',
+        borderWidth:1,pointRadius:0,tension:0,
+        fill:datasets.length===0?'origin':'-1',stack:'a'
+      });
+      const labelsX=perDate.map(d=>d.date);
+      const cA=new Chart(ctxA,{
+        type:'line',
+        data:{labels:labelsX,datasets},
+        options:{
+          responsive:true,maintainAspectRatio:false,
+          interaction:{mode:'index',intersect:false},
+          plugins:{
+            legend:{position:'bottom',labels:{color:'#475467',font:{size:11,family:'Geist'},boxWidth:10,boxHeight:10,padding:8}},
+            tooltip:{backgroundColor:'#fff',titleColor:'#101828',bodyColor:'#475467',borderColor:'#E4E7EC',borderWidth:1,padding:10,
+              itemSort:(a,b)=>b.parsed.y-a.parsed.y,
+              callbacks:{label:c=>`${c.dataset.label}: ${c.parsed.y.toFixed(2)}%`}}
+          },
+          scales:{
+            x:{ticks:{color:'#98A2B3',font:{size:11},maxTicksLimit:10},grid:{color:'rgba(0,0,0,.04)'}},
+            y:{stacked:true,min:0,max:100,
+              ticks:{color:'#98A2B3',font:{size:11},callback:v=>v.toFixed(0)+'%',stepSize:20},
+              grid:{color:'rgba(0,0,0,.04)'},
+              title:{display:true,text:'% del portafolio',color:'#98A2B3',font:{size:10}}
+            }
+          }
+        }
+      });
+      chartInst.push(cA);
+    }
   }
 }
 
@@ -4438,10 +4510,15 @@ function _serieTradePrice(ticker, fechaCompra, fechaVenta){
 }
 
 function pgBestWorst(){
+  const FASE_COMP='2026-04-17';
   const trades = buildTrades();
-  const cerradas = trades.cerradas || [];
+  // Trades CERRADOS durante la fase competitiva (fechaVenta >= 17 abril).
+  // Incluye posiciones entregadas por BBVA que el equipo decidió VENDER en
+  // fase competitiva — la decisión de salida sí es del equipo.
+  // (Se excluyen sólo trades cuya venta fue ANTES del 17 abril.)
+  const cerradas = (trades.cerradas || []).filter(t => (t.fechaVenta||'') >= FASE_COMP);
   if(!cerradas.length){
-    return`<div class="card"><div class="empty" style="padding:40px;text-align:center;color:var(--txt3)">Sin operaciones cerradas para analizar. Cuando vendas posiciones, aparecerán aquí los mejores y peores trades.</div></div>`;
+    return`<div class="card"><div class="empty" style="padding:40px;text-align:center;color:var(--txt3)">Sin trades cerrados durante la fase competitiva (desde el 17 abril 2026). Cuando vendas posiciones en este período, aparecerán aquí los mejores y peores.</div></div>`;
   }
   const enriched = cerradas.map(_enrichClosedTrade);
   // Ordenar por ganancia relativa
@@ -4570,8 +4647,9 @@ function pgBestWorst(){
 }
 
 function initBestWorst(){
+  const FASE_COMP='2026-04-17';
   const trades = buildTrades();
-  const cerradas = trades.cerradas || [];
+  const cerradas = (trades.cerradas || []).filter(t => (t.fechaVenta||'') >= FASE_COMP);
   if(!cerradas.length) return;
   const enriched = cerradas.map(_enrichClosedTrade);
   const byRel = [...enriched].sort((a,b)=> (b.rendRel??-Infinity) - (a.rendRel??-Infinity));
