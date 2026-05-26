@@ -4653,17 +4653,24 @@ function initResumenSemanal(){ renderResumenSemanal(); }
 // Identifica mejor y peor operación cerrada por GANANCIA RELATIVA (alpha)
 // contra MEXTRAC09 durante el período de tenencia
 // ═══════════════════════════════════════════════════════════════════════════
-// Agrupa todas las órdenes de un ticker en CICLOS DE POSICIÓN (desde que el
-// ticker arranca con 0 hasta que regresa a 0). Solo emite "trade cerrado"
-// cuando la posición efectivamente cerró — las ventas parciales quedan
-// agregadas dentro del mismo ciclo (precio compra/venta = promedio ponderado).
-// Si después de la última venta queda posición abierta, NO se emite trade.
-function _buildClosedCycles(){
+// Construye TODOS los ciclos de posición: cerrados (regresaron a 0) y abiertos
+// (siguen vivos en cartera, evaluados al precio actual). Las ventas parciales
+// quedan agregadas en su ciclo.
+//
+// Ciclo CERRADO: titulos = total vendido, precioVenta = avg ponderado de ventas,
+//                pnl = proceeds − cost, esAbierta = false
+// Ciclo ABIERTO: titulos = total comprado en el ciclo (sold + remaining),
+//                precioVenta = (proceeds vendidos + remaining × precioActual) / total
+//                pnl = (proceeds + remaining × precioActual) − cost  ← realized + unrealized
+//                titulosAbiertos = los que aún tengo, esAbierta = true
+function _buildAllLifecycles(){
   const byTicker={};
   for(const o of (S.ordenes||[])){
     if(!byTicker[o.ticker])byTicker[o.ticker]={ordenes:[]};
     byTicker[o.ticker].ordenes.push({...o});
   }
+  const posNow = buildPos();
+  const todayStr = today();
   const cycles=[];
   for(const ticker in byTicker){
     const ords=byTicker[ticker].ordenes.slice().sort((a,b)=>a.fecha.localeCompare(b.fecha));
@@ -4675,26 +4682,56 @@ function _buildClosedCycles(){
         }
         if(cur){cur.buyShares+=o.titulos;cur.buyCost+=o.titulos*o.precio;}
         netShares+=o.titulos;
-      }else{ // venta
+      }else{
         if(cur){cur.sellShares+=o.titulos;cur.sellProceeds+=o.titulos*o.precio;cur.fechaVenta=o.fecha;}
         netShares-=o.titulos;
         if(netShares<=0&&cur){
-          // ciclo cerrado — emite trade compuesto
+          // CICLO CERRADO
           const titulos=cur.sellShares;
           const precioCompra=cur.buyShares>0?cur.buyCost/cur.buyShares:0;
           const precioVenta=cur.sellShares>0?cur.sellProceeds/cur.sellShares:0;
           const pnl=cur.sellProceeds-cur.buyCost;
           const rend=precioCompra>0?(precioVenta-precioCompra)/precioCompra*100:0;
           const pctPortafolio=S.capitalInicial>0?cur.buyCost/S.capitalInicial*100:0;
-          cycles.push({ticker,fechaCompra:cur.fechaCompra,fechaVenta:cur.fechaVenta,titulos,precioCompra,precioVenta,pnl,rend,pctPortafolio});
+          cycles.push({ticker,fechaCompra:cur.fechaCompra,fechaVenta:cur.fechaVenta,titulos,precioCompra,precioVenta,pnl,rend,pctPortafolio,esAbierta:false});
           cur=null;
-          if(netShares<0)netShares=0; // robustez
+          if(netShares<0)netShares=0;
         }
       }
     }
-    // Si cur != null al final → posición sigue abierta, no emitir trade
+    // Posición todavía viva → emite CICLO ABIERTO marcado al precio actual
+    if(cur && netShares>0){
+      const precioActual = posNow[ticker]?.precioActual || 0;
+      const precioCompra = cur.buyShares>0 ? cur.buyCost/cur.buyShares : 0;
+      // Efectivo si cerráramos hoy: proceeds realizados + remaining × precio actual
+      const proceedsEf = cur.sellProceeds + netShares*precioActual;
+      const precioVentaEf = cur.buyShares>0 ? proceedsEf/cur.buyShares : 0;
+      const pnlTotal = proceedsEf - cur.buyCost;
+      const rend = precioCompra>0 ? (precioVentaEf-precioCompra)/precioCompra*100 : 0;
+      const pctPortafolio = S.capitalInicial>0 ? cur.buyCost/S.capitalInicial*100 : 0;
+      cycles.push({
+        ticker,
+        fechaCompra: cur.fechaCompra,
+        fechaVenta: todayStr,
+        titulos: cur.buyShares,
+        titulosAbiertos: netShares,
+        precioCompra,
+        precioVenta: precioVentaEf,
+        precioActual,
+        pnl: pnlTotal,
+        rend,
+        pctPortafolio,
+        esAbierta: true
+      });
+    }
   }
+  // Más recientes primero
   return cycles.sort((a,b)=>b.fechaVenta.localeCompare(a.fechaVenta));
+}
+
+// Helper retrocompatible — algunos lugares ya usan esto, solo retornamos cerrados
+function _buildClosedCycles(){
+  return _buildAllLifecycles().filter(c=>!c.esAbierta);
 }
 
 function _enrichClosedTrade(t){
@@ -4765,13 +4802,14 @@ function _serieTradePrice(ticker, fechaCompra, fechaVenta){
 
 function pgBestWorst(){
   const FASE_COMP='2026-04-17';
-  // Usa CICLOS DE POSICIÓN (no FIFO lots): solo emite trade cerrado cuando
-  // la posición regresa a 0. Ventas parciales quedan agregadas en su ciclo.
-  const cycles = _buildClosedCycles();
-  // Trades CERRADOS durante la fase competitiva (fechaVenta >= 17 abril).
+  // Incluye ciclos ABIERTOS (vivos en cartera, marcados al precio actual)
+  // Y CERRADOS (regresaron a 0). Ventas parciales quedan agregadas en su ciclo.
+  const cycles = _buildAllLifecycles();
+  // Trades cuya fechaVenta (real para cerrados, hoy para abiertos) >= 17 abril.
+  // Los ciclos abiertos siempre pasan; los cerrados solo si la salida fue en fase competitiva.
   const cerradas = cycles.filter(t => (t.fechaVenta||'') >= FASE_COMP);
   if(!cerradas.length){
-    return`<div class="card"><div class="empty" style="padding:40px;text-align:center;color:var(--txt3)">Sin posiciones <b>completamente cerradas</b> durante la fase competitiva (desde el 17 abril 2026). Las ventas parciales no cuentan hasta que la posición regrese a cero.</div></div>`;
+    return`<div class="card"><div class="empty" style="padding:40px;text-align:center;color:var(--txt3)">Sin posiciones evaluables durante la fase competitiva (desde el 17 abril 2026).</div></div>`;
   }
   // Enriquecer y etiquetar con sleeve según la fecha de venta (decisión efectiva del equipo)
   const enriched = cerradas.map(_enrichClosedTrade).map(t=>({...t, sleeve: getSleeveOnDate(t.ticker, t.fechaVenta)}));
@@ -4806,13 +4844,21 @@ function pgBestWorst(){
 
   // canvasId único por (sleeve, sign) para que coexistan 4 charts
   const tradeCard = (label, t, color, canvasId, mode) => {
-    if(!t) return `<div class="card" style="padding:16px"><div class="empty" style="text-align:center;color:var(--txt3);padding:60px 20px">Sin trades cerrados en este sleeve durante la fase competitiva</div></div>`;
+    if(!t) return `<div class="card" style="padding:16px"><div class="empty" style="text-align:center;color:var(--txt3);padding:60px 20px">Sin trades evaluables en este sleeve durante la fase competitiva</div></div>`;
     const isBest = mode==='best';
+    const abierta = !!t.esAbierta;
+    const statusBadge = abierta
+      ? `<span style="margin-left:auto;font-size:10px;padding:3px 8px;border-radius:99px;background:rgba(255,255,255,.18);color:#fff;font-weight:600;letter-spacing:.04em;border:1px solid rgba(255,255,255,.3)">ABIERTA</span>`
+      : `<span style="margin-left:auto;font-size:10px;padding:3px 8px;border-radius:99px;background:rgba(255,255,255,.12);color:#fff;font-weight:600;letter-spacing:.04em">CERRADA</span>`;
+    const labelPrecioVenta = abierta ? 'Precio actual' : 'Precio venta';
+    const labelDias        = abierta ? 'Días abierta' : 'Días en posición';
+    const labelGanancia    = isBest ? (abierta?'Ganancia rel. (sin cerrar)':'Ganancia relativa') : (abierta?'Pérdida rel. (sin cerrar)':'Pérdida relativa');
     return `
     <div class="card" style="padding:0;overflow:hidden;border-top:3px solid ${color}">
       <div style="padding:12px 16px;background:${color};color:#fff;display:flex;align-items:center;gap:10px">
         <div style="font-size:13px;font-weight:700;letter-spacing:.04em;text-transform:uppercase">${label}</div>
         <div style="font-size:14px;font-weight:600;opacity:.95">${t.ticker} <span style="opacity:.75;font-size:11px;font-weight:400">· ${tickerName(t.ticker)}</span></div>
+        ${statusBadge}
       </div>
       <div style="padding:12px 16px">
         <div style="position:relative;height:180px;margin-bottom:12px"><canvas id="${canvasId}" style="width:100%!important;height:180px!important"></canvas></div>
@@ -4822,21 +4868,28 @@ function pgBestWorst(){
             <div class="mono" style="font-size:14px;font-weight:700">$${f2(t.precioCompra,4)}</div>
           </div>
           <div>
-            <div style="color:var(--txt3);font-size:10.5px;text-transform:uppercase;letter-spacing:.04em;margin-bottom:2px">Precio venta</div>
-            <div class="mono" style="font-size:14px;font-weight:700">$${f2(t.precioVenta,4)}</div>
+            <div style="color:var(--txt3);font-size:10.5px;text-transform:uppercase;letter-spacing:.04em;margin-bottom:2px">${labelPrecioVenta}</div>
+            <div class="mono" style="font-size:14px;font-weight:700">$${f2(abierta?(t.precioActual||t.precioVenta):t.precioVenta,4)}</div>
           </div>
           <div>
-            <div style="color:var(--txt3);font-size:10.5px;text-transform:uppercase;letter-spacing:.04em;margin-bottom:2px">Días en posición</div>
+            <div style="color:var(--txt3);font-size:10.5px;text-transform:uppercase;letter-spacing:.04em;margin-bottom:2px">${labelDias}</div>
             <div class="mono" style="font-size:14px;font-weight:700">${t.dias!=null?t.dias:'—'}</div>
           </div>
           <div>
-            <div style="color:var(--txt3);font-size:10.5px;text-transform:uppercase;letter-spacing:.04em;margin-bottom:2px">${isBest?'Ganancia':'Pérdida'} relativa</div>
+            <div style="color:var(--txt3);font-size:10.5px;text-transform:uppercase;letter-spacing:.04em;margin-bottom:2px">${labelGanancia}</div>
             <div class="mono" style="font-size:16px;font-weight:800;color:${color}">${fp(t.rendRel)}</div>
           </div>
         </div>
         <div style="margin-top:10px;padding:7px 10px;background:var(--bg3);border-radius:6px;font-size:10.5px;color:var(--txt2);line-height:1.55">
-          ${t.esHeredada?`<div><b>Compra original:</b> ${t._origFechaCompra} (heredada) · <b>Inicio fase:</b> ${t.fechaCompra} ($${f2(t.precioCompra,4)}) · <b>Venta:</b> ${t.fechaVenta}</div>`:`<div><b>Compra:</b> ${t.fechaCompra} · <b>Venta:</b> ${t.fechaVenta}</div>`}
-          <div><b>Rend. abs.:</b> ${fp(t.rend)} · <b>Rend. MEXTRAC:</b> ${t.rendBench!=null?fp(t.rendBench):'—'} · <b>P&amp;L:</b> ${fm(t.pnl)}</div>
+          ${abierta
+            ? `<div><b>Compra:</b> ${t.fechaCompra}${t.esHeredada?' <span style="color:var(--amb)" title="Heredada">†</span>':''} · <b>A hoy (${t.fechaVenta}):</b> $${f2(t.precioActual||t.precioVenta,4)}${t.titulosAbiertos&&t.titulosAbiertos!==t.titulos?` · <b>Aún en posición:</b> ${t.titulosAbiertos.toLocaleString('es-MX')} de ${t.titulos.toLocaleString('es-MX')}`:''}</div>
+               <div><b>Rend. abs.:</b> ${fp(t.rend)} · <b>Rend. MEXTRAC:</b> ${t.rendBench!=null?fp(t.rendBench):'—'} · <b>P&amp;L (real. + s/real.):</b> ${fm(t.pnl)}</div>`
+            : (t.esHeredada
+              ? `<div><b>Compra original:</b> ${t._origFechaCompra} (heredada) · <b>Inicio fase:</b> ${t.fechaCompra} ($${f2(t.precioCompra,4)}) · <b>Venta:</b> ${t.fechaVenta}</div>
+                 <div><b>Rend. abs.:</b> ${fp(t.rend)} · <b>Rend. MEXTRAC:</b> ${t.rendBench!=null?fp(t.rendBench):'—'} · <b>P&amp;L realizado:</b> ${fm(t.pnl)}</div>`
+              : `<div><b>Compra:</b> ${t.fechaCompra} · <b>Venta:</b> ${t.fechaVenta}</div>
+                 <div><b>Rend. abs.:</b> ${fp(t.rend)} · <b>Rend. MEXTRAC:</b> ${t.rendBench!=null?fp(t.rendBench):'—'} · <b>P&amp;L realizado:</b> ${fm(t.pnl)}</div>`)
+          }
         </div>
       </div>
     </div>`;
@@ -4848,42 +4901,46 @@ function pgBestWorst(){
     if(s==='pasivo') return '<span style="font-size:10px;padding:2px 6px;border-radius:99px;background:rgba(14,165,233,.14);color:#0369A1;font-weight:600">Pasivo</span>';
     return '<span style="font-size:10px;color:var(--txt3)">—</span>';
   };
+  const statusBadge = abierta => abierta
+    ? '<span style="font-size:9.5px;padding:2px 5px;border-radius:99px;background:rgba(14,165,233,.16);color:#0369A1;font-weight:600">Abierta</span>'
+    : '<span style="font-size:9.5px;padding:2px 5px;border-radius:99px;background:rgba(101,108,131,.14);color:var(--txt2);font-weight:600">Cerrada</span>';
 
   return `
   <div class="sg4">
-    ${stCard(enriched.length.toString(),'Trades cerrados','Total operaciones realizadas','stat-acc')}
-    ${stCard(fp(relProm),'Ganancia rel. promedio','Alpha promedio por trade',relProm>=0?'stat-grn':'stat-red')}
-    ${stCard(f2(hitRatio)+'%','Hit ratio','% trades con alpha > 0',hitRatio>=50?'stat-grn':'stat-red')}
+    ${stCard(enriched.length.toString(),'Posiciones evaluables','Cerradas (en fase comp.) + abiertas','stat-acc')}
+    ${stCard(fp(relProm),'Ganancia rel. promedio','Alpha promedio por posición',relProm>=0?'stat-grn':'stat-red')}
+    ${stCard(f2(hitRatio)+'%','Hit ratio','% posiciones con alpha > 0',hitRatio>=50?'stat-grn':'stat-red')}
     ${stCard(fp(totalAlpha),'Alpha total ponderado','Σ(rendRel × %portafolio)',totalAlpha>=0?'stat-grn':'stat-red')}
   </div>
 
   <div class="card" style="padding:12px 16px;margin-bottom:14px;background:rgba(12,74,110,.04);border-left:3px solid #0C4A6E">
     <div style="font-size:12px;color:var(--txt2);line-height:1.55">
-      <b style="color:#0C4A6E">Sleeve Activo</b> (${sortedActivo.length} trade${sortedActivo.length===1?'':'s'}) y <b style="color:#0369A1">Sleeve Pasivo</b> (${sortedPasivo.length} trade${sortedPasivo.length===1?'':'s'}) — clasificación por ticker en la fecha de venta (cambia el ${FECHA_REBALANCEO} con el rebalanceo). Mejor/peor se eligen <b>por sleeve</b> usando alpha (rend. vs MEXTRAC desde 17 abr).
+      Mejor/peor se eligen <b>por sleeve</b> usando alpha vs MEXTRAC (desde 17 abr). Se evalúan tanto posiciones <b style="color:#0369A1">abiertas</b> (marcadas al precio actual, P&amp;L combina realizado + sin realizar) como <b style="color:var(--txt2)">cerradas</b> (ciclo completo). Las ventas parciales no cuentan como trade independiente — quedan agregadas en su ciclo.
     </div>
   </div>
 
-  <div class="sec-h" style="margin-bottom:8px"><div class="sec-h-bar" style="background:#0C4A6E"></div><div class="sec-h-text">Sleeve Activo</div></div>
+  <div class="sec-h" style="margin-bottom:8px"><div class="sec-h-bar" style="background:#0C4A6E"></div><div class="sec-h-text">Sleeve Activo</div><span class="sec-h-sub">${sortedActivo.length} posición${sortedActivo.length===1?'':'es'} · ${sortedActivo.filter(t=>t.esAbierta).length} abierta${sortedActivo.filter(t=>t.esAbierta).length===1?'':'s'} + ${sortedActivo.filter(t=>!t.esAbierta).length} cerrada${sortedActivo.filter(t=>!t.esAbierta).length===1?'':'s'}</span></div>
   <div style="display:grid;grid-template-columns:1fr 1fr;gap:14px;margin-bottom:18px">
     ${tradeCard('Best Trade — Activo',  bestActivo,  '#027A48', 'bw-chart-best-activo',  'best')}
-    ${tradeCard(onlyOneActivo?'Único trade — Activo':'Worst Trade — Activo', onlyOneActivo?null:worstActivo, '#B42318', 'bw-chart-worst-activo', 'worst')}
+    ${tradeCard(onlyOneActivo?'Único — Activo':'Worst Trade — Activo', onlyOneActivo?null:worstActivo, '#B42318', 'bw-chart-worst-activo', 'worst')}
   </div>
 
-  <div class="sec-h" style="margin-bottom:8px"><div class="sec-h-bar" style="background:#0369A1"></div><div class="sec-h-text">Sleeve Pasivo</div></div>
+  <div class="sec-h" style="margin-bottom:8px"><div class="sec-h-bar" style="background:#0369A1"></div><div class="sec-h-text">Sleeve Pasivo</div><span class="sec-h-sub">${sortedPasivo.length} posición${sortedPasivo.length===1?'':'es'} · ${sortedPasivo.filter(t=>t.esAbierta).length} abierta${sortedPasivo.filter(t=>t.esAbierta).length===1?'':'s'} + ${sortedPasivo.filter(t=>!t.esAbierta).length} cerrada${sortedPasivo.filter(t=>!t.esAbierta).length===1?'':'s'}</span></div>
   <div style="display:grid;grid-template-columns:1fr 1fr;gap:14px;margin-bottom:18px">
     ${tradeCard('Best Trade — Pasivo',  bestPasivo,  '#027A48', 'bw-chart-best-pasivo',  'best')}
-    ${tradeCard(onlyOnePasivo?'Único trade — Pasivo':'Worst Trade — Pasivo', onlyOnePasivo?null:worstPasivo, '#B42318', 'bw-chart-worst-pasivo', 'worst')}
+    ${tradeCard(onlyOnePasivo?'Único — Pasivo':'Worst Trade — Pasivo', onlyOnePasivo?null:worstPasivo, '#B42318', 'bw-chart-worst-pasivo', 'worst')}
   </div>
 
   <div class="sg2">
     <div class="card">
-      <div class="sec-h"><div class="sec-h-bar" style="background:var(--grn)"></div><div class="sec-h-text">Top 5 trades (mayor alpha — global)</div></div>
+      <div class="sec-h"><div class="sec-h-bar" style="background:var(--grn)"></div><div class="sec-h-text">Top 5 posiciones (mayor alpha — global)</div></div>
       <div class="tw"><table><thead><tr>
-        <th>Ticker</th><th>Sleeve</th><th>Inicio*</th><th>Venta</th><th style="text-align:right">Rend.</th><th style="text-align:right">Rend. MEX</th><th style="text-align:right">Alpha</th>
+        <th>Ticker</th><th>Sleeve</th><th>Status</th><th>Inicio*</th><th>Salida/Hoy</th><th style="text-align:right">Rend.</th><th style="text-align:right">Rend. MEX</th><th style="text-align:right">Alpha</th>
       </tr></thead><tbody>
         ${top5.map(t=>`<tr>
           <td class="lbl">${t.ticker}</td>
           <td>${sleeveBadge(t.sleeve)}</td>
+          <td>${statusBadge(t.esAbierta)}</td>
           <td class="mono">${t.fechaCompra}${t.esHeredada?'<sup style="color:var(--amb)" title="Heredada — métricas desde 17 abril">†</sup>':''}</td>
           <td class="mono">${t.fechaVenta}</td>
           <td class="mono ${cc(t.rend)}" style="text-align:right">${fp(t.rend)}</td>
@@ -4893,13 +4950,14 @@ function pgBestWorst(){
       </tbody></table></div>
     </div>
     <div class="card">
-      <div class="sec-h"><div class="sec-h-bar" style="background:var(--red)"></div><div class="sec-h-text">Bottom 5 trades (menor alpha)</div></div>
+      <div class="sec-h"><div class="sec-h-bar" style="background:var(--red)"></div><div class="sec-h-text">Bottom 5 posiciones (menor alpha)</div></div>
       <div class="tw"><table><thead><tr>
-        <th>Ticker</th><th>Sleeve</th><th>Inicio*</th><th>Venta</th><th style="text-align:right">Rend.</th><th style="text-align:right">Rend. MEX</th><th style="text-align:right">Alpha</th>
+        <th>Ticker</th><th>Sleeve</th><th>Status</th><th>Inicio*</th><th>Salida/Hoy</th><th style="text-align:right">Rend.</th><th style="text-align:right">Rend. MEX</th><th style="text-align:right">Alpha</th>
       </tr></thead><tbody>
         ${bot5.map(t=>`<tr>
           <td class="lbl">${t.ticker}</td>
           <td>${sleeveBadge(t.sleeve)}</td>
+          <td>${statusBadge(t.esAbierta)}</td>
           <td class="mono">${t.fechaCompra}${t.esHeredada?'<sup style="color:var(--amb)" title="Heredada — métricas desde 17 abril">†</sup>':''}</td>
           <td class="mono">${t.fechaVenta}</td>
           <td class="mono ${cc(t.rend)}" style="text-align:right">${fp(t.rend)}</td>
@@ -4911,10 +4969,10 @@ function pgBestWorst(){
   </div>
 
   <div class="card">
-    <div class="sec-h"><div class="sec-h-bar" style="background:var(--accent)"></div><div class="sec-h-text">Todas las operaciones cerradas</div><span class="sec-h-sub">Ordenadas por alpha (rend. relativo desde inicio efectivo). <sup style="color:var(--amb)">†</sup> = posición heredada — métricas medidas desde 17 abril</span></div>
+    <div class="sec-h"><div class="sec-h-bar" style="background:var(--accent)"></div><div class="sec-h-text">Todas las posiciones evaluables</div><span class="sec-h-sub">Ordenadas por alpha (rend. relativo desde inicio efectivo). Incluye abiertas (al precio actual) y cerradas (ciclo completo). <sup style="color:var(--amb)">†</sup> = posición heredada — métricas desde 17 abril</span></div>
     <div class="tw"><table><thead><tr>
-      <th>#</th><th>Ticker</th><th>Sleeve</th><th>Inicio*</th><th>Venta</th><th style="text-align:right">Días</th>
-      <th style="text-align:right">P. inicio</th><th style="text-align:right">P. venta</th>
+      <th>#</th><th>Ticker</th><th>Sleeve</th><th>Status</th><th>Inicio*</th><th>Salida/Hoy</th><th style="text-align:right">Días</th>
+      <th style="text-align:right">P. inicio</th><th style="text-align:right">P. salida/actual</th>
       <th style="text-align:right">P&amp;L</th><th style="text-align:right">Rend. abs.</th>
       <th style="text-align:right">Rend. MEX</th><th style="text-align:right">Alpha</th>
       <th style="text-align:right">% Portaf.</th>
@@ -4923,11 +4981,12 @@ function pgBestWorst(){
         <td class="mono">${i+1}</td>
         <td class="lbl">${t.ticker}</td>
         <td>${sleeveBadge(t.sleeve)}</td>
+        <td>${statusBadge(t.esAbierta)}</td>
         <td class="mono">${t.fechaCompra}${t.esHeredada?'<sup style="color:var(--amb)" title="Heredada — métricas desde 17 abril">†</sup>':''}</td>
         <td class="mono">${t.fechaVenta}</td>
         <td class="mono" style="text-align:right">${t.dias!=null?t.dias:'—'}</td>
         <td class="mono" style="text-align:right">$${f2(t.precioCompra,4)}</td>
-        <td class="mono" style="text-align:right">$${f2(t.precioVenta,4)}</td>
+        <td class="mono" style="text-align:right">$${f2(t.esAbierta?(t.precioActual||t.precioVenta):t.precioVenta,4)}</td>
         <td class="mono ${cc(t.pnl)}" style="text-align:right">${fm(t.pnl)}</td>
         <td class="mono ${cc(t.rend)}" style="text-align:right">${fp(t.rend)}</td>
         <td class="mono ${t.rendBench!=null?cc(t.rendBench):'d'}" style="text-align:right">${t.rendBench!=null?fp(t.rendBench):'—'}</td>
@@ -4940,7 +4999,7 @@ function pgBestWorst(){
 
 function initBestWorst(){
   const FASE_COMP='2026-04-17';
-  const cycles = _buildClosedCycles();
+  const cycles = _buildAllLifecycles();
   const cerradas = cycles.filter(t => (t.fechaVenta||'') >= FASE_COMP);
   if(!cerradas.length) return;
   const enriched = cerradas.map(_enrichClosedTrade).map(t=>({...t, sleeve:getSleeveOnDate(t.ticker, t.fechaVenta)}));
@@ -4956,15 +5015,17 @@ function initBestWorst(){
     const ctx = document.getElementById(canvasId);
     if(!ctx || !t) return;
     Chart.getChart(ctx)?.destroy();
+    const endDotColor = t.esAbierta ? '#0EA5E9' : '#B42318'; // azul = abierta, rojo = cerrada
     const serie = _serieTradePrice(t.ticker, t.fechaCompra, t.fechaVenta);
     if(!serie || serie.length<2){
       const labels = [t.fechaCompra, t.fechaVenta];
-      const data   = [t.precioCompra, t.precioVenta];
+      const data   = [t.precioCompra, t.esAbierta?(t.precioActual||t.precioVenta):t.precioVenta];
       const c = new Chart(ctx,{
         type:'line',
         data:{labels,datasets:[{label:t.ticker,data,borderColor:lineColor,
-          backgroundColor:lineColor+'22',borderWidth:2.5,pointRadius:5,
-          pointBackgroundColor:lineColor,tension:0,fill:true}]},
+          backgroundColor:lineColor+'22',borderWidth:2.5,
+          pointRadius:[5,5],pointBackgroundColor:['#027A48',endDotColor],pointBorderColor:['#027A48',endDotColor],
+          tension:0,fill:true}]},
         options:{responsive:true,maintainAspectRatio:false,
           plugins:{legend:{display:false},tooltip:{enabled:true}},
           scales:{
@@ -4980,7 +5041,7 @@ function initBestWorst(){
     const data   = serie.map(p=>p.price);
     const pointBg = serie.map((p,i)=>{
       if(i===0) return '#027A48';
-      if(i===serie.length-1) return '#B42318';
+      if(i===serie.length-1) return endDotColor;
       return 'transparent';
     });
     const pointRad = serie.map((p,i)=>(i===0||i===serie.length-1)?5:0);
