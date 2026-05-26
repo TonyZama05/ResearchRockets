@@ -278,6 +278,8 @@ canvas{display:block;width:100%!important}
 const PRICE_DB={
 'AC':{'2026-04-01':209.5,'2026-04-06':208.63,'2026-04-07':205.15,'2026-04-08':210.34,'2026-04-09':212.72,'2026-04-10':214.03,'2026-04-13':212.4,'2026-04-14':207.82,'2026-04-15':205.73},
 'NAFTRAC':{"2026-04-17":69.51,"2026-04-20":69.79,"2026-04-21":68.52,"2026-04-22":68.66,"2026-04-23":68.45,"2026-04-24":69.05,"2026-04-27":67.82,"2026-04-28":67.09,"2026-04-29":66.82,"2026-04-30":67.57,"2026-05-04":67.0,"2026-05-05":68.31,"2026-05-06":69.57,"2026-05-07":69.74,"2026-05-08":69.62,"2026-05-11":70.02,"2026-05-12":69.89,"2026-05-13":70.07,"2026-05-14":69.09,"2026-05-15":67.86,"2026-05-18":68.29,"2026-05-19":68.44,"2026-05-20":68.81,"2026-05-21":68.31,"2026-05-22":68.26,"2026-05-25":68.19},
+'EWW':{"2026-04-16":1361.607,"2026-04-17":1372.5728,"2026-04-20":1380.846,"2026-04-21":1352.5502,"2026-04-22":1357.7876,"2026-04-23":1351.0714,"2026-04-24":1363.5823,"2026-04-27":1339.923,"2026-04-28":1325.4071,"2026-04-29":1321.8995,"2026-04-30":1335.0443,"2026-05-01":1337.0611,"2026-05-04":1325.3827,"2026-05-05":1348.0791,"2026-05-06":1373.0505,"2026-05-07":1377.4148,"2026-05-08":1370.2439,"2026-05-11":1378.6553,"2026-05-12":1377.5587,"2026-05-13":1378.9593,"2026-05-14":1361.6102,"2026-05-15":1338.5898,"2026-05-18":1345.6534,"2026-05-19":1350.1886,"2026-05-20":1357.028,"2026-05-21":1346.3088,"2026-05-22":1345.5513},
+'VMEX':{"2026-04-16":57.75,"2026-04-17":58.24,"2026-04-20":58.32,"2026-04-21":57.37,"2026-04-22":57.61,"2026-04-23":57.55,"2026-04-24":58.02,"2026-04-27":57.1,"2026-04-28":56.53,"2026-04-29":56.35,"2026-04-30":56.76,"2026-05-04":56.51,"2026-05-05":57.58,"2026-05-06":58.6,"2026-05-07":58.74,"2026-05-08":58.64,"2026-05-11":58.93,"2026-05-12":58.5,"2026-05-13":58.96,"2026-05-14":57.96,"2026-05-15":57.26,"2026-05-18":57.56,"2026-05-19":57.61,"2026-05-20":58.04,"2026-05-21":57.54,"2026-05-22":57.61,"2026-05-25":57.65,"2026-05-26":58.35},
 'AGUA':{'2026-04-01':11.99,'2026-04-06':12.07,'2026-04-07':12.15,'2026-04-08':12.32,'2026-04-09':12.4,'2026-04-10':12.43,'2026-04-13':12.5,'2026-04-14':12.54,'2026-04-15':12.58},
 'ALPEKA':{'2026-04-01':10.91,'2026-04-06':10.82,'2026-04-07':10.81,'2026-04-08':10.46,'2026-04-09':10.52,'2026-04-10':10.29,'2026-04-13':10.8,'2026-04-14':10.57,'2026-04-15':10.7},
 'ALSEA':{'2026-04-01':58.02,'2026-04-06':57.49,'2026-04-07':57.61,'2026-04-08':57.31,'2026-04-09':55.9,'2026-04-10':55.46,'2026-04-13':54.78,'2026-04-14':54.27,'2026-04-15':53.65},
@@ -5077,18 +5079,21 @@ function initBestWorst(){
 function pgVsBenchmarks(){
   const m = calcMetrics();
   const hist = m.hist || [];
-  // Construye serie alineada: solo días donde fondo, MEXTRAC09 y NAFTRAC tienen dato
+  // Construye serie alineada: solo días donde TODOS los instrumentos tienen dato
   const aligned = [];
   for(const h of hist){
     const naf = localPrice('NAFTRAC', h.date);
-    if(h.totalFondo>0 && h.mexPrice && naf){
-      aligned.push({date:h.date, fondo:h.totalFondo, mex:h.mexPrice, naf});
+    const eww = localPrice('EWW', h.date);
+    const vmex = localPrice('VMEX', h.date);
+    if(h.totalFondo>0 && h.mexPrice && naf && eww && vmex){
+      aligned.push({date:h.date, fondo:h.totalFondo, mex:h.mexPrice, naf, eww, vmex});
     }
   }
   if(aligned.length<2){
+    const counts = ['NAFTRAC','EWW','VMEX'].map(t=>`${t}: ${Object.keys(PRICE_DB[t]||{}).length} días`).join(' · ');
     return `<div class="card"><div class="empty" style="padding:40px;text-align:center;color:var(--txt3)">
-      Datos insuficientes — se necesita al menos 2 días donde fondo, MEXTRAC09 y NAFTRAC tengan precio.
-      <div style="margin-top:8px;font-size:11px">NAFTRAC data cargada: ${Object.keys(PRICE_DB.NAFTRAC||{}).length} días (${Object.keys(PRICE_DB.NAFTRAC||{}).slice(0,1)[0]||'—'} a ${Object.keys(PRICE_DB.NAFTRAC||{}).slice(-1)[0]||'—'})</div>
+      Datos insuficientes — se necesita al menos 2 días donde fondo, MEXTRAC09, NAFTRAC, EWW y VMEX tengan precio.
+      <div style="margin-top:8px;font-size:11px">${counts}</div>
     </div></div>`;
   }
   // Normaliza a base 100 en el primer día disponible
@@ -5096,59 +5101,81 @@ function pgVsBenchmarks(){
   const fondoIdx = aligned.map(a => a.fondo/b.fondo*100);
   const mexIdx   = aligned.map(a => a.mex  /b.mex  *100);
   const nafIdx   = aligned.map(a => a.naf  /b.naf  *100);
+  const ewwIdx   = aligned.map(a => a.eww  /b.eww  *100);
+  const vmexIdx  = aligned.map(a => a.vmex /b.vmex *100);
   const last = aligned.length-1;
   const rendFondo = fondoIdx[last]-100;
   const rendMex   = mexIdx[last]-100;
   const rendNaf   = nafIdx[last]-100;
+  const rendEww   = ewwIdx[last]-100;
+  const rendVmex  = vmexIdx[last]-100;
   const alphaMex  = rendFondo - rendMex;
   const alphaNaf  = rendFondo - rendNaf;
-  const alphaMexSerie = aligned.map((a,i) => (fondoIdx[i]-100) - (mexIdx[i]-100));
-  const alphaNafSerie = aligned.map((a,i) => (fondoIdx[i]-100) - (nafIdx[i]-100));
+  const alphaEww  = rendFondo - rendEww;
+  const alphaVmex = rendFondo - rendVmex;
+  const alphaMexSerie  = aligned.map((a,i) => (fondoIdx[i]-100) - (mexIdx[i]-100));
+  const alphaNafSerie  = aligned.map((a,i) => (fondoIdx[i]-100) - (nafIdx[i]-100));
+  const alphaEwwSerie  = aligned.map((a,i) => (fondoIdx[i]-100) - (ewwIdx[i]-100));
+  const alphaVmexSerie = aligned.map((a,i) => (fondoIdx[i]-100) - (vmexIdx[i]-100));
+
+  // Mini-pill para el banner de alphas
+  const alphaPill = (label, val) => `<span style="display:inline-flex;align-items:center;gap:6px;padding:4px 9px;border-radius:99px;background:rgba(255,255,255,.6);border:1px solid var(--line);font-size:11.5px;margin-right:8px;margin-bottom:4px"><span style="color:var(--txt3);font-weight:500">${label}:</span><b class="${cc(val)}">${fp(val)}</b></span>`;
 
   return `
-  <div class="sg4">
+  <div style="display:grid;grid-template-columns:repeat(5,1fr);gap:14px;margin-bottom:14px">
     ${stCard(fp(rendFondo),'Research Rockets','Rend. desde '+b.date,rendFondo>=0?'stat-grn':'stat-red')}
-    ${stCard(fp(rendMex),'MEXTRAC09','Benchmark oficial mismo período',rendMex>=0?'stat-grn':'stat-red')}
-    ${stCard(fp(rendNaf),'NAFTRAC','ETF alternativo mismo período',rendNaf>=0?'stat-grn':'stat-red')}
-    ${stCard(fp(alphaMex)+' / '+fp(alphaNaf),'Alpha vs MEX / NAF','Diferencia vs cada benchmark',alphaMex>=0?'stat-grn':'stat-red')}
+    ${stCard(fp(rendMex),'MEXTRAC09','Benchmark oficial',rendMex>=0?'stat-grn':'stat-red')}
+    ${stCard(fp(rendNaf),'NAFTRAC','ETF alterno · iShares',rendNaf>=0?'stat-grn':'stat-red')}
+    ${stCard(fp(rendEww),'EWW','iShares MSCI México',rendEww>=0?'stat-grn':'stat-red')}
+    ${stCard(fp(rendVmex),'VMEX','Vanguard México',rendVmex>=0?'stat-grn':'stat-red')}
+  </div>
+
+  <div class="card" style="padding:12px 16px;margin-bottom:14px;background:rgba(12,74,110,.04);border-left:3px solid #0C4A6E">
+    <div style="font-size:11.5px;color:var(--txt2);margin-bottom:6px;font-weight:600;letter-spacing:.04em;text-transform:uppercase">Alpha vs cada benchmark</div>
+    <div style="line-height:1.9">
+      ${alphaPill('vs MEXTRAC09', alphaMex)}
+      ${alphaPill('vs NAFTRAC', alphaNaf)}
+      ${alphaPill('vs EWW', alphaEww)}
+      ${alphaPill('vs VMEX', alphaVmex)}
+    </div>
   </div>
 
   <div class="card">
-    <div class="sec-h"><div class="sec-h-bar" style="background:var(--accent)"></div><div class="sec-h-text">Portafolio vs Benchmarks — base 100</div><span class="sec-h-sub">Periodo: ${b.date} → ${aligned[last].date} · ${aligned.length} días · Research Rockets (navy) vs MEXTRAC09 oficial (naranja) vs NAFTRAC alterno (morado)</span></div>
-    <div style="position:relative;height:380px"><canvas id="vsbench-chart" style="width:100%!important;height:380px!important"></canvas></div>
+    <div class="sec-h"><div class="sec-h-bar" style="background:var(--accent)"></div><div class="sec-h-text">Portafolio vs Benchmarks — base 100</div><span class="sec-h-sub">Periodo: ${b.date} → ${aligned[last].date} · ${aligned.length} días · Research Rockets (navy) · MEXTRAC09 (naranja) · NAFTRAC (morado) · EWW (teal) · VMEX (rosa)</span></div>
+    <div style="position:relative;height:400px"><canvas id="vsbench-chart" style="width:100%!important;height:400px!important"></canvas></div>
   </div>
 
   <div class="card">
     <div class="sec-h"><div class="sec-h-bar" style="background:var(--grn)"></div><div class="sec-h-text">Alfa acumulada vs cada benchmark</div><span class="sec-h-sub">Diferencia día a día entre Research Rockets y cada referencia (puntos porcentuales)</span></div>
-    <div style="position:relative;height:280px"><canvas id="vsbench-alpha-chart" style="width:100%!important;height:280px!important"></canvas></div>
+    <div style="position:relative;height:300px"><canvas id="vsbench-alpha-chart" style="width:100%!important;height:300px!important"></canvas></div>
   </div>
 
   <div class="card">
-    <div class="sec-h"><div class="sec-h-bar" style="background:var(--accent)"></div><div class="sec-h-text">Tabla diaria</div><span class="sec-h-sub">Valores indexados a 100 y retornos diarios para los 3 instrumentos</span></div>
+    <div class="sec-h"><div class="sec-h-bar" style="background:var(--accent)"></div><div class="sec-h-text">Tabla diaria — valores indexados a 100 y alfas</div><span class="sec-h-sub">Cada columna base 100 muestra cuánto vale 100 MXN invertidos en ese instrumento al inicio</span></div>
     <div class="tw"><table><thead><tr>
       <th>Fecha</th>
-      <th style="text-align:right">Fondo (base 100)</th><th style="text-align:right">Δ % fondo</th>
-      <th style="text-align:right">MEXTRAC (base 100)</th><th style="text-align:right">Δ % MEX</th>
-      <th style="text-align:right">NAFTRAC (base 100)</th><th style="text-align:right">Δ % NAF</th>
-      <th style="text-align:right">α vs MEX</th><th style="text-align:right">α vs NAF</th>
+      <th style="text-align:right">Fondo</th>
+      <th style="text-align:right">MEXTRAC</th>
+      <th style="text-align:right">NAFTRAC</th>
+      <th style="text-align:right">EWW</th>
+      <th style="text-align:right">VMEX</th>
+      <th style="text-align:right">α MEX</th>
+      <th style="text-align:right">α NAF</th>
+      <th style="text-align:right">α EWW</th>
+      <th style="text-align:right">α VMEX</th>
     </tr></thead><tbody>
-      ${aligned.map((a,i)=>{
-        const prev = i>0?aligned[i-1]:null;
-        const dF = prev?(a.fondo/prev.fondo-1)*100:0;
-        const dM = prev?(a.mex  /prev.mex  -1)*100:0;
-        const dN = prev?(a.naf  /prev.naf  -1)*100:0;
-        return `<tr>
-          <td class="mono">${a.date}</td>
-          <td class="mono" style="text-align:right">${f2(fondoIdx[i],2)}</td>
-          <td class="mono ${cc(dF)}" style="text-align:right">${prev?fp(dF):'—'}</td>
-          <td class="mono" style="text-align:right">${f2(mexIdx[i],2)}</td>
-          <td class="mono ${cc(dM)}" style="text-align:right">${prev?fp(dM):'—'}</td>
-          <td class="mono" style="text-align:right">${f2(nafIdx[i],2)}</td>
-          <td class="mono ${cc(dN)}" style="text-align:right">${prev?fp(dN):'—'}</td>
-          <td class="mono ${cc(alphaMexSerie[i])}" style="text-align:right">${fp(alphaMexSerie[i])}</td>
-          <td class="mono ${cc(alphaNafSerie[i])}" style="text-align:right">${fp(alphaNafSerie[i])}</td>
-        </tr>`;
-      }).join('')}
+      ${aligned.map((a,i)=>`<tr>
+        <td class="mono">${a.date}</td>
+        <td class="mono" style="text-align:right">${f2(fondoIdx[i],2)}</td>
+        <td class="mono" style="text-align:right">${f2(mexIdx[i],2)}</td>
+        <td class="mono" style="text-align:right">${f2(nafIdx[i],2)}</td>
+        <td class="mono" style="text-align:right">${f2(ewwIdx[i],2)}</td>
+        <td class="mono" style="text-align:right">${f2(vmexIdx[i],2)}</td>
+        <td class="mono ${cc(alphaMexSerie[i])}" style="text-align:right">${fp(alphaMexSerie[i])}</td>
+        <td class="mono ${cc(alphaNafSerie[i])}" style="text-align:right">${fp(alphaNafSerie[i])}</td>
+        <td class="mono ${cc(alphaEwwSerie[i])}" style="text-align:right">${fp(alphaEwwSerie[i])}</td>
+        <td class="mono ${cc(alphaVmexSerie[i])}" style="text-align:right">${fp(alphaVmexSerie[i])}</td>
+      </tr>`).join('')}
     </tbody></table></div>
   </div>`;
 }
@@ -5159,16 +5186,20 @@ function initVsBenchmarks(){
   const aligned = [];
   for(const h of hist){
     const naf = localPrice('NAFTRAC', h.date);
-    if(h.totalFondo>0 && h.mexPrice && naf){
-      aligned.push({date:h.date, fondo:h.totalFondo, mex:h.mexPrice, naf});
+    const eww = localPrice('EWW', h.date);
+    const vmex = localPrice('VMEX', h.date);
+    if(h.totalFondo>0 && h.mexPrice && naf && eww && vmex){
+      aligned.push({date:h.date, fondo:h.totalFondo, mex:h.mexPrice, naf, eww, vmex});
     }
   }
   if(aligned.length<2) return;
   const b = aligned[0];
-  const labels  = aligned.map(a => a.date);
-  const fondoIdx= aligned.map(a => +(a.fondo/b.fondo*100).toFixed(4));
-  const mexIdx  = aligned.map(a => +(a.mex  /b.mex  *100).toFixed(4));
-  const nafIdx  = aligned.map(a => +(a.naf  /b.naf  *100).toFixed(4));
+  const labels   = aligned.map(a => a.date);
+  const fondoIdx = aligned.map(a => +(a.fondo/b.fondo*100).toFixed(4));
+  const mexIdx   = aligned.map(a => +(a.mex  /b.mex  *100).toFixed(4));
+  const nafIdx   = aligned.map(a => +(a.naf  /b.naf  *100).toFixed(4));
+  const ewwIdx   = aligned.map(a => +(a.eww  /b.eww  *100).toFixed(4));
+  const vmexIdx  = aligned.map(a => +(a.vmex /b.vmex *100).toFixed(4));
 
   const ctx1 = document.getElementById('vsbench-chart');
   if(ctx1){
@@ -5176,16 +5207,19 @@ function initVsBenchmarks(){
     const c1 = new Chart(ctx1,{
       type:'line',
       data:{labels,datasets:[
-        {label:'Research Rockets',data:fondoIdx,borderColor:'#0C4A6E',backgroundColor:'rgba(12,74,110,.08)',borderWidth:2.5,pointRadius:2.5,pointBackgroundColor:'#0C4A6E',tension:0,fill:false},
-        {label:'MEXTRAC09 (benchmark)',data:mexIdx,borderColor:'#B54708',backgroundColor:'rgba(181,71,8,.08)',borderWidth:2,pointRadius:2.5,pointBackgroundColor:'#B54708',tension:0,fill:false},
-        {label:'NAFTRAC (alterno)',data:nafIdx,borderColor:'#7C3AED',backgroundColor:'rgba(124,58,237,.08)',borderWidth:2,pointRadius:2.5,pointBackgroundColor:'#7C3AED',tension:0,fill:false,borderDash:[4,3]}
+        {label:'Research Rockets',data:fondoIdx,borderColor:'#0C4A6E',backgroundColor:'rgba(12,74,110,.08)',borderWidth:2.8,pointRadius:2.8,pointBackgroundColor:'#0C4A6E',tension:0,fill:false},
+        {label:'MEXTRAC09 (benchmark)',data:mexIdx,borderColor:'#B54708',backgroundColor:'rgba(181,71,8,.08)',borderWidth:2,pointRadius:2.2,pointBackgroundColor:'#B54708',tension:0,fill:false},
+        {label:'NAFTRAC',data:nafIdx,borderColor:'#7C3AED',backgroundColor:'rgba(124,58,237,.08)',borderWidth:1.7,pointRadius:2,pointBackgroundColor:'#7C3AED',tension:0,fill:false,borderDash:[4,3]},
+        {label:'EWW',data:ewwIdx,borderColor:'#0D9488',backgroundColor:'rgba(13,148,136,.08)',borderWidth:1.7,pointRadius:2,pointBackgroundColor:'#0D9488',tension:0,fill:false,borderDash:[6,2]},
+        {label:'VMEX',data:vmexIdx,borderColor:'#E11D48',backgroundColor:'rgba(225,29,72,.08)',borderWidth:1.7,pointRadius:2,pointBackgroundColor:'#E11D48',tension:0,fill:false,borderDash:[2,2]}
       ]},
       options:{
         responsive:true,maintainAspectRatio:false,
         interaction:{mode:'index',intersect:false},
         plugins:{
-          legend:{position:'bottom',labels:{color:'#475467',font:{size:12,family:'Geist'},boxWidth:14,boxHeight:8,padding:10}},
+          legend:{position:'bottom',labels:{color:'#475467',font:{size:11.5,family:'Geist'},boxWidth:14,boxHeight:8,padding:10}},
           tooltip:{backgroundColor:'#fff',titleColor:'#101828',bodyColor:'#475467',borderColor:'#E4E7EC',borderWidth:1,padding:10,
+            itemSort:(a,b)=>b.parsed.y-a.parsed.y,
             callbacks:{label:c=>`${c.dataset.label}: ${c.parsed.y.toFixed(2)} (${(c.parsed.y-100>=0?'+':'')}${(c.parsed.y-100).toFixed(2)}%)`}}
         },
         scales:{
@@ -5201,20 +5235,25 @@ function initVsBenchmarks(){
   const ctx2 = document.getElementById('vsbench-alpha-chart');
   if(ctx2){
     Chart.getChart(ctx2)?.destroy();
-    const alphaMex = aligned.map((a,i)=> +((fondoIdx[i]-100)-(mexIdx[i]-100)).toFixed(4));
-    const alphaNaf = aligned.map((a,i)=> +((fondoIdx[i]-100)-(nafIdx[i]-100)).toFixed(4));
+    const alphaMex  = aligned.map((a,i)=> +((fondoIdx[i]-100)-(mexIdx[i]-100)).toFixed(4));
+    const alphaNaf  = aligned.map((a,i)=> +((fondoIdx[i]-100)-(nafIdx[i]-100)).toFixed(4));
+    const alphaEww  = aligned.map((a,i)=> +((fondoIdx[i]-100)-(ewwIdx[i]-100)).toFixed(4));
+    const alphaVmex = aligned.map((a,i)=> +((fondoIdx[i]-100)-(vmexIdx[i]-100)).toFixed(4));
     const c2 = new Chart(ctx2,{
       type:'line',
       data:{labels,datasets:[
-        {label:'α vs MEXTRAC09',data:alphaMex,borderColor:'#B54708',backgroundColor:'rgba(181,71,8,.10)',borderWidth:2,pointRadius:2.5,pointBackgroundColor:'#B54708',tension:0,fill:true},
-        {label:'α vs NAFTRAC',data:alphaNaf,borderColor:'#7C3AED',backgroundColor:'rgba(124,58,237,.10)',borderWidth:2,pointRadius:2.5,pointBackgroundColor:'#7C3AED',tension:0,fill:true,borderDash:[4,3]}
+        {label:'α vs MEXTRAC09',data:alphaMex,borderColor:'#B54708',backgroundColor:'rgba(181,71,8,.08)',borderWidth:2,pointRadius:2.2,pointBackgroundColor:'#B54708',tension:0,fill:false},
+        {label:'α vs NAFTRAC',data:alphaNaf,borderColor:'#7C3AED',backgroundColor:'rgba(124,58,237,.08)',borderWidth:1.7,pointRadius:2,pointBackgroundColor:'#7C3AED',tension:0,fill:false,borderDash:[4,3]},
+        {label:'α vs EWW',data:alphaEww,borderColor:'#0D9488',backgroundColor:'rgba(13,148,136,.08)',borderWidth:1.7,pointRadius:2,pointBackgroundColor:'#0D9488',tension:0,fill:false,borderDash:[6,2]},
+        {label:'α vs VMEX',data:alphaVmex,borderColor:'#E11D48',backgroundColor:'rgba(225,29,72,.08)',borderWidth:1.7,pointRadius:2,pointBackgroundColor:'#E11D48',tension:0,fill:false,borderDash:[2,2]}
       ]},
       options:{
         responsive:true,maintainAspectRatio:false,
         interaction:{mode:'index',intersect:false},
         plugins:{
-          legend:{position:'bottom',labels:{color:'#475467',font:{size:12,family:'Geist'},boxWidth:14,boxHeight:8,padding:10}},
+          legend:{position:'bottom',labels:{color:'#475467',font:{size:11.5,family:'Geist'},boxWidth:14,boxHeight:8,padding:10}},
           tooltip:{backgroundColor:'#fff',titleColor:'#101828',bodyColor:'#475467',borderColor:'#E4E7EC',borderWidth:1,padding:10,
+            itemSort:(a,b)=>b.parsed.y-a.parsed.y,
             callbacks:{label:c=>`${c.dataset.label}: ${(c.parsed.y>=0?'+':'')}${c.parsed.y.toFixed(2)} pp`}}
         },
         scales:{
