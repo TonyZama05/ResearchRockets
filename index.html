@@ -150,6 +150,7 @@ canvas{display:block;width:100%!important}
     <button class="ni" onclick="go('atribucion')"><svg viewBox="0 0 16 16"><path d="M2 14l3-8 3 4 2-6 4 10" stroke-linecap="round" stroke-linejoin="round"/></svg>Atribuci&oacute;n</button>
     <button class="ni" onclick="go('stocktiming')"><svg viewBox="0 0 16 16"><path d="M2 12L6 7L9 10L14 3M14 3H10M14 3V7" stroke-linecap="round" stroke-linejoin="round"/></svg>Stock vs Timing</button>
     <button class="ni" onclick="go('bestworst')"><svg viewBox="0 0 16 16"><path d="M3 13l3-6 3 3 4-7" stroke-linecap="round" stroke-linejoin="round"/><circle cx="13" cy="3" r="1.5" fill="currentColor"/><circle cx="6" cy="7" r="1.5" fill="currentColor"/></svg>Best / Worst</button>
+    <button class="ni" onclick="go('vsbenchmarks')"><svg viewBox="0 0 16 16"><path d="M2 12l3-2 3 1 3-4 3 2" stroke-linecap="round" stroke-linejoin="round"/><path d="M2 12l3-3 3 2 3-5 3 3" stroke-linecap="round" stroke-linejoin="round" opacity=".55"/></svg>vs Benchmarks</button>
     <button class="ni" onclick="go('snapshot')"><svg viewBox="0 0 16 16"><rect x="2" y="3" width="12" height="10" rx="1.5"/><circle cx="8" cy="8" r="2.5"/><path d="M6 3l1-1h2l1 1"/></svg>Snapshot Diario</button>
     <button class="ni" onclick="go('infocoef')"><svg viewBox="0 0 16 16"><circle cx="4.5" cy="11" r="1.3"/><circle cx="8" cy="6" r="1.3"/><circle cx="11.5" cy="9" r="1.3"/><path d="M2 14L14 2" stroke-dasharray="2 2"/></svg>IC &amp; Fund. Law</button>
     <div class="nav-section">Gesti&oacute;n</div>
@@ -276,6 +277,7 @@ canvas{display:block;width:100%!important}
 <script>
 const PRICE_DB={
 'AC':{'2026-04-01':209.5,'2026-04-06':208.63,'2026-04-07':205.15,'2026-04-08':210.34,'2026-04-09':212.72,'2026-04-10':214.03,'2026-04-13':212.4,'2026-04-14':207.82,'2026-04-15':205.73},
+'NAFTRAC':{"2026-04-17":69.51,"2026-04-20":69.79,"2026-04-21":68.52,"2026-04-22":68.66,"2026-04-23":68.45,"2026-04-24":69.05,"2026-04-27":67.82,"2026-04-28":67.09,"2026-04-29":66.82,"2026-04-30":67.57,"2026-05-04":67.0,"2026-05-05":68.31,"2026-05-06":69.57,"2026-05-07":69.74,"2026-05-08":69.62,"2026-05-11":70.02,"2026-05-12":69.89,"2026-05-13":70.07,"2026-05-14":69.09,"2026-05-15":67.86,"2026-05-18":68.29,"2026-05-19":68.44,"2026-05-20":68.81,"2026-05-21":68.31,"2026-05-22":68.26,"2026-05-25":68.19},
 'AGUA':{'2026-04-01':11.99,'2026-04-06':12.07,'2026-04-07':12.15,'2026-04-08':12.32,'2026-04-09':12.4,'2026-04-10':12.43,'2026-04-13':12.5,'2026-04-14':12.54,'2026-04-15':12.58},
 'ALPEKA':{'2026-04-01':10.91,'2026-04-06':10.82,'2026-04-07':10.81,'2026-04-08':10.46,'2026-04-09':10.52,'2026-04-10':10.29,'2026-04-13':10.8,'2026-04-14':10.57,'2026-04-15':10.7},
 'ALSEA':{'2026-04-01':58.02,'2026-04-06':57.49,'2026-04-07':57.61,'2026-04-08':57.31,'2026-04-09':55.9,'2026-04-10':55.46,'2026-04-13':54.78,'2026-04-14':54.27,'2026-04-15':53.65},
@@ -911,11 +913,11 @@ function sortTable(tid,col,type='str'){
 function th(label,tid,col,type='str'){return`<th onclick="sortTable('${tid}',${col},'${type}')">${label}</th>`;}
 
 // ROUTING - No universo page
-const PAGES=['dashboard','ordenes','posicion','rendimiento','resumensem','riesgo','analytics','atribucion','stocktiming','bestworst','snapshot','infocoef','flujos','estadisticos','config'];
+const PAGES=['dashboard','ordenes','posicion','rendimiento','resumensem','riesgo','analytics','atribucion','stocktiming','bestworst','vsbenchmarks','snapshot','infocoef','flujos','estadisticos','config'];
 let chartInst=[];
 function go(page){
   document.querySelectorAll('.ni').forEach((el,i)=>el.classList.toggle('active',i===PAGES.indexOf(page)));
-  const titles={dashboard:'Dashboard',ordenes:'Órdenes',posicion:'Posición actual',rendimiento:'Rendimiento',resumensem:'Resumen Semanal',riesgo:'Riesgo & Prospectivos',analytics:'Analytics',atribucion:'Performance Attribution',stocktiming:'Stock Picking vs Market Timing',bestworst:'Best Trade vs Worst Trade',snapshot:'Snapshot Diario',infocoef:'Information Coefficient & Fundamental Law',flujos:'Flujos & Ajustes de mercado',estadisticos:'Estadísticos & Medidas',config:'Configuración'};
+  const titles={dashboard:'Dashboard',ordenes:'Órdenes',posicion:'Posición actual',rendimiento:'Rendimiento',resumensem:'Resumen Semanal',riesgo:'Riesgo & Prospectivos',analytics:'Analytics',atribucion:'Performance Attribution',stocktiming:'Stock Picking vs Market Timing',bestworst:'Best Trade vs Worst Trade',vsbenchmarks:'Portafolio vs Benchmarks',snapshot:'Snapshot Diario',infocoef:'Information Coefficient & Fundamental Law',flujos:'Flujos & Ajustes de mercado',estadisticos:'Estadísticos & Medidas',config:'Configuración'};
   document.getElementById('tb-title').textContent=titles[page]||page;
   document.getElementById('tb-date').textContent=new Date().toLocaleDateString('es-MX',{weekday:'long',year:'numeric',month:'long',day:'numeric'});
   // Sidebar: siempre muestra el capital asignado (V0 fijo)
@@ -927,7 +929,7 @@ function go(page){
     if(_sSub)_sSub.textContent='';
   }
   chartInst.forEach(c=>{try{c.destroy();}catch(e){}});chartInst=[];
-  const renders={dashboard:pgDash,ordenes:pgÓrdenes,posicion:pgPosicion,rendimiento:pgRendimiento,resumensem:pgResumenSemanal,riesgo:pgRiesgo,analytics:pgAnalytics,atribucion:pgAtribucion,stocktiming:pgStockTiming,bestworst:pgBestWorst,snapshot:pgSnapshot,infocoef:pgInfoCoef,flujos:pgFlujos,estadisticos:pgEstadísticos,config:pgConfig};
+  const renders={dashboard:pgDash,ordenes:pgÓrdenes,posicion:pgPosicion,rendimiento:pgRendimiento,resumensem:pgResumenSemanal,riesgo:pgRiesgo,analytics:pgAnalytics,atribucion:pgAtribucion,stocktiming:pgStockTiming,bestworst:pgBestWorst,vsbenchmarks:pgVsBenchmarks,snapshot:pgSnapshot,infocoef:pgInfoCoef,flujos:pgFlujos,estadisticos:pgEstadísticos,config:pgConfig};
   try{
     document.getElementById('content').innerHTML=(renders[page]||pgDash)();
   }catch(err){
@@ -948,6 +950,7 @@ function go(page){
   if(page==='rendimiento')setTimeout(initRendChart,50);
   if(page==='resumensem')setTimeout(initResumenSemanal,50);
   if(page==='bestworst')setTimeout(initBestWorst,50);
+  if(page==='vsbenchmarks')setTimeout(initVsBenchmarks,50);
   if(page==='config')setTimeout(()=>{
     const f=document.getElementById('c-fecha');
     if(f)updateBenchPreview(f.value);
@@ -5070,6 +5073,160 @@ function initBestWorst(){
   drawTradeChart('bw-chart-worst-pasivo', worstPasivo, '#B42318');
 }
 
+
+function pgVsBenchmarks(){
+  const m = calcMetrics();
+  const hist = m.hist || [];
+  // Construye serie alineada: solo días donde fondo, MEXTRAC09 y NAFTRAC tienen dato
+  const aligned = [];
+  for(const h of hist){
+    const naf = localPrice('NAFTRAC', h.date);
+    if(h.totalFondo>0 && h.mexPrice && naf){
+      aligned.push({date:h.date, fondo:h.totalFondo, mex:h.mexPrice, naf});
+    }
+  }
+  if(aligned.length<2){
+    return `<div class="card"><div class="empty" style="padding:40px;text-align:center;color:var(--txt3)">
+      Datos insuficientes — se necesita al menos 2 días donde fondo, MEXTRAC09 y NAFTRAC tengan precio.
+      <div style="margin-top:8px;font-size:11px">NAFTRAC data cargada: ${Object.keys(PRICE_DB.NAFTRAC||{}).length} días (${Object.keys(PRICE_DB.NAFTRAC||{}).slice(0,1)[0]||'—'} a ${Object.keys(PRICE_DB.NAFTRAC||{}).slice(-1)[0]||'—'})</div>
+    </div></div>`;
+  }
+  // Normaliza a base 100 en el primer día disponible
+  const b = aligned[0];
+  const fondoIdx = aligned.map(a => a.fondo/b.fondo*100);
+  const mexIdx   = aligned.map(a => a.mex  /b.mex  *100);
+  const nafIdx   = aligned.map(a => a.naf  /b.naf  *100);
+  const last = aligned.length-1;
+  const rendFondo = fondoIdx[last]-100;
+  const rendMex   = mexIdx[last]-100;
+  const rendNaf   = nafIdx[last]-100;
+  const alphaMex  = rendFondo - rendMex;
+  const alphaNaf  = rendFondo - rendNaf;
+  const alphaMexSerie = aligned.map((a,i) => (fondoIdx[i]-100) - (mexIdx[i]-100));
+  const alphaNafSerie = aligned.map((a,i) => (fondoIdx[i]-100) - (nafIdx[i]-100));
+
+  return `
+  <div class="sg4">
+    ${stCard(fp(rendFondo),'Research Rockets','Rend. desde '+b.date,rendFondo>=0?'stat-grn':'stat-red')}
+    ${stCard(fp(rendMex),'MEXTRAC09','Benchmark oficial mismo período',rendMex>=0?'stat-grn':'stat-red')}
+    ${stCard(fp(rendNaf),'NAFTRAC','ETF alternativo mismo período',rendNaf>=0?'stat-grn':'stat-red')}
+    ${stCard(fp(alphaMex)+' / '+fp(alphaNaf),'Alpha vs MEX / NAF','Diferencia vs cada benchmark',alphaMex>=0?'stat-grn':'stat-red')}
+  </div>
+
+  <div class="card">
+    <div class="sec-h"><div class="sec-h-bar" style="background:var(--accent)"></div><div class="sec-h-text">Portafolio vs Benchmarks — base 100</div><span class="sec-h-sub">Periodo: ${b.date} → ${aligned[last].date} · ${aligned.length} días · Research Rockets (navy) vs MEXTRAC09 oficial (naranja) vs NAFTRAC alterno (morado)</span></div>
+    <div style="position:relative;height:380px"><canvas id="vsbench-chart" style="width:100%!important;height:380px!important"></canvas></div>
+  </div>
+
+  <div class="card">
+    <div class="sec-h"><div class="sec-h-bar" style="background:var(--grn)"></div><div class="sec-h-text">Alfa acumulada vs cada benchmark</div><span class="sec-h-sub">Diferencia día a día entre Research Rockets y cada referencia (puntos porcentuales)</span></div>
+    <div style="position:relative;height:280px"><canvas id="vsbench-alpha-chart" style="width:100%!important;height:280px!important"></canvas></div>
+  </div>
+
+  <div class="card">
+    <div class="sec-h"><div class="sec-h-bar" style="background:var(--accent)"></div><div class="sec-h-text">Tabla diaria</div><span class="sec-h-sub">Valores indexados a 100 y retornos diarios para los 3 instrumentos</span></div>
+    <div class="tw"><table><thead><tr>
+      <th>Fecha</th>
+      <th style="text-align:right">Fondo (base 100)</th><th style="text-align:right">Δ % fondo</th>
+      <th style="text-align:right">MEXTRAC (base 100)</th><th style="text-align:right">Δ % MEX</th>
+      <th style="text-align:right">NAFTRAC (base 100)</th><th style="text-align:right">Δ % NAF</th>
+      <th style="text-align:right">α vs MEX</th><th style="text-align:right">α vs NAF</th>
+    </tr></thead><tbody>
+      ${aligned.map((a,i)=>{
+        const prev = i>0?aligned[i-1]:null;
+        const dF = prev?(a.fondo/prev.fondo-1)*100:0;
+        const dM = prev?(a.mex  /prev.mex  -1)*100:0;
+        const dN = prev?(a.naf  /prev.naf  -1)*100:0;
+        return `<tr>
+          <td class="mono">${a.date}</td>
+          <td class="mono" style="text-align:right">${f2(fondoIdx[i],2)}</td>
+          <td class="mono ${cc(dF)}" style="text-align:right">${prev?fp(dF):'—'}</td>
+          <td class="mono" style="text-align:right">${f2(mexIdx[i],2)}</td>
+          <td class="mono ${cc(dM)}" style="text-align:right">${prev?fp(dM):'—'}</td>
+          <td class="mono" style="text-align:right">${f2(nafIdx[i],2)}</td>
+          <td class="mono ${cc(dN)}" style="text-align:right">${prev?fp(dN):'—'}</td>
+          <td class="mono ${cc(alphaMexSerie[i])}" style="text-align:right">${fp(alphaMexSerie[i])}</td>
+          <td class="mono ${cc(alphaNafSerie[i])}" style="text-align:right">${fp(alphaNafSerie[i])}</td>
+        </tr>`;
+      }).join('')}
+    </tbody></table></div>
+  </div>`;
+}
+
+function initVsBenchmarks(){
+  const m = calcMetrics();
+  const hist = m.hist || [];
+  const aligned = [];
+  for(const h of hist){
+    const naf = localPrice('NAFTRAC', h.date);
+    if(h.totalFondo>0 && h.mexPrice && naf){
+      aligned.push({date:h.date, fondo:h.totalFondo, mex:h.mexPrice, naf});
+    }
+  }
+  if(aligned.length<2) return;
+  const b = aligned[0];
+  const labels  = aligned.map(a => a.date);
+  const fondoIdx= aligned.map(a => +(a.fondo/b.fondo*100).toFixed(4));
+  const mexIdx  = aligned.map(a => +(a.mex  /b.mex  *100).toFixed(4));
+  const nafIdx  = aligned.map(a => +(a.naf  /b.naf  *100).toFixed(4));
+
+  const ctx1 = document.getElementById('vsbench-chart');
+  if(ctx1){
+    Chart.getChart(ctx1)?.destroy();
+    const c1 = new Chart(ctx1,{
+      type:'line',
+      data:{labels,datasets:[
+        {label:'Research Rockets',data:fondoIdx,borderColor:'#0C4A6E',backgroundColor:'rgba(12,74,110,.08)',borderWidth:2.5,pointRadius:2.5,pointBackgroundColor:'#0C4A6E',tension:0,fill:false},
+        {label:'MEXTRAC09 (benchmark)',data:mexIdx,borderColor:'#B54708',backgroundColor:'rgba(181,71,8,.08)',borderWidth:2,pointRadius:2.5,pointBackgroundColor:'#B54708',tension:0,fill:false},
+        {label:'NAFTRAC (alterno)',data:nafIdx,borderColor:'#7C3AED',backgroundColor:'rgba(124,58,237,.08)',borderWidth:2,pointRadius:2.5,pointBackgroundColor:'#7C3AED',tension:0,fill:false,borderDash:[4,3]}
+      ]},
+      options:{
+        responsive:true,maintainAspectRatio:false,
+        interaction:{mode:'index',intersect:false},
+        plugins:{
+          legend:{position:'bottom',labels:{color:'#475467',font:{size:12,family:'Geist'},boxWidth:14,boxHeight:8,padding:10}},
+          tooltip:{backgroundColor:'#fff',titleColor:'#101828',bodyColor:'#475467',borderColor:'#E4E7EC',borderWidth:1,padding:10,
+            callbacks:{label:c=>`${c.dataset.label}: ${c.parsed.y.toFixed(2)} (${(c.parsed.y-100>=0?'+':'')}${(c.parsed.y-100).toFixed(2)}%)`}}
+        },
+        scales:{
+          x:{ticks:{color:'#98A2B3',font:{size:11},maxTicksLimit:12},grid:{color:'rgba(0,0,0,.04)'}},
+          y:{ticks:{color:'#98A2B3',font:{size:11},callback:v=>v.toFixed(0)},grid:{color:'rgba(0,0,0,.04)'},
+             title:{display:true,text:'Base 100',color:'#98A2B3',font:{size:10}}}
+        }
+      }
+    });
+    chartInst.push(c1);
+  }
+
+  const ctx2 = document.getElementById('vsbench-alpha-chart');
+  if(ctx2){
+    Chart.getChart(ctx2)?.destroy();
+    const alphaMex = aligned.map((a,i)=> +((fondoIdx[i]-100)-(mexIdx[i]-100)).toFixed(4));
+    const alphaNaf = aligned.map((a,i)=> +((fondoIdx[i]-100)-(nafIdx[i]-100)).toFixed(4));
+    const c2 = new Chart(ctx2,{
+      type:'line',
+      data:{labels,datasets:[
+        {label:'α vs MEXTRAC09',data:alphaMex,borderColor:'#B54708',backgroundColor:'rgba(181,71,8,.10)',borderWidth:2,pointRadius:2.5,pointBackgroundColor:'#B54708',tension:0,fill:true},
+        {label:'α vs NAFTRAC',data:alphaNaf,borderColor:'#7C3AED',backgroundColor:'rgba(124,58,237,.10)',borderWidth:2,pointRadius:2.5,pointBackgroundColor:'#7C3AED',tension:0,fill:true,borderDash:[4,3]}
+      ]},
+      options:{
+        responsive:true,maintainAspectRatio:false,
+        interaction:{mode:'index',intersect:false},
+        plugins:{
+          legend:{position:'bottom',labels:{color:'#475467',font:{size:12,family:'Geist'},boxWidth:14,boxHeight:8,padding:10}},
+          tooltip:{backgroundColor:'#fff',titleColor:'#101828',bodyColor:'#475467',borderColor:'#E4E7EC',borderWidth:1,padding:10,
+            callbacks:{label:c=>`${c.dataset.label}: ${(c.parsed.y>=0?'+':'')}${c.parsed.y.toFixed(2)} pp`}}
+        },
+        scales:{
+          x:{ticks:{color:'#98A2B3',font:{size:11},maxTicksLimit:12},grid:{color:'rgba(0,0,0,.04)'}},
+          y:{ticks:{color:'#98A2B3',font:{size:11},callback:v=>(v>=0?'+':'')+v.toFixed(2)+' pp'},grid:{color:'rgba(0,0,0,.04)'},
+             title:{display:true,text:'Alfa acumulada (pp)',color:'#98A2B3',font:{size:10}}}
+        }
+      }
+    });
+    chartInst.push(c2);
+  }
+}
 
 go('dashboard');
 </script>
