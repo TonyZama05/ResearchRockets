@@ -4653,6 +4653,50 @@ function initResumenSemanal(){ renderResumenSemanal(); }
 // Identifica mejor y peor operación cerrada por GANANCIA RELATIVA (alpha)
 // contra MEXTRAC09 durante el período de tenencia
 // ═══════════════════════════════════════════════════════════════════════════
+// Agrupa todas las órdenes de un ticker en CICLOS DE POSICIÓN (desde que el
+// ticker arranca con 0 hasta que regresa a 0). Solo emite "trade cerrado"
+// cuando la posición efectivamente cerró — las ventas parciales quedan
+// agregadas dentro del mismo ciclo (precio compra/venta = promedio ponderado).
+// Si después de la última venta queda posición abierta, NO se emite trade.
+function _buildClosedCycles(){
+  const byTicker={};
+  for(const o of (S.ordenes||[])){
+    if(!byTicker[o.ticker])byTicker[o.ticker]={ordenes:[]};
+    byTicker[o.ticker].ordenes.push({...o});
+  }
+  const cycles=[];
+  for(const ticker in byTicker){
+    const ords=byTicker[ticker].ordenes.slice().sort((a,b)=>a.fecha.localeCompare(b.fecha));
+    let netShares=0,cur=null;
+    for(const o of ords){
+      if(o.tipo==='compra'){
+        if(netShares===0&&o.titulos>0){
+          cur={ticker,fechaCompra:o.fecha,buyShares:0,buyCost:0,sellShares:0,sellProceeds:0,fechaVenta:null};
+        }
+        if(cur){cur.buyShares+=o.titulos;cur.buyCost+=o.titulos*o.precio;}
+        netShares+=o.titulos;
+      }else{ // venta
+        if(cur){cur.sellShares+=o.titulos;cur.sellProceeds+=o.titulos*o.precio;cur.fechaVenta=o.fecha;}
+        netShares-=o.titulos;
+        if(netShares<=0&&cur){
+          // ciclo cerrado — emite trade compuesto
+          const titulos=cur.sellShares;
+          const precioCompra=cur.buyShares>0?cur.buyCost/cur.buyShares:0;
+          const precioVenta=cur.sellShares>0?cur.sellProceeds/cur.sellShares:0;
+          const pnl=cur.sellProceeds-cur.buyCost;
+          const rend=precioCompra>0?(precioVenta-precioCompra)/precioCompra*100:0;
+          const pctPortafolio=S.capitalInicial>0?cur.buyCost/S.capitalInicial*100:0;
+          cycles.push({ticker,fechaCompra:cur.fechaCompra,fechaVenta:cur.fechaVenta,titulos,precioCompra,precioVenta,pnl,rend,pctPortafolio});
+          cur=null;
+          if(netShares<0)netShares=0; // robustez
+        }
+      }
+    }
+    // Si cur != null al final → posición sigue abierta, no emitir trade
+  }
+  return cycles.sort((a,b)=>b.fechaVenta.localeCompare(a.fechaVenta));
+}
+
 function _enrichClosedTrade(t){
   // Ancla TODAS las métricas (precio inicial, rend absoluto, rend MEXTRAC,
   // alpha, días) al inicio de fase competitiva (17 abril) cuando la posición
@@ -4721,14 +4765,13 @@ function _serieTradePrice(ticker, fechaCompra, fechaVenta){
 
 function pgBestWorst(){
   const FASE_COMP='2026-04-17';
-  const trades = buildTrades();
+  // Usa CICLOS DE POSICIÓN (no FIFO lots): solo emite trade cerrado cuando
+  // la posición regresa a 0. Ventas parciales quedan agregadas en su ciclo.
+  const cycles = _buildClosedCycles();
   // Trades CERRADOS durante la fase competitiva (fechaVenta >= 17 abril).
-  // Incluye posiciones entregadas por BBVA que el equipo decidió VENDER en
-  // fase competitiva — la decisión de salida sí es del equipo.
-  // (Se excluyen sólo trades cuya venta fue ANTES del 17 abril.)
-  const cerradas = (trades.cerradas || []).filter(t => (t.fechaVenta||'') >= FASE_COMP);
+  const cerradas = cycles.filter(t => (t.fechaVenta||'') >= FASE_COMP);
   if(!cerradas.length){
-    return`<div class="card"><div class="empty" style="padding:40px;text-align:center;color:var(--txt3)">Sin trades cerrados durante la fase competitiva (desde el 17 abril 2026). Cuando vendas posiciones en este período, aparecerán aquí los mejores y peores.</div></div>`;
+    return`<div class="card"><div class="empty" style="padding:40px;text-align:center;color:var(--txt3)">Sin posiciones <b>completamente cerradas</b> durante la fase competitiva (desde el 17 abril 2026). Las ventas parciales no cuentan hasta que la posición regrese a cero.</div></div>`;
   }
   // Enriquecer y etiquetar con sleeve según la fecha de venta (decisión efectiva del equipo)
   const enriched = cerradas.map(_enrichClosedTrade).map(t=>({...t, sleeve: getSleeveOnDate(t.ticker, t.fechaVenta)}));
@@ -4897,8 +4940,8 @@ function pgBestWorst(){
 
 function initBestWorst(){
   const FASE_COMP='2026-04-17';
-  const trades = buildTrades();
-  const cerradas = (trades.cerradas || []).filter(t => (t.fechaVenta||'') >= FASE_COMP);
+  const cycles = _buildClosedCycles();
+  const cerradas = cycles.filter(t => (t.fechaVenta||'') >= FASE_COMP);
   if(!cerradas.length) return;
   const enriched = cerradas.map(_enrichClosedTrade).map(t=>({...t, sleeve:getSleeveOnDate(t.ticker, t.fechaVenta)}));
   const sortByRel = arr => [...arr].sort((a,b)=> (b.rendRel??-Infinity) - (a.rendRel??-Infinity));
