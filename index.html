@@ -5413,6 +5413,7 @@ function initRendGrafs(){
   }
 
   // ── Datos semanales ────────────────────────────────────────────────────
+  // Weekly: group days by ISO week, return sorted array of {days[]}
   function getWeekKey(dateStr){
     const d=new Date(dateStr+'T12:00:00');
     const day=d.getDay();
@@ -5423,22 +5424,29 @@ function initRendGrafs(){
   const weekMap={};
   for(const h of hist){
     const wk=getWeekKey(h.date);
-    if(!weekMap[wk])weekMap[wk]={start:h,end:h};
-    else weekMap[wk].end=h;
+    if(!weekMap[wk])weekMap[wk]=[];
+    weekMap[wk].push(h);
   }
   const weekKeys=Object.keys(weekMap).sort();
   const weekLabels=[];const weekFondo=[];const weekMex=[];const weekAlphaAcum=[];
   let wAlphaAcum=0;
   for(let i=0;i<weekKeys.length;i++){
-    const w=weekMap[weekKeys[i]];
-    const rF=w.start.totalFondo>0?(w.end.totalFondo-w.start.totalFondo)/w.start.totalFondo*100:0;
-    const rM=w.start.mexPrice&&w.start.mexPrice>0&&w.end.mexPrice?(w.end.mexPrice-w.start.mexPrice)/w.start.mexPrice*100:0;
+    const days=weekMap[weekKeys[i]];
+    // Start of this week = last point of previous week (or first point of this week for week 1)
+    const prevDays=i>0?weekMap[weekKeys[i-1]]:null;
+    const startH=prevDays?prevDays[prevDays.length-1]:days[0];
+    const endH=days[days.length-1];
+    const rF=startH.totalFondo>0?(endH.totalFondo-startH.totalFondo)/startH.totalFondo*100:0;
+    const rM=startH.mexPrice&&startH.mexPrice>0&&endH.mexPrice?(endH.mexPrice-startH.mexPrice)/startH.mexPrice*100:0;
     wAlphaAcum+=rF-rM;
     weekLabels.push('Sem '+(i+1));
     weekFondo.push(+rF.toFixed(4));
     weekMex.push(+rM.toFixed(4));
     weekAlphaAcum.push(+wAlphaAcum.toFixed(4));
   }
+
+  const BLUE_FONDO='rgba(12,74,110,.82)';   // navy azul — Portafolio
+  const PURPLE_MEX='rgba(109,40,217,.65)';  // morado — MEXTRAC09
 
   const barChartCfg=(labels,fondoData,mexData,alphaData,labelFondo,labelMex,ctx)=>{
     if(!ctx)return;
@@ -5448,8 +5456,8 @@ function initRendGrafs(){
       data:{
         labels,
         datasets:[
-          {label:labelFondo,data:fondoData,backgroundColor:fondoData.map(v=>v>=0?'rgba(12,74,110,.78)':'rgba(180,35,24,.68)'),borderRadius:3,order:2},
-          {label:labelMex,data:mexData,backgroundColor:mexData.map(v=>v>=0?'rgba(181,71,8,.45)':'rgba(181,71,8,.3)'),borderRadius:3,order:3},
+          {label:labelFondo,data:fondoData,backgroundColor:BLUE_FONDO,borderRadius:3,order:2},
+          {label:labelMex,data:mexData,backgroundColor:PURPLE_MEX,borderRadius:3,order:3},
           {type:'line',label:'Alfa Acumulada',data:alphaData,borderColor:'#16A34A',backgroundColor:'rgba(22,163,74,.1)',borderWidth:2.2,pointRadius:3,pointBackgroundColor:'#16A34A',tension:0.15,yAxisID:'y1',order:1}
         ]
       },
