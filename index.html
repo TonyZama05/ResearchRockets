@@ -333,11 +333,11 @@ const MEXTRAC_W={"WALMEX":10.05,"AC":7.58,"KOFUBL":6.39,"KIMBERA":3.77,"BIMBOA":
 const FECHA_REBALANCEO='2026-05-11';
 const SLEEVES_ANTES={
   activo:['FEMSAUBD','LACOMERUBC','ASURB','GMEXICOB','BBAJIOO','GFNORTEO'],
-  pasivo:['KOFUBL','KIMBERA','OMAB']
+  pasivo:['KOFUBL','KIMBERA','OMAB','MEXTRAC09']
 };
 const SLEEVES_DESPUES={
   activo:['FEMSAUBD','LACOMERUBC','GFNORTEO','BBAJIOO','OMAB','PEOLES'],
-  pasivo:['GAPB','KIMBERA','BOLSAA','AC']
+  pasivo:['GAPB','KIMBERA','BOLSAA','AC','MEXTRAC09']
 };
 function getSleeveOnDate(ticker,date){
   const lst=date>=FECHA_REBALANCEO?SLEEVES_DESPUES:SLEEVES_ANTES;
@@ -4143,14 +4143,14 @@ function calcStockVsTiming(){
   if(hist.length<2)return null;
 
   const rows=[];
-  let mexIdx=100,timIdx=100,fondoIdx=100;
+  let mexIdx=100,timIdx=100,fondoIdx=100,stockIdx=100;
 
   // Día 0: nivel desinv informativo (cash al cierre del propio día 0)
   rows.push({
     t:0,date:hist[0].date,
     rendBmk:0,rendTim:0,rendFondo:0,
     nivelDesinv:hist[0].totalFondo>0?hist[0].efectivo/hist[0].totalFondo:0,
-    mexIdx:100,timIdx:100,fondoIdx:100,
+    mexIdx:100,timIdx:100,fondoIdx:100,stockIdx:100,
     valFondo:hist[0].totalFondo,efectivo:hist[0].efectivo,mexPrice:hist[0].mexPrice
   });
 
@@ -4161,17 +4161,21 @@ function calcStockVsTiming(){
     // Nivel desinversión = cash al inicio del día t = cash al cierre del día t-1
     const nivelDesinv=prev.totalFondo>0?prev.efectivo/prev.totalFondo:0;
     const rendTim=rendBmk*(1-nivelDesinv);
+    // Stock Picking diario = benchmark + efecto selección (rendFondo − rendTim).
+    // Aísla la selección quitando el drag de cash → STOCK − MEXTRAC = efecto picking.
+    const rendStock=rendBmk+(rendFondo-rendTim);
 
     // Método del Excel del profesor: acumulación aritmética en índice base 100.
     // Si REND BMK = +0.25%, el índice pasa de 100.00 a 100.25.
     mexIdx+=rendBmk;
     timIdx+=rendTim;
     fondoIdx+=rendFondo;
+    stockIdx+=rendStock;
 
     rows.push({
       t:i,date:cur.date,
-      rendBmk,rendTim,rendFondo,nivelDesinv,
-      mexIdx,timIdx,fondoIdx,
+      rendBmk,rendTim,rendFondo,rendStock,nivelDesinv,
+      mexIdx,timIdx,fondoIdx,stockIdx,
       valFondo:cur.totalFondo,efectivo:cur.efectivo,mexPrice:cur.mexPrice
     });
   }
@@ -4240,6 +4244,7 @@ function pgStockTiming(){
   <div class="card">
     <div class="sec-h"><div class="sec-h-bar" style="background:var(--grn)"></div><div class="sec-h-text">Composición del portafolio &mdash; sleeves Activo / Pasivo / Efectivo</div><span class="sec-h-sub">Área apilada al 100% &middot; clasificación por ticker cambia el 11-may-26 (rebalanceo). OMAB: Pasivo → Activo &middot; ASUR, KOF, GMEXICO salen; LACOMER, PEOLES, GAP, BOLSAA, AC entran</span></div>
     <div style="position:relative;height:340px"><canvas id="st-area-chart" style="width:100%!important;height:340px!important"></canvas></div>
+    <div id="st-area-unclassified" style="margin-top:10px"></div>
   </div>
 
   <div class="card">
@@ -4311,6 +4316,8 @@ function initStockTiming(){
        borderColor:'#5B21B6',backgroundColor:'rgba(91,33,182,.04)',borderWidth:2,pointRadius:2.5,tension:0,borderDash:[5,3]},
       {label:'TIMING (sólo cash mgmt)',data:d.rows.map(r=>+r.timIdx.toFixed(4)),
        borderColor:'#B54708',backgroundColor:'rgba(181,71,8,.04)',borderWidth:2,pointRadius:2.5,tension:0},
+      {label:'STOCK PICKING (sólo selección)',data:d.rows.map(r=>+r.stockIdx.toFixed(4)),
+       borderColor:'#047857',backgroundColor:'rgba(4,120,87,.04)',borderWidth:2,pointRadius:2.5,tension:0,borderDash:[2,2]},
       {type:'bar',label:'NIVEL DESINV (%)',data:d.rows.map(r=>+(r.nivelDesinv*100).toFixed(2)),
        yAxisID:'y1',borderColor:'rgba(152,162,179,.75)',backgroundColor:'rgba(152,162,179,.28)',borderWidth:1,barPercentage:.55,categoryPercentage:.7},
       {label:'FONDO REAL (Research Rockets)',data:d.rows.map(r=>+r.fondoIdx.toFixed(4)),
@@ -4342,11 +4349,12 @@ function initStockTiming(){
     Chart.getChart(ctxA)?.destroy();
     const snapHist=(typeof buildSnapshotHistory==='function')?buildSnapshotHistory():[];
     const perDate=[];
+    const sinClasifTickers={}; // ticker -> max % del portafolio que llegó a representar
     for(const h of snapHist){
       const totalF=h.totalFondo||0;
       if(totalF<=0)continue;
       const posCur=(typeof buildPosAt==='function')?buildPosAt(h.date):{};
-      let activoVal=0,pasivoVal=0;
+      let activoVal=0,pasivoVal=0,sinClasifVal=0;
       for(const t in posCur){
         const _p=posCur[t].precioActual;
         if(_p==null||!isFinite(_p))continue;
@@ -4355,27 +4363,39 @@ function initStockTiming(){
         const _sleeve=getSleeveOnDate(t,h.date);
         if(_sleeve==='activo')activoVal+=_vm;
         else if(_sleeve==='pasivo')pasivoVal+=_vm;
-        // Si llegara null (ticker no listado), se ignora — debería ser 0% del fondo
+        else{
+          // Ticker no listado en ningún sleeve → banda diagnóstica (no se descarta)
+          sinClasifVal+=_vm;
+          const pct=_vm/totalF*100;
+          if(!sinClasifTickers[t]||pct>sinClasifTickers[t])sinClasifTickers[t]=pct;
+        }
       }
       const cashPct=(h.efectivo||0)/totalF*100;
       const activoPct=activoVal/totalF*100;
       const pasivoPct=pasivoVal/totalF*100;
-      perDate.push({date:h.date,activoPct,pasivoPct,cashPct});
+      const sinClasifPct=sinClasifVal/totalF*100;
+      perDate.push({date:h.date,activoPct,pasivoPct,sinClasifPct,cashPct});
     }
     if(perDate.length){
       const labelsX=perDate.map(d=>d.date);
-      // Orden visual del stack (de abajo hacia arriba): Activo (más grande), Pasivo, Cash
+      const haySinClasif=perDate.some(d=>d.sinClasifPct>0.01);
+      // Orden del stack (abajo→arriba): Activo · Pasivo · Sin clasificar · Cash
       const datasets=[
         {label:'Sleeve Activo',data:perDate.map(d=>+d.activoPct.toFixed(3)),
          borderColor:'#0C4A6E',backgroundColor:'rgba(12,74,110,.82)',
          borderWidth:1,pointRadius:0,tension:0,fill:'origin',stack:'a'},
         {label:'Sleeve Pasivo',data:perDate.map(d=>+d.pasivoPct.toFixed(3)),
          borderColor:'#0EA5E9',backgroundColor:'rgba(14,165,233,.78)',
-         borderWidth:1,pointRadius:0,tension:0,fill:'-1',stack:'a'},
-        {label:'Efectivo',data:perDate.map(d=>+d.cashPct.toFixed(3)),
-         borderColor:'#475467',backgroundColor:'rgba(71,84,103,.85)',
          borderWidth:1,pointRadius:0,tension:0,fill:'-1',stack:'a'}
       ];
+      if(haySinClasif){
+        datasets.push({label:'Sin clasificar',data:perDate.map(d=>+d.sinClasifPct.toFixed(3)),
+         borderColor:'#D97706',backgroundColor:'rgba(217,119,6,.55)',
+         borderWidth:1,pointRadius:0,tension:0,fill:'-1',stack:'a'});
+      }
+      datasets.push({label:'Efectivo',data:perDate.map(d=>+d.cashPct.toFixed(3)),
+         borderColor:'#475467',backgroundColor:'rgba(71,84,103,.85)',
+         borderWidth:1,pointRadius:0,tension:0,fill:'-1',stack:'a'});
       const cA=new Chart(ctxA,{
         type:'line',
         data:{labels:labelsX,datasets},
@@ -4399,6 +4419,21 @@ function initStockTiming(){
         }
       });
       chartInst.push(cA);
+      // Aviso diagnóstico: lista de tickers sin clasificar
+      const noteEl=document.getElementById('st-area-unclassified');
+      if(noteEl){
+        const tks=Object.keys(sinClasifTickers).sort((a,b)=>sinClasifTickers[b]-sinClasifTickers[a]);
+        if(tks.length){
+          const chips=tks.map(t=>`<span style="display:inline-block;padding:2px 8px;margin:2px;border-radius:99px;background:rgba(217,119,6,.12);color:#B45309;font-size:11px;font-weight:600">${t} <span style="opacity:.7;font-weight:400">~${sinClasifTickers[t].toFixed(1)}%</span></span>`).join('');
+          noteEl.innerHTML=`<div style="padding:10px 12px;background:rgba(217,119,6,.06);border-left:3px solid #D97706;border-radius:6px;font-size:12px;color:var(--txt2);line-height:1.55">
+            <b style="color:#B45309">⚠ ${tks.length} ticker${tks.length===1?'':'s'} sin clasificar en sleeves</b> (banda naranja) — estos no están en <code>SLEEVES_ANTES</code> ni <code>SLEEVES_DESPUES</code> y por eso la gráfica no sumaba 100%:
+            <div style="margin-top:6px">${chips}</div>
+            <div style="margin-top:6px;font-size:11px;color:var(--txt3)">Dime a qué sleeve (Activo / Pasivo) va cada uno y los agrego — la banda naranja desaparecerá.</div>
+          </div>`;
+        }else{
+          noteEl.innerHTML='';
+        }
+      }
     }
   }
 }
