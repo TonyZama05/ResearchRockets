@@ -5412,38 +5412,19 @@ function initRendGrafs(){
     dailyAlphaAcum.push(+alphaAcum.toFixed(4));
   }
 
-  // ── Datos semanales ────────────────────────────────────────────────────
-  // Weekly: group days by ISO week, return sorted array of {days[]}
-  function getWeekKey(dateStr){
-    const d=new Date(dateStr+'T12:00:00');
-    const day=d.getDay();
-    const diff=d.getDate()-day+(day===0?-6:1);
-    const mon=new Date(d);mon.setDate(diff);
-    return mon.toISOString().slice(0,10);
-  }
-  const weekMap={};
-  for(const h of hist){
-    const wk=getWeekKey(h.date);
-    if(!weekMap[wk])weekMap[wk]=[];
-    weekMap[wk].push(h);
-  }
-  const weekKeys=Object.keys(weekMap).sort();
+  // ── Datos semanales — usa buildWeeklySummary (misma lógica que Resumen Semanal) ──
+  const weeks=buildWeeklySummary(hist);
   const weekLabels=[];const weekFondo=[];const weekMex=[];const weekAlphaAcum=[];
   let wAlphaAcum=0;
-  for(let i=0;i<weekKeys.length;i++){
-    const days=weekMap[weekKeys[i]];
-    // Start of this week = last point of previous week (or first point of this week for week 1)
-    const prevDays=i>0?weekMap[weekKeys[i-1]]:null;
-    const startH=prevDays?prevDays[prevDays.length-1]:days[0];
-    const endH=days[days.length-1];
-    const rF=startH.totalFondo>0?(endH.totalFondo-startH.totalFondo)/startH.totalFondo*100:0;
-    const rM=startH.mexPrice&&startH.mexPrice>0&&endH.mexPrice?(endH.mexPrice-startH.mexPrice)/startH.mexPrice*100:0;
+  weeks.forEach((w,i)=>{
+    const rF=w.rF||0;
+    const rM=w.rB!=null?w.rB:0;
     wAlphaAcum+=rF-rM;
     weekLabels.push('Sem '+(i+1));
     weekFondo.push(+rF.toFixed(4));
     weekMex.push(+rM.toFixed(4));
     weekAlphaAcum.push(+wAlphaAcum.toFixed(4));
-  }
+  });
 
   const BLUE_FONDO='rgba(12,74,110,.82)';   // navy azul — Portafolio
   const PURPLE_MEX='rgba(109,40,217,.65)';  // morado — MEXTRAC09
