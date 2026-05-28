@@ -144,6 +144,7 @@ canvas{display:block;width:100%!important}
     <button class="ni" onclick="go('posicion')"><svg viewBox="0 0 16 16"><path d="M1 12l4-4 3 3 4-5 3 2"/></svg>Posici&oacute;n</button>
     <div class="nav-section">An&aacute;lisis</div>
     <button class="ni" onclick="go('rendimiento')"><svg viewBox="0 0 16 16"><rect x="1" y="8" width="3" height="6"/><rect x="6" y="4" width="3" height="10"/><rect x="11" y="1" width="3" height="13"/></svg>Rendimiento</button>
+    <button class="ni" onclick="go('rendgrafs')"><svg viewBox="0 0 16 16"><rect x="1" y="9" width="3" height="5"/><rect x="5.5" y="6" width="3" height="8"/><rect x="10" y="4" width="3" height="10"/><path d="M1 7l5-3 3 2 4-3" stroke-linecap="round"/></svg>Rend. Semanal &amp; Diario</button>
     <button class="ni" onclick="go('resumensem')"><svg viewBox="0 0 16 16"><rect x="1.5" y="2" width="13" height="12" rx="1.5"/><path d="M1.5 6h13M5 2v12M9 2v12"/></svg>Resumen Semanal</button>
     <button class="ni" onclick="go('riesgo')"><svg viewBox="0 0 16 16"><path d="M8 2l1.5 4H14l-3.7 2.7 1.4 4.3L8 11l-3.7 2 1.4-4.3L2 6h4.5z"/></svg>Riesgo</button>
     <button class="ni" onclick="go('analytics')"><svg viewBox="0 0 16 16"><circle cx="8" cy="8" r="6"/><path d="M8 5v3l2 2"/></svg>Analytics</button>
@@ -280,6 +281,7 @@ const PRICE_DB={
 'NAFTRAC':{"2026-04-17":69.51,"2026-04-20":69.79,"2026-04-21":68.52,"2026-04-22":68.66,"2026-04-23":68.45,"2026-04-24":69.05,"2026-04-27":67.82,"2026-04-28":67.09,"2026-04-29":66.82,"2026-04-30":67.57,"2026-05-04":67.0,"2026-05-05":68.31,"2026-05-06":69.57,"2026-05-07":69.74,"2026-05-08":69.62,"2026-05-11":70.02,"2026-05-12":69.89,"2026-05-13":70.07,"2026-05-14":69.09,"2026-05-15":67.86,"2026-05-18":68.29,"2026-05-19":68.44,"2026-05-20":68.81,"2026-05-21":68.31,"2026-05-22":68.26,"2026-05-25":68.19},
 'EWW':{"2026-04-16":1361.607,"2026-04-17":1372.5728,"2026-04-20":1380.846,"2026-04-21":1352.5502,"2026-04-22":1357.7876,"2026-04-23":1351.0714,"2026-04-24":1363.5823,"2026-04-27":1339.923,"2026-04-28":1325.4071,"2026-04-29":1321.8995,"2026-04-30":1335.0443,"2026-05-01":1337.0611,"2026-05-04":1325.3827,"2026-05-05":1348.0791,"2026-05-06":1373.0505,"2026-05-07":1377.4148,"2026-05-08":1370.2439,"2026-05-11":1378.6553,"2026-05-12":1377.5587,"2026-05-13":1378.9593,"2026-05-14":1361.6102,"2026-05-15":1338.5898,"2026-05-18":1345.6534,"2026-05-19":1350.1886,"2026-05-20":1357.028,"2026-05-21":1346.3088,"2026-05-22":1345.5513},
 'VMEX':{"2026-04-16":57.75,"2026-04-17":58.24,"2026-04-20":58.32,"2026-04-21":57.37,"2026-04-22":57.61,"2026-04-23":57.55,"2026-04-24":58.02,"2026-04-27":57.1,"2026-04-28":56.53,"2026-04-29":56.35,"2026-04-30":56.76,"2026-05-04":56.51,"2026-05-05":57.58,"2026-05-06":58.6,"2026-05-07":58.74,"2026-05-08":58.64,"2026-05-11":58.93,"2026-05-12":58.5,"2026-05-13":58.96,"2026-05-14":57.96,"2026-05-15":57.26,"2026-05-18":57.56,"2026-05-19":57.61,"2026-05-20":58.04,"2026-05-21":57.54,"2026-05-22":57.61,"2026-05-25":57.65,"2026-05-26":58.35},
+'ESGMEX':{"2026-04-17":65.99,"2026-04-20":66.18,"2026-04-21":64.93,"2026-04-22":65.03,"2026-04-23":64.95,"2026-04-24":65.53,"2026-04-27":64.3,"2026-04-28":63.71,"2026-04-29":63.71,"2026-04-30":64.39,"2026-05-04":63.94,"2026-05-05":65.17,"2026-05-06":66.35,"2026-05-07":66.44,"2026-05-08":66.34,"2026-05-11":66.73,"2026-05-12":66.61,"2026-05-13":66.81,"2026-05-14":65.93,"2026-05-15":64.77,"2026-05-18":65.24,"2026-05-19":65.28,"2026-05-20":65.49,"2026-05-21":65.03,"2026-05-22":65.14,"2026-05-25":65.05},
 'AGUA':{'2026-04-01':11.99,'2026-04-06':12.07,'2026-04-07':12.15,'2026-04-08':12.32,'2026-04-09':12.4,'2026-04-10':12.43,'2026-04-13':12.5,'2026-04-14':12.54,'2026-04-15':12.58},
 'ALPEKA':{'2026-04-01':10.91,'2026-04-06':10.82,'2026-04-07':10.81,'2026-04-08':10.46,'2026-04-09':10.52,'2026-04-10':10.29,'2026-04-13':10.8,'2026-04-14':10.57,'2026-04-15':10.7},
 'ALSEA':{'2026-04-01':58.02,'2026-04-06':57.49,'2026-04-07':57.61,'2026-04-08':57.31,'2026-04-09':55.9,'2026-04-10':55.46,'2026-04-13':54.78,'2026-04-14':54.27,'2026-04-15':53.65},
@@ -915,11 +917,11 @@ function sortTable(tid,col,type='str'){
 function th(label,tid,col,type='str'){return`<th onclick="sortTable('${tid}',${col},'${type}')">${label}</th>`;}
 
 // ROUTING - No universo page
-const PAGES=['dashboard','ordenes','posicion','rendimiento','resumensem','riesgo','analytics','atribucion','stocktiming','bestworst','vsbenchmarks','snapshot','infocoef','flujos','estadisticos','config'];
+const PAGES=['dashboard','ordenes','posicion','rendimiento','rendgrafs','resumensem','riesgo','analytics','atribucion','stocktiming','bestworst','vsbenchmarks','snapshot','infocoef','flujos','estadisticos','config'];
 let chartInst=[];
 function go(page){
   document.querySelectorAll('.ni').forEach((el,i)=>el.classList.toggle('active',i===PAGES.indexOf(page)));
-  const titles={dashboard:'Dashboard',ordenes:'Órdenes',posicion:'Posición actual',rendimiento:'Rendimiento',resumensem:'Resumen Semanal',riesgo:'Riesgo & Prospectivos',analytics:'Analytics',atribucion:'Performance Attribution',stocktiming:'Stock Picking vs Market Timing',bestworst:'Best Trade vs Worst Trade',vsbenchmarks:'Portafolio vs Benchmarks',snapshot:'Snapshot Diario',infocoef:'Information Coefficient & Fundamental Law',flujos:'Flujos & Ajustes de mercado',estadisticos:'Estadísticos & Medidas',config:'Configuración'};
+  const titles={dashboard:'Dashboard',ordenes:'Órdenes',posicion:'Posición actual',rendimiento:'Rendimiento',rendgrafs:'Rendimiento Semanal & Diario',resumensem:'Resumen Semanal',riesgo:'Riesgo & Prospectivos',analytics:'Analytics',atribucion:'Performance Attribution',stocktiming:'Stock Picking vs Market Timing',bestworst:'Best Trade vs Worst Trade',vsbenchmarks:'Portafolio vs Benchmarks',snapshot:'Snapshot Diario',infocoef:'Information Coefficient & Fundamental Law',flujos:'Flujos & Ajustes de mercado',estadisticos:'Estadísticos & Medidas',config:'Configuración'};
   document.getElementById('tb-title').textContent=titles[page]||page;
   document.getElementById('tb-date').textContent=new Date().toLocaleDateString('es-MX',{weekday:'long',year:'numeric',month:'long',day:'numeric'});
   // Sidebar: siempre muestra el capital asignado (V0 fijo)
@@ -931,7 +933,7 @@ function go(page){
     if(_sSub)_sSub.textContent='';
   }
   chartInst.forEach(c=>{try{c.destroy();}catch(e){}});chartInst=[];
-  const renders={dashboard:pgDash,ordenes:pgÓrdenes,posicion:pgPosicion,rendimiento:pgRendimiento,resumensem:pgResumenSemanal,riesgo:pgRiesgo,analytics:pgAnalytics,atribucion:pgAtribucion,stocktiming:pgStockTiming,bestworst:pgBestWorst,vsbenchmarks:pgVsBenchmarks,snapshot:pgSnapshot,infocoef:pgInfoCoef,flujos:pgFlujos,estadisticos:pgEstadísticos,config:pgConfig};
+  const renders={dashboard:pgDash,ordenes:pgÓrdenes,posicion:pgPosicion,rendimiento:pgRendimiento,rendgrafs:pgRendGrafs,resumensem:pgResumenSemanal,riesgo:pgRiesgo,analytics:pgAnalytics,atribucion:pgAtribucion,stocktiming:pgStockTiming,bestworst:pgBestWorst,vsbenchmarks:pgVsBenchmarks,snapshot:pgSnapshot,infocoef:pgInfoCoef,flujos:pgFlujos,estadisticos:pgEstadísticos,config:pgConfig};
   try{
     document.getElementById('content').innerHTML=(renders[page]||pgDash)();
   }catch(err){
@@ -946,6 +948,7 @@ function go(page){
   if(page==='analytics')setTimeout(initCharts,50);
   if(page==='atribucion')setTimeout(initAtribucionCharts,50);
   if(page==='stocktiming')setTimeout(initStockTiming,50);
+  if(page==='rendgrafs')setTimeout(initRendGrafs,50);
   if(page==='snapshot')setTimeout(initSnapshot,50);
   if(page==='infocoef')setTimeout(initInfoCoef,50);
   if(page==='posicion')setTimeout(initPosicion,50);
@@ -1422,7 +1425,19 @@ function pgRiesgo(){
   const prospTE=prospRets.length>1?stdDev(prospRets.map(r=>r.activo))*Math.sqrt(252):0;
   const prospBeta=prospRets.length>1?betaCalc(prospRets.map(r=>r.portRet),prospRets.map(r=>r.benchRet)):1;
 
+  // Comisiones acumuladas y rendimiento sin comisiones
+  const totalComCompras=(S.ordenes||[]).filter(o=>o.tipo==='compra').reduce((s,o)=>s+(o.comision||0)+(o.iva||0),0);
+  const totalComVentas=(S.ordenes||[]).filter(o=>o.tipo==='venta').reduce((s,o)=>s+(o.comision||0)+(o.iva||0),0);
+  const totalComisiones=totalComCompras+totalComVentas;
+  const rendSinCom=(m.totalFondo>0&&S.capitalInicial>0)?(m.totalFondo+totalComisiones-S.capitalInicial)/S.capitalInicial*100:null;
+
   return`
+  <div class="sg4" style="margin-bottom:14px">
+    ${stCard(fm(totalComisiones),'Comisiones en efectivo (total)','Comisión + IVA acumulado · todas las órdenes','stat-red')}
+    ${stCard(fm(totalComCompras),'Comisiones en compras','Com + IVA de compras ejecutadas','stat-red')}
+    ${stCard(fm(totalComVentas),'Comisiones en ventas','Com + IVA de ventas ejecutadas','stat-red')}
+    ${stCard(rendSinCom!=null?fp(rendSinCom):'&mdash;','Rendimiento sin comisiones','Si no hubieras pagado com. ni IVA',rendSinCom!=null&&rendSinCom>=0?'stat-grn':'stat-red')}
+  </div>
   <div class="sg2">
     <div class="card"><div class="sec-h"><div class="sec-h-bar"></div><div class="sec-h-text">Medidas absolutas &mdash; históricas</div></div>
       ${rskRow('Desv. estandar (anualizada)',e?f2(m.stdDev)+'%':'&mdash;','Volatilidad total del portafolio',m.stdDev>25?'var(--red)':m.stdDev>15?'var(--amb)':'var(--grn)')}
@@ -4151,7 +4166,8 @@ function calcStockVsTiming(){
     rendBmk:0,rendTim:0,rendFondo:0,
     nivelDesinv:hist[0].totalFondo>0?hist[0].efectivo/hist[0].totalFondo:0,
     mexIdx:100,timIdx:100,fondoIdx:100,stockIdx:100,
-    valFondo:hist[0].totalFondo,efectivo:hist[0].efectivo,mexPrice:hist[0].mexPrice
+    valFondo:hist[0].totalFondo,efectivo:hist[0].efectivo,mexPrice:hist[0].mexPrice,
+    pctCashCierre:hist[0].totalFondo>0?hist[0].efectivo/hist[0].totalFondo:0
   });
 
   for(let i=1;i<hist.length;i++){
@@ -4176,7 +4192,8 @@ function calcStockVsTiming(){
       t:i,date:cur.date,
       rendBmk,rendTim,rendFondo,rendStock,nivelDesinv,
       mexIdx,timIdx,fondoIdx,stockIdx,
-      valFondo:cur.totalFondo,efectivo:cur.efectivo,mexPrice:cur.mexPrice
+      valFondo:cur.totalFondo,efectivo:cur.efectivo,mexPrice:cur.mexPrice,
+      pctCashCierre:cur.totalFondo>0?cur.efectivo/cur.totalFondo:0
     });
   }
 
@@ -4253,8 +4270,9 @@ function pgStockTiming(){
       <th style="background:var(--accent);color:#fff">T</th>
       <th style="background:var(--accent);color:#fff">Fecha</th>
       <th style="background:var(--accent);color:#fff;text-align:right">REND BMK</th>
-      <th style="background:var(--accent);color:#fff;text-align:right">NIVEL DESINV</th>
+      <th style="background:var(--accent);color:#fff;text-align:right">NIVEL DESINV<br><span style="font-weight:400;font-size:10px">cash inicio día</span></th>
       <th style="background:var(--accent);color:#fff;text-align:right">NIVEL INV</th>
+      <th style="background:var(--accent);color:#fff;text-align:right">EFECTIVO CIERRE<br><span style="font-weight:400;font-size:10px">cash al cierre</span></th>
       <th style="background:var(--accent);color:#fff;text-align:right">REND TIM</th>
       <th style="background:var(--accent);color:#fff;text-align:right">REND FONDO</th>
       <th style="background:var(--accent);color:#fff;text-align:right">MEXTRAC IDX</th>
@@ -4267,6 +4285,7 @@ function pgStockTiming(){
       <td class="mono ${cc(r.rendBmk)}" style="text-align:right">${r.t===0?'&mdash;':fp(r.rendBmk,2)}</td>
       <td class="mono" style="text-align:right;color:var(--amb)">${(r.nivelDesinv*100).toFixed(2)}%</td>
       <td class="mono" style="text-align:right;color:var(--grn)">${((1-r.nivelDesinv)*100).toFixed(2)}%</td>
+      <td class="mono" style="text-align:right;color:var(--blue)">${r.pctCashCierre!=null?(r.pctCashCierre*100).toFixed(2)+'%':'&mdash;'}</td>
       <td class="mono ${cc(r.rendTim)}" style="text-align:right">${r.t===0?'&mdash;':fp(r.rendTim,2)}</td>
       <td class="mono ${cc(r.rendFondo)}" style="text-align:right">${r.t===0?'&mdash;':fp(r.rendFondo,2)}</td>
       <td class="mono" style="text-align:right">${r.mexIdx.toFixed(4)}</td>
@@ -5151,12 +5170,13 @@ function pgVsBenchmarks(){
     const naf = localPrice('NAFTRAC', h.date);
     const eww = localPrice('EWW', h.date);
     const vmex = localPrice('VMEX', h.date);
+    const esg = localPrice('ESGMEX', h.date);
     if(h.totalFondo>0 && h.mexPrice && naf && eww && vmex){
-      aligned.push({date:h.date, fondo:h.totalFondo, mex:h.mexPrice, naf, eww, vmex});
+      aligned.push({date:h.date, fondo:h.totalFondo, mex:h.mexPrice, naf, eww, vmex, esg:esg||null});
     }
   }
   if(aligned.length<2){
-    const counts = ['NAFTRAC','EWW','VMEX'].map(t=>`${t}: ${Object.keys(PRICE_DB[t]||{}).length} días`).join(' · ');
+    const counts = ['NAFTRAC','EWW','VMEX','ESGMEX'].map(t=>`${t}: ${Object.keys(PRICE_DB[t]||{}).length} días`).join(' · ');
     return `<div class="card"><div class="empty" style="padding:40px;text-align:center;color:var(--txt3)">
       Datos insuficientes — se necesita al menos 2 días donde fondo, MEXTRAC09, NAFTRAC, EWW y VMEX tengan precio.
       <div style="margin-top:8px;font-size:11px">${counts}</div>
@@ -5169,31 +5189,38 @@ function pgVsBenchmarks(){
   const nafIdx   = aligned.map(a => a.naf  /b.naf  *100);
   const ewwIdx   = aligned.map(a => a.eww  /b.eww  *100);
   const vmexIdx  = aligned.map(a => a.vmex /b.vmex *100);
+  // ESGMEX: only where we have data; base from first aligned point that has it
+  const esgBase  = aligned.find(a=>a.esg!=null);
+  const esgIdx   = aligned.map(a => (a.esg!=null&&esgBase)?a.esg/esgBase.esg*100:null);
   const last = aligned.length-1;
   const rendFondo = fondoIdx[last]-100;
   const rendMex   = mexIdx[last]-100;
   const rendNaf   = nafIdx[last]-100;
   const rendEww   = ewwIdx[last]-100;
   const rendVmex  = vmexIdx[last]-100;
+  const rendEsg   = esgIdx[last]!=null?esgIdx[last]-100:null;
   const alphaMex  = rendFondo - rendMex;
   const alphaNaf  = rendFondo - rendNaf;
   const alphaEww  = rendFondo - rendEww;
   const alphaVmex = rendFondo - rendVmex;
+  const alphaEsg  = rendEsg!=null?rendFondo-rendEsg:null;
   const alphaMexSerie  = aligned.map((a,i) => (fondoIdx[i]-100) - (mexIdx[i]-100));
   const alphaNafSerie  = aligned.map((a,i) => (fondoIdx[i]-100) - (nafIdx[i]-100));
   const alphaEwwSerie  = aligned.map((a,i) => (fondoIdx[i]-100) - (ewwIdx[i]-100));
   const alphaVmexSerie = aligned.map((a,i) => (fondoIdx[i]-100) - (vmexIdx[i]-100));
+  const alphaEsgSerie  = aligned.map((a,i) => esgIdx[i]!=null?(fondoIdx[i]-100)-(esgIdx[i]-100):null);
 
   // Mini-pill para el banner de alphas
-  const alphaPill = (label, val) => `<span style="display:inline-flex;align-items:center;gap:6px;padding:4px 9px;border-radius:99px;background:rgba(255,255,255,.6);border:1px solid var(--line);font-size:11.5px;margin-right:8px;margin-bottom:4px"><span style="color:var(--txt3);font-weight:500">${label}:</span><b class="${cc(val)}">${fp(val)}</b></span>`;
+  const alphaPill = (label, val) => val==null?'':`<span style="display:inline-flex;align-items:center;gap:6px;padding:4px 9px;border-radius:99px;background:rgba(255,255,255,.6);border:1px solid var(--line);font-size:11.5px;margin-right:8px;margin-bottom:4px"><span style="color:var(--txt3);font-weight:500">${label}:</span><b class="${cc(val)}">${fp(val)}</b></span>`;
 
   return `
-  <div style="display:grid;grid-template-columns:repeat(5,1fr);gap:14px;margin-bottom:14px">
+  <div style="display:grid;grid-template-columns:repeat(6,1fr);gap:14px;margin-bottom:14px">
     ${stCard(fp(rendFondo),'Research Rockets','Rend. desde '+b.date,rendFondo>=0?'stat-grn':'stat-red')}
     ${stCard(fp(rendMex),'MEXTRAC09','Benchmark oficial',rendMex>=0?'stat-grn':'stat-red')}
     ${stCard(fp(rendNaf),'NAFTRAC','ETF alterno · iShares',rendNaf>=0?'stat-grn':'stat-red')}
     ${stCard(fp(rendEww),'EWW','iShares MSCI México',rendEww>=0?'stat-grn':'stat-red')}
     ${stCard(fp(rendVmex),'VMEX','Vanguard México',rendVmex>=0?'stat-grn':'stat-red')}
+    ${stCard(rendEsg!=null?fp(rendEsg):'&mdash;','ESGMEX','iShares ESG México',rendEsg!=null&&rendEsg>=0?'stat-grn':'stat-red')}
   </div>
 
   <div class="card" style="padding:12px 16px;margin-bottom:14px;background:rgba(12,74,110,.04);border-left:3px solid #0C4A6E">
@@ -5203,11 +5230,12 @@ function pgVsBenchmarks(){
       ${alphaPill('vs NAFTRAC', alphaNaf)}
       ${alphaPill('vs EWW', alphaEww)}
       ${alphaPill('vs VMEX', alphaVmex)}
+      ${alphaPill('vs ESGMEX', alphaEsg)}
     </div>
   </div>
 
   <div class="card">
-    <div class="sec-h"><div class="sec-h-bar" style="background:var(--accent)"></div><div class="sec-h-text">Portafolio vs Benchmarks — base 100</div><span class="sec-h-sub">Periodo: ${b.date} → ${aligned[last].date} · ${aligned.length} días · Research Rockets (navy) · MEXTRAC09 (naranja) · NAFTRAC (morado) · EWW (teal) · VMEX (rosa)</span></div>
+    <div class="sec-h"><div class="sec-h-bar" style="background:var(--accent)"></div><div class="sec-h-text">Portafolio vs Benchmarks — base 100</div><span class="sec-h-sub">Periodo: ${b.date} → ${aligned[last].date} · ${aligned.length} días · Research Rockets (navy) · MEXTRAC09 (naranja) · NAFTRAC (morado) · EWW (teal) · VMEX (rosa) · ESGMEX (verde olivo)</span></div>
     <div style="position:relative;height:400px"><canvas id="vsbench-chart" style="width:100%!important;height:400px!important"></canvas></div>
   </div>
 
@@ -5225,10 +5253,12 @@ function pgVsBenchmarks(){
       <th style="text-align:right">NAFTRAC</th>
       <th style="text-align:right">EWW</th>
       <th style="text-align:right">VMEX</th>
+      <th style="text-align:right">ESGMEX</th>
       <th style="text-align:right">α MEX</th>
       <th style="text-align:right">α NAF</th>
       <th style="text-align:right">α EWW</th>
       <th style="text-align:right">α VMEX</th>
+      <th style="text-align:right">α ESG</th>
     </tr></thead><tbody>
       ${aligned.map((a,i)=>`<tr>
         <td class="mono">${a.date}</td>
@@ -5237,10 +5267,12 @@ function pgVsBenchmarks(){
         <td class="mono" style="text-align:right">${f2(nafIdx[i],2)}</td>
         <td class="mono" style="text-align:right">${f2(ewwIdx[i],2)}</td>
         <td class="mono" style="text-align:right">${f2(vmexIdx[i],2)}</td>
+        <td class="mono" style="text-align:right">${esgIdx[i]!=null?f2(esgIdx[i],2):'&mdash;'}</td>
         <td class="mono ${cc(alphaMexSerie[i])}" style="text-align:right">${fp(alphaMexSerie[i])}</td>
         <td class="mono ${cc(alphaNafSerie[i])}" style="text-align:right">${fp(alphaNafSerie[i])}</td>
         <td class="mono ${cc(alphaEwwSerie[i])}" style="text-align:right">${fp(alphaEwwSerie[i])}</td>
         <td class="mono ${cc(alphaVmexSerie[i])}" style="text-align:right">${fp(alphaVmexSerie[i])}</td>
+        <td class="mono ${alphaEsgSerie[i]!=null?cc(alphaEsgSerie[i]):'d'}" style="text-align:right">${alphaEsgSerie[i]!=null?fp(alphaEsgSerie[i]):'&mdash;'}</td>
       </tr>`).join('')}
     </tbody></table></div>
   </div>`;
@@ -5254,8 +5286,9 @@ function initVsBenchmarks(){
     const naf = localPrice('NAFTRAC', h.date);
     const eww = localPrice('EWW', h.date);
     const vmex = localPrice('VMEX', h.date);
+    const esg = localPrice('ESGMEX', h.date);
     if(h.totalFondo>0 && h.mexPrice && naf && eww && vmex){
-      aligned.push({date:h.date, fondo:h.totalFondo, mex:h.mexPrice, naf, eww, vmex});
+      aligned.push({date:h.date, fondo:h.totalFondo, mex:h.mexPrice, naf, eww, vmex, esg:esg||null});
     }
   }
   if(aligned.length<2) return;
@@ -5266,6 +5299,8 @@ function initVsBenchmarks(){
   const nafIdx   = aligned.map(a => +(a.naf  /b.naf  *100).toFixed(4));
   const ewwIdx   = aligned.map(a => +(a.eww  /b.eww  *100).toFixed(4));
   const vmexIdx  = aligned.map(a => +(a.vmex /b.vmex *100).toFixed(4));
+  const esgBase  = aligned.find(a=>a.esg!=null);
+  const esgIdx   = aligned.map(a => a.esg!=null&&esgBase?+(a.esg/esgBase.esg*100).toFixed(4):null);
 
   const ctx1 = document.getElementById('vsbench-chart');
   if(ctx1){
@@ -5277,7 +5312,8 @@ function initVsBenchmarks(){
         {label:'MEXTRAC09 (benchmark)',data:mexIdx,borderColor:'#B54708',backgroundColor:'rgba(181,71,8,.08)',borderWidth:2,pointRadius:2.2,pointBackgroundColor:'#B54708',tension:0,fill:false},
         {label:'NAFTRAC',data:nafIdx,borderColor:'#7C3AED',backgroundColor:'rgba(124,58,237,.08)',borderWidth:1.7,pointRadius:2,pointBackgroundColor:'#7C3AED',tension:0,fill:false,borderDash:[4,3]},
         {label:'EWW',data:ewwIdx,borderColor:'#0D9488',backgroundColor:'rgba(13,148,136,.08)',borderWidth:1.7,pointRadius:2,pointBackgroundColor:'#0D9488',tension:0,fill:false,borderDash:[6,2]},
-        {label:'VMEX',data:vmexIdx,borderColor:'#E11D48',backgroundColor:'rgba(225,29,72,.08)',borderWidth:1.7,pointRadius:2,pointBackgroundColor:'#E11D48',tension:0,fill:false,borderDash:[2,2]}
+        {label:'VMEX',data:vmexIdx,borderColor:'#E11D48',backgroundColor:'rgba(225,29,72,.08)',borderWidth:1.7,pointRadius:2,pointBackgroundColor:'#E11D48',tension:0,fill:false,borderDash:[2,2]},
+        {label:'ESGMEX',data:esgIdx,borderColor:'#65A30D',backgroundColor:'rgba(101,163,13,.08)',borderWidth:1.7,pointRadius:2,pointBackgroundColor:'#65A30D',tension:0,fill:false,borderDash:[3,3],spanGaps:true}
       ]},
       options:{
         responsive:true,maintainAspectRatio:false,
@@ -5305,13 +5341,15 @@ function initVsBenchmarks(){
     const alphaNaf  = aligned.map((a,i)=> +((fondoIdx[i]-100)-(nafIdx[i]-100)).toFixed(4));
     const alphaEww  = aligned.map((a,i)=> +((fondoIdx[i]-100)-(ewwIdx[i]-100)).toFixed(4));
     const alphaVmex = aligned.map((a,i)=> +((fondoIdx[i]-100)-(vmexIdx[i]-100)).toFixed(4));
+    const alphaEsg  = aligned.map((a,i)=> esgIdx[i]!=null?+((fondoIdx[i]-100)-(esgIdx[i]-100)).toFixed(4):null);
     const c2 = new Chart(ctx2,{
       type:'line',
       data:{labels,datasets:[
         {label:'α vs MEXTRAC09',data:alphaMex,borderColor:'#B54708',backgroundColor:'rgba(181,71,8,.08)',borderWidth:2,pointRadius:2.2,pointBackgroundColor:'#B54708',tension:0,fill:false},
         {label:'α vs NAFTRAC',data:alphaNaf,borderColor:'#7C3AED',backgroundColor:'rgba(124,58,237,.08)',borderWidth:1.7,pointRadius:2,pointBackgroundColor:'#7C3AED',tension:0,fill:false,borderDash:[4,3]},
         {label:'α vs EWW',data:alphaEww,borderColor:'#0D9488',backgroundColor:'rgba(13,148,136,.08)',borderWidth:1.7,pointRadius:2,pointBackgroundColor:'#0D9488',tension:0,fill:false,borderDash:[6,2]},
-        {label:'α vs VMEX',data:alphaVmex,borderColor:'#E11D48',backgroundColor:'rgba(225,29,72,.08)',borderWidth:1.7,pointRadius:2,pointBackgroundColor:'#E11D48',tension:0,fill:false,borderDash:[2,2]}
+        {label:'α vs VMEX',data:alphaVmex,borderColor:'#E11D48',backgroundColor:'rgba(225,29,72,.08)',borderWidth:1.7,pointRadius:2,pointBackgroundColor:'#E11D48',tension:0,fill:false,borderDash:[2,2]},
+        {label:'α vs ESGMEX',data:alphaEsg,borderColor:'#65A30D',backgroundColor:'rgba(101,163,13,.08)',borderWidth:1.7,pointRadius:2,pointBackgroundColor:'#65A30D',tension:0,fill:false,borderDash:[3,3],spanGaps:true}
       ]},
       options:{
         responsive:true,maintainAspectRatio:false,
@@ -5331,6 +5369,118 @@ function initVsBenchmarks(){
     });
     chartInst.push(c2);
   }
+}
+
+// ══════════════════════════════════════════════════════════════════════════
+// RENDIMIENTO SEMANAL & DIARIO — Gráficas de barras con alpha acumulado
+// ══════════════════════════════════════════════════════════════════════════
+function pgRendGrafs(){
+  const m=calcMetrics();
+  const hist=m.hist||[];
+  if(hist.length<2){
+    return`<div class="card"><div class="empty" style="padding:40px;text-align:center;color:var(--txt3)">Se necesitan al menos 2 días de historial con precios MEXTRAC09 para mostrar las gráficas.</div></div>`;
+  }
+  return`
+  <div class="card">
+    <div class="sec-h"><div class="sec-h-bar" style="background:var(--accent)"></div><div class="sec-h-text">Rendimiento semanal — Portafolio vs MEXTRAC09</div><span class="sec-h-sub">Barras agrupadas por semana · línea verde = Alfa Acumulada</span></div>
+    <div style="position:relative;height:360px"><canvas id="rg-weekly-chart" style="width:100%!important;height:360px!important"></canvas></div>
+  </div>
+
+  <div class="card">
+    <div class="sec-h"><div class="sec-h-bar" style="background:var(--purple)"></div><div class="sec-h-text">Rendimiento diario — Portafolio vs MEXTRAC09</div><span class="sec-h-sub">Barras agrupadas por día · línea verde = Alfa Acumulada</span></div>
+    <div style="position:relative;height:360px"><canvas id="rg-daily-chart" style="width:100%!important;height:360px!important"></canvas></div>
+  </div>`;
+}
+
+function initRendGrafs(){
+  const m=calcMetrics();
+  const hist=m.hist||[];
+  if(hist.length<2)return;
+
+  // ── Datos diarios ─────────────────────────────────────────────────────
+  const dailyLabels=[];const dailyFondo=[];const dailyMex=[];const dailyAlphaAcum=[];
+  let alphaAcum=0;
+  for(let i=1;i<hist.length;i++){
+    const h=hist[i],hp=hist[i-1];
+    if(!hp.mexPrice||!h.mexPrice||hp.mexPrice<=0)continue;
+    const rFondo=hp.totalFondo>0?(h.totalFondo-hp.totalFondo)/hp.totalFondo*100:0;
+    const rMex=(h.mexPrice-hp.mexPrice)/hp.mexPrice*100;
+    alphaAcum+=rFondo-rMex;
+    dailyLabels.push(h.date.slice(5));
+    dailyFondo.push(+rFondo.toFixed(4));
+    dailyMex.push(+rMex.toFixed(4));
+    dailyAlphaAcum.push(+alphaAcum.toFixed(4));
+  }
+
+  // ── Datos semanales ────────────────────────────────────────────────────
+  function getWeekKey(dateStr){
+    const d=new Date(dateStr+'T12:00:00');
+    const day=d.getDay();
+    const diff=d.getDate()-day+(day===0?-6:1);
+    const mon=new Date(d);mon.setDate(diff);
+    return mon.toISOString().slice(0,10);
+  }
+  const weekMap={};
+  for(const h of hist){
+    const wk=getWeekKey(h.date);
+    if(!weekMap[wk])weekMap[wk]={start:h,end:h};
+    else weekMap[wk].end=h;
+  }
+  const weekKeys=Object.keys(weekMap).sort();
+  const weekLabels=[];const weekFondo=[];const weekMex=[];const weekAlphaAcum=[];
+  let wAlphaAcum=0;
+  for(let i=0;i<weekKeys.length;i++){
+    const w=weekMap[weekKeys[i]];
+    const rF=w.start.totalFondo>0?(w.end.totalFondo-w.start.totalFondo)/w.start.totalFondo*100:0;
+    const rM=w.start.mexPrice&&w.start.mexPrice>0&&w.end.mexPrice?(w.end.mexPrice-w.start.mexPrice)/w.start.mexPrice*100:0;
+    wAlphaAcum+=rF-rM;
+    weekLabels.push('Sem '+(i+1));
+    weekFondo.push(+rF.toFixed(4));
+    weekMex.push(+rM.toFixed(4));
+    weekAlphaAcum.push(+wAlphaAcum.toFixed(4));
+  }
+
+  const barChartCfg=(labels,fondoData,mexData,alphaData,labelFondo,labelMex,ctx)=>{
+    if(!ctx)return;
+    Chart.getChart(ctx)?.destroy();
+    const c=new Chart(ctx,{
+      type:'bar',
+      data:{
+        labels,
+        datasets:[
+          {label:labelFondo,data:fondoData,backgroundColor:fondoData.map(v=>v>=0?'rgba(12,74,110,.78)':'rgba(180,35,24,.68)'),borderRadius:3,order:2},
+          {label:labelMex,data:mexData,backgroundColor:mexData.map(v=>v>=0?'rgba(181,71,8,.45)':'rgba(181,71,8,.3)'),borderRadius:3,order:3},
+          {type:'line',label:'Alfa Acumulada',data:alphaData,borderColor:'#16A34A',backgroundColor:'rgba(22,163,74,.1)',borderWidth:2.2,pointRadius:3,pointBackgroundColor:'#16A34A',tension:0.15,yAxisID:'y1',order:1}
+        ]
+      },
+      options:{
+        responsive:true,maintainAspectRatio:false,
+        interaction:{mode:'index',intersect:false},
+        plugins:{
+          legend:{position:'bottom',labels:{color:'#475467',font:{size:11.5,family:'Geist'},boxWidth:14,boxHeight:8,padding:12}},
+          tooltip:{
+            backgroundColor:'#fff',titleColor:'#101828',bodyColor:'#475467',borderColor:'#E4E7EC',borderWidth:1,padding:10,
+            callbacks:{
+              label:c=>c.dataset.yAxisID==='y1'
+                ?`${c.dataset.label}: ${(c.parsed.y>=0?'+':'')}${c.parsed.y.toFixed(2)} pp`
+                :`${c.dataset.label}: ${(c.parsed.y>=0?'+':'')}${c.parsed.y.toFixed(2)}%`
+            }
+          }
+        },
+        scales:{
+          x:{ticks:{color:'#98A2B3',font:{size:11},maxTicksLimit:25},grid:{color:'rgba(0,0,0,.04)'}},
+          y:{ticks:{color:'#98A2B3',font:{size:11},callback:v=>(v>=0?'+':'')+v.toFixed(2)+'%'},grid:{color:'rgba(0,0,0,.04)'},
+             title:{display:true,text:'Rendimiento (%)',color:'#98A2B3',font:{size:10}}},
+          y1:{position:'right',ticks:{color:'#16A34A',font:{size:11},callback:v=>(v>=0?'+':'')+v.toFixed(2)+' pp'},grid:{drawOnChartArea:false},
+              title:{display:true,text:'Alfa Acumulada (pp)',color:'#16A34A',font:{size:10}}}
+        }
+      }
+    });
+    chartInst.push(c);
+  };
+
+  barChartCfg(weekLabels,weekFondo,weekMex,weekAlphaAcum,'Portafolio (semanal)','MEXTRAC09 (semanal)',document.getElementById('rg-weekly-chart'));
+  barChartCfg(dailyLabels,dailyFondo,dailyMex,dailyAlphaAcum,'Portafolio (diario)','MEXTRAC09 (diario)',document.getElementById('rg-daily-chart'));
 }
 
 go('dashboard');
