@@ -5589,39 +5589,28 @@ function renderPerformanceChart(){
   if(perfChart){try{perfChart.destroy();}catch(e){}perfChart=null;}
   if(!prices.length)return;
   const labels=dates.map(perfFmtFecha);
-  // Cambio diario (%) y rendimiento acumulado (%) desde el inicio del periodo
-  const base0=prices[0];
-  const cambioDia=prices.map((p,i)=> i===0?null:+(((p-prices[i-1])/prices[i-1])*100).toFixed(3));
-  const acumulado=prices.map(p=> base0>0?+(((p-base0)/base0)*100).toFixed(3):0);
-  const barColors=cambioDia.map(v=> v==null?'rgba(255,255,255,0)':(v>=0?'rgba(74,222,128,.6)':'rgba(248,113,113,.65)'));
   perfChart=new Chart(ctx,{
-    type:'bar',
-    data:{labels,datasets:[
-      {type:'bar',label:'Cambio diario %',data:cambioDia,yAxisID:'y1',backgroundColor:barColors,borderWidth:0,order:3,barPercentage:0.62,categoryPercentage:0.72},
-      {type:'line',label:'Acumulado %',data:acumulado,yAxisID:'y1',borderColor:'#FBBF24',backgroundColor:'rgba(251,191,36,.06)',borderWidth:1.8,pointRadius:0,pointHoverRadius:4,tension:.15,borderDash:[5,3],fill:false,order:2},
-      {type:'line',label:t+' — cierre',data:prices,yAxisID:'y',borderColor:'#FFFFFF',backgroundColor:'rgba(255,255,255,.06)',borderWidth:2.5,pointRadius:3.5,pointHoverRadius:6,pointBackgroundColor:'#FFFFFF',pointBorderColor:'#FFFFFF',tension:0,fill:false,order:1}
-    ]},
+    type:'line',
+    data:{labels,datasets:[{
+      label:t+' — cierre',data:prices,
+      borderColor:'#FFFFFF',backgroundColor:'rgba(255,255,255,.06)',
+      borderWidth:2.5,pointRadius:4,pointHoverRadius:6,
+      pointBackgroundColor:'#FFFFFF',pointBorderColor:'#FFFFFF',
+      tension:0,fill:false
+    }]},
     options:{
       responsive:true,maintainAspectRatio:false,
       interaction:{mode:'index',intersect:false},
       plugins:{
-        legend:{display:true,position:'bottom',labels:{color:'rgba(255,255,255,.9)',font:{size:11.5,family:'Geist'},boxWidth:14,boxHeight:8,padding:14}},
+        legend:{display:false},
         tooltip:{backgroundColor:'#fff',titleColor:'#101828',bodyColor:'#475467',borderColor:'#E4E7EC',borderWidth:1,padding:10,
-          callbacks:{label:c=>{
-            if(c.parsed.y==null)return null;
-            if(c.dataset.yAxisID==='y1'){const v=c.parsed.y;return `${c.dataset.label}: ${(v>=0?'+':'')+v.toFixed(2)}%`;}
-            return `Cierre: $${c.parsed.y.toFixed(2)}`;
-          }}}
+          callbacks:{label:c=>`Cierre: $${c.parsed.y.toFixed(2)}`}}
       },
       scales:{
         x:{ticks:{color:'rgba(255,255,255,.85)',font:{size:12,family:'Geist'},maxTicksLimit:14,maxRotation:0,autoSkip:true},
            grid:{color:'rgba(255,255,255,.06)'}},
-        y:{position:'left',ticks:{color:'rgba(255,255,255,.85)',font:{size:12,family:'Geist'},callback:v=>v.toLocaleString('es-MX')},
-           grid:{color:'rgba(255,255,255,.08)'},grace:'12%',
-           title:{display:true,text:'Precio (MXN)',color:'rgba(255,255,255,.7)',font:{size:10}}},
-        y1:{position:'right',ticks:{color:'rgba(255,255,255,.85)',font:{size:12,family:'Geist'},callback:v=>(v>=0?'+':'')+v.toFixed(1)+'%'},
-           grid:{drawOnChartArea:false},grace:'18%',
-           title:{display:true,text:'Variación %',color:'#FBBF24',font:{size:10}}}
+        y:{ticks:{color:'rgba(255,255,255,.85)',font:{size:12,family:'Geist'},callback:v=>v.toLocaleString('es-MX')},
+           grid:{color:'rgba(255,255,255,.08)'},grace:'12%'}
       }
     }
   });
