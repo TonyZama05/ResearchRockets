@@ -952,7 +952,7 @@ function go(page){
   if(page==='snapshot')setTimeout(initSnapshot,50);
   if(page==='infocoef')setTimeout(initInfoCoef,50);
   if(page==='posicion')setTimeout(initPosicion,50);
-  if(page==='rendimiento')setTimeout(initRendChart,50);
+  if(page==='rendimiento')setTimeout(()=>{initRendChart();initRendChartPct();},50);
   if(page==='resumensem')setTimeout(initResumenSemanal,50);
   if(page==='bestworst')setTimeout(initBestWorst,50);
   if(page==='vsbenchmarks')setTimeout(initVsBenchmarks,50);
@@ -1340,6 +1340,10 @@ function pgRendimiento(){
     <canvas id="rend-chart" height="45" style="width:100%;display:block"></canvas>
   </div>
   <div class="card">
+    <div class="sec-h"><div class="sec-h-bar"></div><div class="sec-h-text">Rendimiento acumulado (%)</div></div>
+    <canvas id="rend-chart-pct" height="45" style="width:100%;display:block"></canvas>
+  </div>
+  <div class="card">
     <div class="sec-h"><div class="sec-h-bar"></div><div class="sec-h-text">Resumen semanal</div></div>
     <div class="tw"><table id="tbl-sem"><thead><tr>
       ${th('Semana inicio','tbl-sem',0,'str')}${th('Semana fin','tbl-sem',1,'str')}${th('Val. inicio','tbl-sem',2,'num')}${th('Val. fin','tbl-sem',3,'num')}${th('Rend. fondo','tbl-sem',4,'num')}${th('Rend. MEXTRAC','tbl-sem',5,'num')}${th('Retorno activo','tbl-sem',6,'num')}
@@ -1366,6 +1370,18 @@ function initRendChart(){
   const benchBase100=hist.map(h=>h.mexPrice!=null&&firstMexPrice?+(100*h.mexPrice/firstMexPrice).toFixed(3):null);
   ctx.parentElement.style.height='320px';ctx.style.height='320px';
   const chart=new Chart(ctx,{type:'line',data:{labels,datasets:[{label:'Research Rockets',data:portBase100,borderColor:'#0C4A6E',backgroundColor:'rgba(12,74,110,.06)',borderWidth:2.5,pointRadius:2.5,tension:0,fill:true},{label:'MEXTRAC',data:benchBase100,borderColor:'#5B21B6',backgroundColor:'transparent',borderWidth:1.5,pointRadius:2.5,tension:0,borderDash:[4,3],fill:false,spanGaps:true}]},options:{responsive:true,maintainAspectRatio:false,interaction:{mode:'index',intersect:false},plugins:{legend:{labels:{color:'#475467',font:{size:12,family:'Geist'}}},tooltip:{backgroundColor:'#fff',titleColor:'#101828',bodyColor:'#475467',borderColor:'#E4E7EC',borderWidth:1,padding:10,callbacks:{label:ctx=>`${ctx.dataset.label}: ${ctx.parsed.y.toFixed(2)} (${(ctx.parsed.y-100).toFixed(2)}%)`}}},scales:{x:{ticks:{color:'#98A2B3',font:{size:11},maxTicksLimit:10},grid:{color:'rgba(0,0,0,.04)'}},y:{ticks:{color:'#98A2B3',font:{size:11}},grid:{color:'rgba(0,0,0,.04)'},grace:'5%',title:{display:true,text:'Base 100',color:'#98A2B3',font:{size:10}}}},layout:{padding:{right:75}}},plugins:[endLabelPlugin('base100')]});
+  chartInst.push(chart);
+}
+
+function initRendChartPct(){
+  const m=calcMetrics();const hist=m.hist;if(!hist.length)return;
+  const ctx=document.getElementById('rend-chart-pct');if(!ctx)return;
+  const labels=hist.map(h=>h.date);
+  const portPct=hist.map(h=>+h.rendAcum.toFixed(3));
+  const firstMexPrice=hist.find(h=>h.mexPrice!=null)?.mexPrice;
+  const benchPct=hist.map(h=>h.mexPrice!=null&&firstMexPrice?+(100*h.mexPrice/firstMexPrice-100).toFixed(3):null);
+  ctx.parentElement.style.height='320px';ctx.style.height='320px';
+  const chart=new Chart(ctx,{type:'line',data:{labels,datasets:[{label:'Research Rockets',data:portPct,borderColor:'#0C4A6E',backgroundColor:'rgba(12,74,110,.06)',borderWidth:2.5,pointRadius:2.5,tension:0,fill:true},{label:'MEXTRAC',data:benchPct,borderColor:'#5B21B6',backgroundColor:'transparent',borderWidth:1.5,pointRadius:2.5,tension:0,borderDash:[4,3],fill:false,spanGaps:true}]},options:{responsive:true,maintainAspectRatio:false,interaction:{mode:'index',intersect:false},plugins:{legend:{labels:{color:'#475467',font:{size:12,family:'Geist'}}},tooltip:{backgroundColor:'#fff',titleColor:'#101828',bodyColor:'#475467',borderColor:'#E4E7EC',borderWidth:1,padding:10,callbacks:{label:ctx=>`${ctx.dataset.label}: ${(ctx.parsed.y>=0?'+':'')+ctx.parsed.y.toFixed(2)}%`}}},scales:{x:{ticks:{color:'#98A2B3',font:{size:11},maxTicksLimit:10},grid:{color:'rgba(0,0,0,.04)'}},y:{ticks:{color:'#98A2B3',font:{size:11},callback:v=>v.toFixed(1)+'%'},grid:{color:'rgba(0,0,0,.04)'},grace:'5%',title:{display:true,text:'Rendimiento (%)',color:'#98A2B3',font:{size:10}}}},layout:{padding:{right:75}}},plugins:[endLabelPlugin('pct')]});
   chartInst.push(chart);
 }
 
@@ -1567,7 +1583,7 @@ function renderDonuts(m){
 }
 
 function endLabelPlugin(unit){
-  return{id:'elp'+unit,afterDatasetsDraw(chart){const ctx=chart.ctx;const MIN_GAP=16;const points=[];chart.data.datasets.forEach((ds,i)=>{const meta=chart.getDatasetMeta(i);if(meta.hidden||!meta.data.length)return;let li=-1;for(let j=ds.data.length-1;j>=0;j--){if(ds.data[j]!=null){li=j;break;}}if(li<0)return;const pt=meta.data[li];if(!pt||pt.x==null)return;const val=ds.data[li];const label=unit==='$'?'$'+Math.round(val).toLocaleString('es-MX'):(val>=100?'+':'')+(val-100).toFixed(2)+'%';points.push({y:pt.y,drawY:pt.y,x:pt.x,label,color:ds.borderColor||'#333'});});points.sort((a,b)=>a.y-b.y);for(let i=1;i<points.length;i++){const prev=points[i-1],curr=points[i];if(curr.drawY-prev.drawY<MIN_GAP){const overlap=MIN_GAP-(curr.drawY-prev.drawY);curr.drawY+=overlap/2;prev.drawY-=overlap/2;}}points.forEach(p=>{ctx.save();ctx.font='700 13px monospace';ctx.fillStyle=p.color;ctx.textAlign='left';ctx.textBaseline='middle';ctx.fillText(p.label,p.x+8,p.drawY);ctx.restore();});}};
+  return{id:'elp'+unit,afterDatasetsDraw(chart){const ctx=chart.ctx;const MIN_GAP=16;const points=[];chart.data.datasets.forEach((ds,i)=>{const meta=chart.getDatasetMeta(i);if(meta.hidden||!meta.data.length)return;let li=-1;for(let j=ds.data.length-1;j>=0;j--){if(ds.data[j]!=null){li=j;break;}}if(li<0)return;const pt=meta.data[li];if(!pt||pt.x==null)return;const val=ds.data[li];const label=unit==='$'?'$'+Math.round(val).toLocaleString('es-MX'):unit==='pct'?(val>=0?'+':'')+val.toFixed(2)+'%':(val>=100?'+':'')+(val-100).toFixed(2)+'%';points.push({y:pt.y,drawY:pt.y,x:pt.x,label,color:ds.borderColor||'#333'});});points.sort((a,b)=>a.y-b.y);for(let i=1;i<points.length;i++){const prev=points[i-1],curr=points[i];if(curr.drawY-prev.drawY<MIN_GAP){const overlap=MIN_GAP-(curr.drawY-prev.drawY);curr.drawY+=overlap/2;prev.drawY-=overlap/2;}}points.forEach(p=>{ctx.save();ctx.font='700 13px monospace';ctx.fillStyle=p.color;ctx.textAlign='left';ctx.textBaseline='middle';ctx.fillText(p.label,p.x+8,p.drawY);ctx.restore();});}};
 }
 function chartOpts(unit,legend=true){
   return{responsive:true,maintainAspectRatio:false,interaction:{mode:'index',intersect:false},plugins:{legend:{display:legend,labels:{color:'#475467',font:{size:11,family:'Geist'}}},tooltip:{backgroundColor:'#fff',titleColor:'#101828',bodyColor:'#475467',borderColor:'#E4E7EC',borderWidth:1,padding:10}},scales:{x:{ticks:{color:'#98A2B3',font:{size:10},maxTicksLimit:10},grid:{color:'rgba(0,0,0,.03)'}},y:{ticks:{color:'#98A2B3',font:{size:10},callback:v=>unit==='%'?v.toFixed(1)+'%':'$'+v.toLocaleString('es-MX')},grid:{color:'rgba(0,0,0,.03)'},grace:'8%'}}};}
@@ -4254,7 +4270,7 @@ function pgStockTiming(){
   </div>
 
   <div class="card">
-    <div class="sec-h"><div class="sec-h-bar"></div><div class="sec-h-text">Comparativa de índices y nivel de desinversión</div></div>
+    <div class="sec-h"><div class="sec-h-bar"></div><div class="sec-h-text">Comparativa de índices y nivel de desinversión</div><span class="sec-h-sub">Barras grises = % efectivo (cash) al cierre de cada día</span></div>
     <div style="position:relative;height:340px"><canvas id="st-chart" style="width:100%!important;height:340px!important"></canvas></div>
   </div>
 
@@ -4337,7 +4353,7 @@ function initStockTiming(){
        borderColor:'#B54708',backgroundColor:'rgba(181,71,8,.04)',borderWidth:2,pointRadius:2.5,tension:0},
       {label:'STOCK PICKING (sólo selección)',data:d.rows.map(r=>+r.stockIdx.toFixed(4)),
        borderColor:'#047857',backgroundColor:'rgba(4,120,87,.04)',borderWidth:2,pointRadius:2.5,tension:0,borderDash:[2,2]},
-      {type:'bar',label:'NIVEL DESINV (%)',data:d.rows.map(r=>+(r.nivelDesinv*100).toFixed(2)),
+      {type:'bar',label:'NIVEL DESINV (%)',data:d.rows.map(r=>+(r.pctCashCierre*100).toFixed(2)),
        yAxisID:'y1',borderColor:'rgba(152,162,179,.75)',backgroundColor:'rgba(152,162,179,.28)',borderWidth:1,barPercentage:.55,categoryPercentage:.7},
       {label:'FONDO REAL (Research Rockets)',data:d.rows.map(r=>+r.fondoIdx.toFixed(4)),
        borderColor:'#0C4A6E',backgroundColor:'rgba(12,74,110,.07)',borderWidth:2.5,pointRadius:2.5,tension:0,fill:true}
@@ -4353,7 +4369,7 @@ function initStockTiming(){
       scales:{
         x:{ticks:{color:'#98A2B3',font:{size:11},maxTicksLimit:10},grid:{color:'rgba(0,0,0,.04)'}},
         y:{ticks:{color:'#98A2B3',font:{size:11},callback:v=>v.toFixed(2)},grid:{color:'rgba(0,0,0,.04)'},grace:'5%',title:{display:true,text:'Índice base 100',color:'#98A2B3',font:{size:10}}},
-        y1:{position:'right',min:0,suggestedMax:Math.max(10,Math.ceil(Math.max(...d.rows.map(r=>r.nivelDesinv*100))*1.25)),ticks:{color:'#98A2B3',font:{size:11},callback:v=>v.toFixed(0)+'%'},grid:{drawOnChartArea:false},title:{display:true,text:'Nivel desinv (%)',color:'#98A2B3',font:{size:10}}}
+        y1:{position:'right',min:0,suggestedMax:Math.max(10,Math.ceil(Math.max(...d.rows.map(r=>r.pctCashCierre*100))*1.25)),ticks:{color:'#98A2B3',font:{size:11},callback:v=>v.toFixed(0)+'%'},grid:{drawOnChartArea:false},title:{display:true,text:'Nivel desinv (%)',color:'#98A2B3',font:{size:10}}}
       }
     }
   });
@@ -4902,16 +4918,17 @@ function pgBestWorst(){
     return`<div class="card"><div class="empty" style="padding:40px;text-align:center;color:var(--txt3)">Sin posiciones evaluables durante la fase competitiva (desde el 17 abril 2026).</div></div>`;
   }
   // Enriquecer y etiquetar con sleeve según la fecha de venta (decisión efectiva del equipo)
-  const enriched = cerradas.map(_enrichClosedTrade).map(t=>({...t, sleeve: getSleeveOnDate(t.ticker, t.fechaVenta)}));
+  // contrib = contribución al rendimiento del fondo = rend (%) × peso (% portafolio) / 100  → en pp del fondo
+  const enriched = cerradas.map(_enrichClosedTrade).map(t=>({...t, sleeve: getSleeveOnDate(t.ticker, t.fechaVenta), contrib:(t.rend||0)*(t.pctPortafolio||0)/100}));
 
   // Particionar por sleeve
   const tradesActivo = enriched.filter(t=>t.sleeve==='activo');
   const tradesPasivo = enriched.filter(t=>t.sleeve==='pasivo');
 
-  const sortByRel = arr => [...arr].sort((a,b)=> (b.rendRel??-Infinity) - (a.rendRel??-Infinity));
-  const sortedAll    = sortByRel(enriched);
-  const sortedActivo = sortByRel(tradesActivo);
-  const sortedPasivo = sortByRel(tradesPasivo);
+  const sortByContrib = arr => [...arr].sort((a,b)=> (b.contrib??-Infinity) - (a.contrib??-Infinity));
+  const sortedAll    = sortByContrib(enriched);
+  const sortedActivo = sortByContrib(tradesActivo);
+  const sortedPasivo = sortByContrib(tradesPasivo);
 
   const bestActivo  = sortedActivo[0]||null;
   const worstActivo = sortedActivo[sortedActivo.length-1]||null;
@@ -4924,11 +4941,12 @@ function pgBestWorst(){
   const top5 = sortedAll.slice(0, Math.min(5, sortedAll.length));
   const bot5 = sortedAll.slice(-Math.min(5, sortedAll.length)).reverse();
 
-  // Stats globales
-  const ganadoras = enriched.filter(t=>t.rendRel>0).length;
+  // Stats globales (por contribución al fondo)
+  const fpp = n => n==null||isNaN(n)?'—':(n>=0?'+':'')+n.toFixed(2)+' pp';
+  const ganadoras = enriched.filter(t=>t.contrib>0).length;
   const hitRatio  = enriched.length>0 ? (ganadoras/enriched.length)*100 : 0;
-  const relProm   = enriched.length>0 ? enriched.reduce((s,t)=>s+(t.rendRel||0),0)/enriched.length : 0;
-  const totalAlpha= enriched.reduce((s,t)=>s+(t.rendRel||0)*(t.pctPortafolio||0)/100, 0);
+  const contribProm = enriched.length>0 ? enriched.reduce((s,t)=>s+(t.contrib||0),0)/enriched.length : 0;
+  const totalContrib= enriched.reduce((s,t)=>s+(t.contrib||0), 0);
 
   const tickerName = t => UNIVERSO.find(e=>e.t===t)?.n || t;
 
@@ -4942,7 +4960,7 @@ function pgBestWorst(){
       : `<span style="margin-left:auto;font-size:10px;padding:3px 8px;border-radius:99px;background:rgba(255,255,255,.12);color:#fff;font-weight:600;letter-spacing:.04em">CERRADA</span>`;
     const labelPrecioVenta = abierta ? 'Precio actual' : 'Precio venta';
     const labelDias        = abierta ? 'Días abierta' : 'Días en posición';
-    const labelGanancia    = isBest ? (abierta?'Ganancia rel. (sin cerrar)':'Ganancia relativa') : (abierta?'Pérdida rel. (sin cerrar)':'Pérdida relativa');
+    const labelGanancia    = abierta ? 'Contribución (sin cerrar)' : 'Contribución al fondo';
     return `
     <div class="card" style="padding:0;overflow:hidden;border-top:3px solid ${color}">
       <div style="padding:12px 16px;background:${color};color:#fff;display:flex;align-items:center;gap:10px">
@@ -4967,18 +4985,18 @@ function pgBestWorst(){
           </div>
           <div>
             <div style="color:var(--txt3);font-size:10.5px;text-transform:uppercase;letter-spacing:.04em;margin-bottom:2px">${labelGanancia}</div>
-            <div class="mono" style="font-size:16px;font-weight:800;color:${color}">${fp(t.rendRel)}</div>
+            <div class="mono" style="font-size:16px;font-weight:800;color:${color}">${fpp(t.contrib)}</div>
           </div>
         </div>
         <div style="margin-top:10px;padding:7px 10px;background:var(--bg3);border-radius:6px;font-size:10.5px;color:var(--txt2);line-height:1.55">
           ${abierta
             ? `<div><b>Compra:</b> ${t.fechaCompra}${t.esHeredada?' <span style="color:var(--amb)" title="Heredada">†</span>':''} · <b>A hoy (${t.fechaVenta}):</b> $${f2(t.precioActual||t.precioVenta,4)}${t.titulosAbiertos&&t.titulosAbiertos!==t.titulos?` · <b>Aún en posición:</b> ${t.titulosAbiertos.toLocaleString('es-MX')} de ${t.titulos.toLocaleString('es-MX')}`:''}</div>
-               <div><b>Rend. abs.:</b> ${fp(t.rend)} · <b>Rend. MEXTRAC:</b> ${t.rendBench!=null?fp(t.rendBench):'—'} · <b>P&amp;L (real. + s/real.):</b> ${fm(t.pnl)}</div>`
+               <div><b>Rend. abs.:</b> ${fp(t.rend)} · <b>Peso:</b> ${f2(t.pctPortafolio,1)}% · <b>Alpha:</b> ${fp(t.rendRel)} · <b>P&amp;L (real. + s/real.):</b> ${fm(t.pnl)}</div>`
             : (t.esHeredada
               ? `<div><b>Compra original:</b> ${t._origFechaCompra} (heredada) · <b>Inicio fase:</b> ${t.fechaCompra} ($${f2(t.precioCompra,4)}) · <b>Venta:</b> ${t.fechaVenta}</div>
-                 <div><b>Rend. abs.:</b> ${fp(t.rend)} · <b>Rend. MEXTRAC:</b> ${t.rendBench!=null?fp(t.rendBench):'—'} · <b>P&amp;L realizado:</b> ${fm(t.pnl)}</div>`
+                 <div><b>Rend. abs.:</b> ${fp(t.rend)} · <b>Peso:</b> ${f2(t.pctPortafolio,1)}% · <b>Alpha:</b> ${fp(t.rendRel)} · <b>P&amp;L realizado:</b> ${fm(t.pnl)}</div>`
               : `<div><b>Compra:</b> ${t.fechaCompra} · <b>Venta:</b> ${t.fechaVenta}</div>
-                 <div><b>Rend. abs.:</b> ${fp(t.rend)} · <b>Rend. MEXTRAC:</b> ${t.rendBench!=null?fp(t.rendBench):'—'} · <b>P&amp;L realizado:</b> ${fm(t.pnl)}</div>`)
+                 <div><b>Rend. abs.:</b> ${fp(t.rend)} · <b>Peso:</b> ${f2(t.pctPortafolio,1)}% · <b>Alpha:</b> ${fp(t.rendRel)} · <b>P&amp;L realizado:</b> ${fm(t.pnl)}</div>`)
           }
         </div>
       </div>
@@ -4998,14 +5016,14 @@ function pgBestWorst(){
   return `
   <div class="sg4">
     ${stCard(enriched.length.toString(),'Posiciones evaluables','Cerradas (en fase comp.) + abiertas','stat-acc')}
-    ${stCard(fp(relProm),'Ganancia rel. promedio','Alpha promedio por posición',relProm>=0?'stat-grn':'stat-red')}
-    ${stCard(f2(hitRatio)+'%','Hit ratio','% posiciones con alpha > 0',hitRatio>=50?'stat-grn':'stat-red')}
-    ${stCard(fp(totalAlpha),'Alpha total ponderado','Σ(rendRel × %portafolio)',totalAlpha>=0?'stat-grn':'stat-red')}
+    ${stCard(fpp(contribProm),'Contribución promedio','Aporte medio por posición',contribProm>=0?'stat-grn':'stat-red')}
+    ${stCard(f2(hitRatio)+'%','Hit ratio','% posiciones con contribución > 0',hitRatio>=50?'stat-grn':'stat-red')}
+    ${stCard(fpp(totalContrib),'Contribución total','Σ(rend × %portafolio)',totalContrib>=0?'stat-grn':'stat-red')}
   </div>
 
   <div class="card" style="padding:12px 16px;margin-bottom:14px;background:rgba(12,74,110,.04);border-left:3px solid #0C4A6E">
     <div style="font-size:12px;color:var(--txt2);line-height:1.55">
-      Mejor/peor se eligen <b>por sleeve</b> usando alpha vs MEXTRAC (desde 17 abr). Se evalúan tanto posiciones <b style="color:#0369A1">abiertas</b> (marcadas al precio actual, P&amp;L combina realizado + sin realizar) como <b style="color:var(--txt2)">cerradas</b> (ciclo completo). Las ventas parciales no cuentan como trade independiente — quedan agregadas en su ciclo.
+      Mejor/peor se eligen <b>por sleeve</b> según la <b>contribución al rendimiento del fondo</b> (rend. absoluto × peso de la posición, desde 17 abr). Una posición pequeña con gran rendimiento puede aportar menos que una grande con rendimiento moderado. Se evalúan tanto posiciones <b style="color:#0369A1">abiertas</b> (marcadas al precio actual) como <b style="color:var(--txt2)">cerradas</b> (ciclo completo). Las ventas parciales no cuentan como trade independiente — quedan agregadas en su ciclo.
     </div>
   </div>
 
@@ -5023,9 +5041,9 @@ function pgBestWorst(){
 
   <div class="sg2">
     <div class="card">
-      <div class="sec-h"><div class="sec-h-bar" style="background:var(--grn)"></div><div class="sec-h-text">Top 5 posiciones (mayor alpha — global)</div></div>
+      <div class="sec-h"><div class="sec-h-bar" style="background:var(--grn)"></div><div class="sec-h-text">Top 5 posiciones (mayor contribución — global)</div></div>
       <div class="tw"><table><thead><tr>
-        <th>Ticker</th><th>Sleeve</th><th>Status</th><th>Inicio*</th><th>Salida/Hoy</th><th style="text-align:right">Rend.</th><th style="text-align:right">Rend. MEX</th><th style="text-align:right">Alpha</th>
+        <th>Ticker</th><th>Sleeve</th><th>Status</th><th>Inicio*</th><th>Salida/Hoy</th><th style="text-align:right">Rend.</th><th style="text-align:right">% Port.</th><th style="text-align:right">Alpha</th><th style="text-align:right">Contrib.</th>
       </tr></thead><tbody>
         ${top5.map(t=>`<tr>
           <td class="lbl">${t.ticker}</td>
@@ -5034,15 +5052,16 @@ function pgBestWorst(){
           <td class="mono">${t.fechaCompra}${t.esHeredada?'<sup style="color:var(--amb)" title="Heredada — métricas desde 17 abril">†</sup>':''}</td>
           <td class="mono">${t.fechaVenta}</td>
           <td class="mono ${cc(t.rend)}" style="text-align:right">${fp(t.rend)}</td>
-          <td class="mono ${t.rendBench!=null?cc(t.rendBench):'d'}" style="text-align:right">${t.rendBench!=null?fp(t.rendBench):'—'}</td>
-          <td class="mono ${cc(t.rendRel)}" style="text-align:right;font-weight:700">${fp(t.rendRel)}</td>
+          <td class="mono" style="text-align:right">${f2(t.pctPortafolio,1)}%</td>
+          <td class="mono ${cc(t.rendRel)}" style="text-align:right">${fp(t.rendRel)}</td>
+          <td class="mono ${cc(t.contrib)}" style="text-align:right;font-weight:700">${fpp(t.contrib)}</td>
         </tr>`).join('')}
       </tbody></table></div>
     </div>
     <div class="card">
-      <div class="sec-h"><div class="sec-h-bar" style="background:var(--red)"></div><div class="sec-h-text">Bottom 5 posiciones (menor alpha)</div></div>
+      <div class="sec-h"><div class="sec-h-bar" style="background:var(--red)"></div><div class="sec-h-text">Bottom 5 posiciones (menor contribución)</div></div>
       <div class="tw"><table><thead><tr>
-        <th>Ticker</th><th>Sleeve</th><th>Status</th><th>Inicio*</th><th>Salida/Hoy</th><th style="text-align:right">Rend.</th><th style="text-align:right">Rend. MEX</th><th style="text-align:right">Alpha</th>
+        <th>Ticker</th><th>Sleeve</th><th>Status</th><th>Inicio*</th><th>Salida/Hoy</th><th style="text-align:right">Rend.</th><th style="text-align:right">% Port.</th><th style="text-align:right">Alpha</th><th style="text-align:right">Contrib.</th>
       </tr></thead><tbody>
         ${bot5.map(t=>`<tr>
           <td class="lbl">${t.ticker}</td>
@@ -5051,21 +5070,22 @@ function pgBestWorst(){
           <td class="mono">${t.fechaCompra}${t.esHeredada?'<sup style="color:var(--amb)" title="Heredada — métricas desde 17 abril">†</sup>':''}</td>
           <td class="mono">${t.fechaVenta}</td>
           <td class="mono ${cc(t.rend)}" style="text-align:right">${fp(t.rend)}</td>
-          <td class="mono ${t.rendBench!=null?cc(t.rendBench):'d'}" style="text-align:right">${t.rendBench!=null?fp(t.rendBench):'—'}</td>
-          <td class="mono ${cc(t.rendRel)}" style="text-align:right;font-weight:700">${fp(t.rendRel)}</td>
+          <td class="mono" style="text-align:right">${f2(t.pctPortafolio,1)}%</td>
+          <td class="mono ${cc(t.rendRel)}" style="text-align:right">${fp(t.rendRel)}</td>
+          <td class="mono ${cc(t.contrib)}" style="text-align:right;font-weight:700">${fpp(t.contrib)}</td>
         </tr>`).join('')}
       </tbody></table></div>
     </div>
   </div>
 
   <div class="card">
-    <div class="sec-h"><div class="sec-h-bar" style="background:var(--accent)"></div><div class="sec-h-text">Todas las posiciones evaluables</div><span class="sec-h-sub">Ordenadas por alpha (rend. relativo desde inicio efectivo). Incluye abiertas (al precio actual) y cerradas (ciclo completo). <sup style="color:var(--amb)">†</sup> = posición heredada — métricas desde 17 abril</span></div>
+    <div class="sec-h"><div class="sec-h-bar" style="background:var(--accent)"></div><div class="sec-h-text">Todas las posiciones evaluables</div><span class="sec-h-sub">Ordenadas por contribución al fondo (rend. abs. × peso). Incluye abiertas (al precio actual) y cerradas (ciclo completo). <sup style="color:var(--amb)">†</sup> = posición heredada — métricas desde 17 abril</span></div>
     <div class="tw"><table><thead><tr>
       <th>#</th><th>Ticker</th><th>Sleeve</th><th>Status</th><th>Inicio*</th><th>Salida/Hoy</th><th style="text-align:right">Días</th>
       <th style="text-align:right">P. inicio</th><th style="text-align:right">P. salida/actual</th>
       <th style="text-align:right">P&amp;L</th><th style="text-align:right">Rend. abs.</th>
       <th style="text-align:right">Rend. MEX</th><th style="text-align:right">Alpha</th>
-      <th style="text-align:right">% Portaf.</th>
+      <th style="text-align:right">% Portaf.</th><th style="text-align:right">Contrib.</th>
     </tr></thead><tbody>
       ${sortedAll.map((t,i)=>`<tr>
         <td class="mono">${i+1}</td>
@@ -5080,8 +5100,9 @@ function pgBestWorst(){
         <td class="mono ${cc(t.pnl)}" style="text-align:right">${fm(t.pnl)}</td>
         <td class="mono ${cc(t.rend)}" style="text-align:right">${fp(t.rend)}</td>
         <td class="mono ${t.rendBench!=null?cc(t.rendBench):'d'}" style="text-align:right">${t.rendBench!=null?fp(t.rendBench):'—'}</td>
-        <td class="mono ${cc(t.rendRel)}" style="text-align:right;font-weight:700">${fp(t.rendRel)}</td>
+        <td class="mono ${cc(t.rendRel)}" style="text-align:right">${fp(t.rendRel)}</td>
         <td class="mono" style="text-align:right">${f2(t.pctPortafolio,1)}%</td>
+        <td class="mono ${cc(t.contrib)}" style="text-align:right;font-weight:700">${fpp(t.contrib)}</td>
       </tr>`).join('')}
     </tbody></table></div>
   </div>`;
@@ -5092,10 +5113,10 @@ function initBestWorst(){
   const cycles = _buildAllLifecycles();
   const cerradas = cycles.filter(t => (t.fechaVenta||'') >= FASE_COMP);
   if(!cerradas.length) return;
-  const enriched = cerradas.map(_enrichClosedTrade).map(t=>({...t, sleeve:getSleeveOnDate(t.ticker, t.fechaVenta)}));
-  const sortByRel = arr => [...arr].sort((a,b)=> (b.rendRel??-Infinity) - (a.rendRel??-Infinity));
-  const sortedActivo = sortByRel(enriched.filter(t=>t.sleeve==='activo'));
-  const sortedPasivo = sortByRel(enriched.filter(t=>t.sleeve==='pasivo'));
+  const enriched = cerradas.map(_enrichClosedTrade).map(t=>({...t, sleeve:getSleeveOnDate(t.ticker, t.fechaVenta), contrib:(t.rend||0)*(t.pctPortafolio||0)/100}));
+  const sortByContrib = arr => [...arr].sort((a,b)=> (b.contrib??-Infinity) - (a.contrib??-Infinity));
+  const sortedActivo = sortByContrib(enriched.filter(t=>t.sleeve==='activo'));
+  const sortedPasivo = sortByContrib(enriched.filter(t=>t.sleeve==='pasivo'));
   const bestActivo  = sortedActivo[0]||null;
   const worstActivo = sortedActivo.length>1 ? sortedActivo[sortedActivo.length-1] : null;
   const bestPasivo  = sortedPasivo[0]||null;
@@ -5168,17 +5189,15 @@ function pgVsBenchmarks(){
   const aligned = [];
   for(const h of hist){
     const naf = localPrice('NAFTRAC', h.date);
-    const eww = localPrice('EWW', h.date);
-    const vmex = localPrice('VMEX', h.date);
     const esg = localPrice('ESGMEX', h.date);
-    if(h.totalFondo>0 && h.mexPrice && naf && eww && vmex){
-      aligned.push({date:h.date, fondo:h.totalFondo, mex:h.mexPrice, naf, eww, vmex, esg:esg||null});
+    if(h.totalFondo>0 && h.mexPrice && naf){
+      aligned.push({date:h.date, fondo:h.totalFondo, mex:h.mexPrice, naf, esg:esg||null});
     }
   }
   if(aligned.length<2){
-    const counts = ['NAFTRAC','EWW','VMEX','ESGMEX'].map(t=>`${t}: ${Object.keys(PRICE_DB[t]||{}).length} días`).join(' · ');
+    const counts = ['NAFTRAC','ESGMEX'].map(t=>`${t}: ${Object.keys(PRICE_DB[t]||{}).length} días`).join(' · ');
     return `<div class="card"><div class="empty" style="padding:40px;text-align:center;color:var(--txt3)">
-      Datos insuficientes — se necesita al menos 2 días donde fondo, MEXTRAC09, NAFTRAC, EWW y VMEX tengan precio.
+      Datos insuficientes — se necesita al menos 2 días donde fondo, MEXTRAC09 y NAFTRAC tengan precio.
       <div style="margin-top:8px;font-size:11px">${counts}</div>
     </div></div>`;
   }
@@ -5187,8 +5206,6 @@ function pgVsBenchmarks(){
   const fondoIdx = aligned.map(a => a.fondo/b.fondo*100);
   const mexIdx   = aligned.map(a => a.mex  /b.mex  *100);
   const nafIdx   = aligned.map(a => a.naf  /b.naf  *100);
-  const ewwIdx   = aligned.map(a => a.eww  /b.eww  *100);
-  const vmexIdx  = aligned.map(a => a.vmex /b.vmex *100);
   // ESGMEX: only where we have data; base from first aligned point that has it
   const esgBase  = aligned.find(a=>a.esg!=null);
   const esgIdx   = aligned.map(a => (a.esg!=null&&esgBase)?a.esg/esgBase.esg*100:null);
@@ -5196,30 +5213,22 @@ function pgVsBenchmarks(){
   const rendFondo = fondoIdx[last]-100;
   const rendMex   = mexIdx[last]-100;
   const rendNaf   = nafIdx[last]-100;
-  const rendEww   = ewwIdx[last]-100;
-  const rendVmex  = vmexIdx[last]-100;
   const rendEsg   = esgIdx[last]!=null?esgIdx[last]-100:null;
   const alphaMex  = rendFondo - rendMex;
   const alphaNaf  = rendFondo - rendNaf;
-  const alphaEww  = rendFondo - rendEww;
-  const alphaVmex = rendFondo - rendVmex;
   const alphaEsg  = rendEsg!=null?rendFondo-rendEsg:null;
   const alphaMexSerie  = aligned.map((a,i) => (fondoIdx[i]-100) - (mexIdx[i]-100));
   const alphaNafSerie  = aligned.map((a,i) => (fondoIdx[i]-100) - (nafIdx[i]-100));
-  const alphaEwwSerie  = aligned.map((a,i) => (fondoIdx[i]-100) - (ewwIdx[i]-100));
-  const alphaVmexSerie = aligned.map((a,i) => (fondoIdx[i]-100) - (vmexIdx[i]-100));
   const alphaEsgSerie  = aligned.map((a,i) => esgIdx[i]!=null?(fondoIdx[i]-100)-(esgIdx[i]-100):null);
 
   // Mini-pill para el banner de alphas
   const alphaPill = (label, val) => val==null?'':`<span style="display:inline-flex;align-items:center;gap:6px;padding:4px 9px;border-radius:99px;background:rgba(255,255,255,.6);border:1px solid var(--line);font-size:11.5px;margin-right:8px;margin-bottom:4px"><span style="color:var(--txt3);font-weight:500">${label}:</span><b class="${cc(val)}">${fp(val)}</b></span>`;
 
   return `
-  <div style="display:grid;grid-template-columns:repeat(6,1fr);gap:14px;margin-bottom:14px">
+  <div style="display:grid;grid-template-columns:repeat(4,1fr);gap:14px;margin-bottom:14px">
     ${stCard(fp(rendFondo),'Research Rockets','Rend. desde '+b.date,rendFondo>=0?'stat-grn':'stat-red')}
     ${stCard(fp(rendMex),'MEXTRAC09','Benchmark oficial',rendMex>=0?'stat-grn':'stat-red')}
     ${stCard(fp(rendNaf),'NAFTRAC','ETF alterno · iShares',rendNaf>=0?'stat-grn':'stat-red')}
-    ${stCard(fp(rendEww),'EWW','iShares MSCI México',rendEww>=0?'stat-grn':'stat-red')}
-    ${stCard(fp(rendVmex),'VMEX','Vanguard México',rendVmex>=0?'stat-grn':'stat-red')}
     ${stCard(rendEsg!=null?fp(rendEsg):'&mdash;','ESGMEX','iShares ESG México',rendEsg!=null&&rendEsg>=0?'stat-grn':'stat-red')}
   </div>
 
@@ -5228,14 +5237,12 @@ function pgVsBenchmarks(){
     <div style="line-height:1.9">
       ${alphaPill('vs MEXTRAC09', alphaMex)}
       ${alphaPill('vs NAFTRAC', alphaNaf)}
-      ${alphaPill('vs EWW', alphaEww)}
-      ${alphaPill('vs VMEX', alphaVmex)}
       ${alphaPill('vs ESGMEX', alphaEsg)}
     </div>
   </div>
 
   <div class="card">
-    <div class="sec-h"><div class="sec-h-bar" style="background:var(--accent)"></div><div class="sec-h-text">Portafolio vs Benchmarks — base 100</div><span class="sec-h-sub">Periodo: ${b.date} → ${aligned[last].date} · ${aligned.length} días · Research Rockets (navy) · MEXTRAC09 (naranja) · NAFTRAC (morado) · EWW (teal) · VMEX (rosa) · ESGMEX (verde olivo)</span></div>
+    <div class="sec-h"><div class="sec-h-bar" style="background:var(--accent)"></div><div class="sec-h-text">Portafolio vs Benchmarks — base 100</div><span class="sec-h-sub">Periodo: ${b.date} → ${aligned[last].date} · ${aligned.length} días · Research Rockets (navy) · MEXTRAC09 (naranja) · NAFTRAC (morado) · ESGMEX (verde olivo)</span></div>
     <div style="position:relative;height:400px"><canvas id="vsbench-chart" style="width:100%!important;height:400px!important"></canvas></div>
   </div>
 
@@ -5251,13 +5258,9 @@ function pgVsBenchmarks(){
       <th style="text-align:right">Fondo</th>
       <th style="text-align:right">MEXTRAC</th>
       <th style="text-align:right">NAFTRAC</th>
-      <th style="text-align:right">EWW</th>
-      <th style="text-align:right">VMEX</th>
       <th style="text-align:right">ESGMEX</th>
       <th style="text-align:right">α MEX</th>
       <th style="text-align:right">α NAF</th>
-      <th style="text-align:right">α EWW</th>
-      <th style="text-align:right">α VMEX</th>
       <th style="text-align:right">α ESG</th>
     </tr></thead><tbody>
       ${aligned.map((a,i)=>`<tr>
@@ -5265,13 +5268,9 @@ function pgVsBenchmarks(){
         <td class="mono" style="text-align:right">${f2(fondoIdx[i],2)}</td>
         <td class="mono" style="text-align:right">${f2(mexIdx[i],2)}</td>
         <td class="mono" style="text-align:right">${f2(nafIdx[i],2)}</td>
-        <td class="mono" style="text-align:right">${f2(ewwIdx[i],2)}</td>
-        <td class="mono" style="text-align:right">${f2(vmexIdx[i],2)}</td>
         <td class="mono" style="text-align:right">${esgIdx[i]!=null?f2(esgIdx[i],2):'&mdash;'}</td>
         <td class="mono ${cc(alphaMexSerie[i])}" style="text-align:right">${fp(alphaMexSerie[i])}</td>
         <td class="mono ${cc(alphaNafSerie[i])}" style="text-align:right">${fp(alphaNafSerie[i])}</td>
-        <td class="mono ${cc(alphaEwwSerie[i])}" style="text-align:right">${fp(alphaEwwSerie[i])}</td>
-        <td class="mono ${cc(alphaVmexSerie[i])}" style="text-align:right">${fp(alphaVmexSerie[i])}</td>
         <td class="mono ${alphaEsgSerie[i]!=null?cc(alphaEsgSerie[i]):'d'}" style="text-align:right">${alphaEsgSerie[i]!=null?fp(alphaEsgSerie[i]):'&mdash;'}</td>
       </tr>`).join('')}
     </tbody></table></div>
@@ -5284,11 +5283,9 @@ function initVsBenchmarks(){
   const aligned = [];
   for(const h of hist){
     const naf = localPrice('NAFTRAC', h.date);
-    const eww = localPrice('EWW', h.date);
-    const vmex = localPrice('VMEX', h.date);
     const esg = localPrice('ESGMEX', h.date);
-    if(h.totalFondo>0 && h.mexPrice && naf && eww && vmex){
-      aligned.push({date:h.date, fondo:h.totalFondo, mex:h.mexPrice, naf, eww, vmex, esg:esg||null});
+    if(h.totalFondo>0 && h.mexPrice && naf){
+      aligned.push({date:h.date, fondo:h.totalFondo, mex:h.mexPrice, naf, esg:esg||null});
     }
   }
   if(aligned.length<2) return;
@@ -5297,8 +5294,6 @@ function initVsBenchmarks(){
   const fondoIdx = aligned.map(a => +(a.fondo/b.fondo*100).toFixed(4));
   const mexIdx   = aligned.map(a => +(a.mex  /b.mex  *100).toFixed(4));
   const nafIdx   = aligned.map(a => +(a.naf  /b.naf  *100).toFixed(4));
-  const ewwIdx   = aligned.map(a => +(a.eww  /b.eww  *100).toFixed(4));
-  const vmexIdx  = aligned.map(a => +(a.vmex /b.vmex *100).toFixed(4));
   const esgBase  = aligned.find(a=>a.esg!=null);
   const esgIdx   = aligned.map(a => a.esg!=null&&esgBase?+(a.esg/esgBase.esg*100).toFixed(4):null);
 
@@ -5311,8 +5306,6 @@ function initVsBenchmarks(){
         {label:'Research Rockets',data:fondoIdx,borderColor:'#0C4A6E',backgroundColor:'rgba(12,74,110,.08)',borderWidth:2.8,pointRadius:2.8,pointBackgroundColor:'#0C4A6E',tension:0,fill:false},
         {label:'MEXTRAC09 (benchmark)',data:mexIdx,borderColor:'#B54708',backgroundColor:'rgba(181,71,8,.08)',borderWidth:2,pointRadius:2.2,pointBackgroundColor:'#B54708',tension:0,fill:false},
         {label:'NAFTRAC',data:nafIdx,borderColor:'#7C3AED',backgroundColor:'rgba(124,58,237,.08)',borderWidth:1.7,pointRadius:2,pointBackgroundColor:'#7C3AED',tension:0,fill:false,borderDash:[4,3]},
-        {label:'EWW',data:ewwIdx,borderColor:'#0D9488',backgroundColor:'rgba(13,148,136,.08)',borderWidth:1.7,pointRadius:2,pointBackgroundColor:'#0D9488',tension:0,fill:false,borderDash:[6,2]},
-        {label:'VMEX',data:vmexIdx,borderColor:'#E11D48',backgroundColor:'rgba(225,29,72,.08)',borderWidth:1.7,pointRadius:2,pointBackgroundColor:'#E11D48',tension:0,fill:false,borderDash:[2,2]},
         {label:'ESGMEX',data:esgIdx,borderColor:'#65A30D',backgroundColor:'rgba(101,163,13,.08)',borderWidth:1.7,pointRadius:2,pointBackgroundColor:'#65A30D',tension:0,fill:false,borderDash:[3,3],spanGaps:true}
       ]},
       options:{
@@ -5339,16 +5332,12 @@ function initVsBenchmarks(){
     Chart.getChart(ctx2)?.destroy();
     const alphaMex  = aligned.map((a,i)=> +((fondoIdx[i]-100)-(mexIdx[i]-100)).toFixed(4));
     const alphaNaf  = aligned.map((a,i)=> +((fondoIdx[i]-100)-(nafIdx[i]-100)).toFixed(4));
-    const alphaEww  = aligned.map((a,i)=> +((fondoIdx[i]-100)-(ewwIdx[i]-100)).toFixed(4));
-    const alphaVmex = aligned.map((a,i)=> +((fondoIdx[i]-100)-(vmexIdx[i]-100)).toFixed(4));
     const alphaEsg  = aligned.map((a,i)=> esgIdx[i]!=null?+((fondoIdx[i]-100)-(esgIdx[i]-100)).toFixed(4):null);
     const c2 = new Chart(ctx2,{
       type:'line',
       data:{labels,datasets:[
         {label:'α vs MEXTRAC09',data:alphaMex,borderColor:'#B54708',backgroundColor:'rgba(181,71,8,.08)',borderWidth:2,pointRadius:2.2,pointBackgroundColor:'#B54708',tension:0,fill:false},
         {label:'α vs NAFTRAC',data:alphaNaf,borderColor:'#7C3AED',backgroundColor:'rgba(124,58,237,.08)',borderWidth:1.7,pointRadius:2,pointBackgroundColor:'#7C3AED',tension:0,fill:false,borderDash:[4,3]},
-        {label:'α vs EWW',data:alphaEww,borderColor:'#0D9488',backgroundColor:'rgba(13,148,136,.08)',borderWidth:1.7,pointRadius:2,pointBackgroundColor:'#0D9488',tension:0,fill:false,borderDash:[6,2]},
-        {label:'α vs VMEX',data:alphaVmex,borderColor:'#E11D48',backgroundColor:'rgba(225,29,72,.08)',borderWidth:1.7,pointRadius:2,pointBackgroundColor:'#E11D48',tension:0,fill:false,borderDash:[2,2]},
         {label:'α vs ESGMEX',data:alphaEsg,borderColor:'#65A30D',backgroundColor:'rgba(101,163,13,.08)',borderWidth:1.7,pointRadius:2,pointBackgroundColor:'#65A30D',tension:0,fill:false,borderDash:[3,3],spanGaps:true}
       ]},
       options:{
@@ -5382,13 +5371,13 @@ function pgRendGrafs(){
   }
   return`
   <div class="card">
-    <div class="sec-h"><div class="sec-h-bar" style="background:var(--accent)"></div><div class="sec-h-text">Rendimiento semanal — Portafolio vs MEXTRAC09</div><span class="sec-h-sub">Barras agrupadas por semana · línea verde = Alfa Acumulada</span></div>
-    <div style="position:relative;height:360px"><canvas id="rg-weekly-chart" style="width:100%!important;height:360px!important"></canvas></div>
+    <div class="sec-h"><div class="sec-h-bar" style="background:var(--accent)"></div><div class="sec-h-text">Rendimiento semanal — Portafolio vs MEXTRAC09</div><span class="sec-h-sub">Barras agrupadas por semana · línea verde = Alfa Acumulada (marcada por día)</span></div>
+    <div style="position:relative;height:320px"><canvas id="rg-weekly-chart" style="width:100%!important;height:320px!important"></canvas></div>
   </div>
 
   <div class="card">
-    <div class="sec-h"><div class="sec-h-bar" style="background:var(--purple)"></div><div class="sec-h-text">Rendimiento diario — Portafolio vs MEXTRAC09</div><span class="sec-h-sub">Barras agrupadas por día · línea verde = Alfa Acumulada</span></div>
-    <div style="position:relative;height:360px"><canvas id="rg-daily-chart" style="width:100%!important;height:360px!important"></canvas></div>
+    <div class="sec-h"><div class="sec-h-bar" style="background:var(--purple)"></div><div class="sec-h-text">Rendimiento diario — Portafolio vs MEXTRAC09</div><span class="sec-h-sub">Barras agrupadas por día</span></div>
+    <div style="position:relative;height:320px"><canvas id="rg-daily-chart" style="width:100%!important;height:320px!important"></canvas></div>
   </div>`;
 }
 
@@ -5397,8 +5386,12 @@ function initRendGrafs(){
   const hist=m.hist||[];
   if(hist.length<2)return;
 
-  // ── Datos diarios ─────────────────────────────────────────────────────
-  const dailyLabels=[];const dailyFondo=[];const dailyMex=[];const dailyAlphaAcum=[];
+  const BLUE_FONDO='rgba(12,74,110,.82)';   // navy azul — Portafolio
+  const PURPLE_MEX='rgba(109,40,217,.65)';  // morado — MEXTRAC09
+  const GRN='#16A34A';
+
+  // ── Datos diarios (rendimiento + alfa acumulada DIARIA) ───────────────
+  const dailyDates=[];const dailyLabels=[];const dailyFondo=[];const dailyMex=[];const dailyAlphaAcum=[];
   let alphaAcum=0;
   for(let i=1;i<hist.length;i++){
     const h=hist[i],hp=hist[i-1];
@@ -5406,45 +5399,53 @@ function initRendGrafs(){
     const rFondo=hp.totalFondo>0?(h.totalFondo-hp.totalFondo)/hp.totalFondo*100:0;
     const rMex=(h.mexPrice-hp.mexPrice)/hp.mexPrice*100;
     alphaAcum+=rFondo-rMex;
+    dailyDates.push(h.date);
     dailyLabels.push(h.date.slice(5));
     dailyFondo.push(+rFondo.toFixed(4));
     dailyMex.push(+rMex.toFixed(4));
     dailyAlphaAcum.push(+alphaAcum.toFixed(4));
   }
 
-  // ── Datos semanales — usa buildWeeklySummary (misma lógica que Resumen Semanal) ──
-  const weeks=buildWeeklySummary(hist);
-  const weekLabels=[];const weekFondo=[];const weekMex=[];const weekAlphaAcum=[];
-  let wAlphaAcum=0;
+  // ── Datos semanales — descarta semanas "en blanco" (sin retorno real, p.ej.
+  //    la semana ancla inicial o una semana parcial sin movimiento) ───────
+  const weeksAll=buildWeeklySummary(hist);
+  const weeks=weeksAll.filter(w=> !(Math.abs(w.rF||0)<1e-9 && (w.rB==null||Math.abs(w.rB)<1e-9)) );
+  const weekLabels=[];const weekFondo=[];const weekMex=[];
   weeks.forEach((w,i)=>{
-    const rF=w.rF||0;
-    const rM=w.rB!=null?w.rB:0;
-    wAlphaAcum+=rF-rM;
     weekLabels.push('Sem '+(i+1));
-    weekFondo.push(+rF.toFixed(4));
-    weekMex.push(+rM.toFixed(4));
-    weekAlphaAcum.push(+wAlphaAcum.toFixed(4));
+    weekFondo.push(+(w.rF||0).toFixed(4));
+    weekMex.push(+((w.rB!=null?w.rB:0)).toFixed(4));
   });
 
-  const BLUE_FONDO='rgba(12,74,110,.82)';   // navy azul — Portafolio
-  const PURPLE_MEX='rgba(109,40,217,.65)';  // morado — MEXTRAC09
+  // Línea verde diaria recortada al rango cubierto por las semanas conservadas
+  const rangeIni = weeks.length? weeks[0].ini : (dailyDates[0]||'');
+  const rangeFin = weeks.length? weeks[weeks.length-1].fin : (dailyDates[dailyDates.length-1]||'');
+  const lineLabels=[];const lineAlpha=[];
+  for(let i=0;i<dailyDates.length;i++){
+    if(dailyDates[i]>=rangeIni && dailyDates[i]<=rangeFin){
+      lineLabels.push(dailyLabels[i]);
+      lineAlpha.push(dailyAlphaAcum[i]);
+    }
+  }
 
-  const barChartCfg=(labels,fondoData,mexData,alphaData,labelFondo,labelMex,ctx)=>{
-    if(!ctx)return;
-    Chart.getChart(ctx)?.destroy();
-    const c=new Chart(ctx,{
-      type:'bar',
+  // ══ GRÁFICA SEMANAL: barras por semana + línea verde DIARIA ══
+  // Las barras viven en el eje 'x' (categorías semanales) y la línea verde en
+  // un eje 'xLine' oculto a escala diaria, ambos ocupando el mismo ancho.
+  const wctx=document.getElementById('rg-weekly-chart');
+  if(wctx){
+    Chart.getChart(wctx)?.destroy();
+    const wc=new Chart(wctx,{
       data:{
-        labels,
+        labels:weekLabels,
         datasets:[
-          {label:labelFondo,data:fondoData,backgroundColor:BLUE_FONDO,borderRadius:3,order:2},
-          {label:labelMex,data:mexData,backgroundColor:PURPLE_MEX,borderRadius:3,order:3},
-          {type:'line',label:'Alfa Acumulada',data:alphaData,borderColor:'#16A34A',backgroundColor:'rgba(22,163,74,.1)',borderWidth:2.2,pointRadius:3,pointBackgroundColor:'#16A34A',tension:0.15,yAxisID:'y1',order:1}
+          {type:'bar',label:'Portafolio (semanal)',data:weekFondo,backgroundColor:BLUE_FONDO,borderRadius:3,order:2,xAxisID:'x'},
+          {type:'bar',label:'MEXTRAC09 (semanal)',data:weekMex,backgroundColor:PURPLE_MEX,borderRadius:3,order:3,xAxisID:'x'},
+          {type:'line',label:'Alfa Acumulada (diaria)',data:lineAlpha,borderColor:GRN,backgroundColor:'rgba(22,163,74,.1)',borderWidth:2.2,pointRadius:1.6,pointBackgroundColor:GRN,tension:0.15,yAxisID:'y1',xAxisID:'xLine',order:1}
         ]
       },
       options:{
         responsive:true,maintainAspectRatio:false,
-        interaction:{mode:'index',intersect:false},
+        interaction:{mode:'nearest',intersect:false},
         plugins:{
           legend:{position:'bottom',labels:{color:'#475467',font:{size:11.5,family:'Geist'},boxWidth:14,boxHeight:8,padding:12}},
           tooltip:{
@@ -5458,18 +5459,49 @@ function initRendGrafs(){
         },
         scales:{
           x:{ticks:{color:'#98A2B3',font:{size:11},maxTicksLimit:25},grid:{color:'rgba(0,0,0,.04)'}},
+          xLine:{type:'category',labels:lineLabels,display:false,offset:false,grid:{display:false}},
           y:{ticks:{color:'#98A2B3',font:{size:11},callback:v=>(v>=0?'+':'')+v.toFixed(2)+'%'},grid:{color:'rgba(0,0,0,.04)'},
              title:{display:true,text:'Rendimiento (%)',color:'#98A2B3',font:{size:10}}},
-          y1:{position:'right',ticks:{color:'#16A34A',font:{size:11},callback:v=>(v>=0?'+':'')+v.toFixed(2)+' pp'},grid:{drawOnChartArea:false},
-              title:{display:true,text:'Alfa Acumulada (pp)',color:'#16A34A',font:{size:10}}}
+          y1:{position:'right',ticks:{color:GRN,font:{size:11},callback:v=>(v>=0?'+':'')+v.toFixed(2)+' pp'},grid:{drawOnChartArea:false},
+              title:{display:true,text:'Alfa Acumulada (pp)',color:GRN,font:{size:10}}}
         }
       }
     });
-    chartInst.push(c);
-  };
+    chartInst.push(wc);
+  }
 
-  barChartCfg(weekLabels,weekFondo,weekMex,weekAlphaAcum,'Portafolio (semanal)','MEXTRAC09 (semanal)',document.getElementById('rg-weekly-chart'));
-  barChartCfg(dailyLabels,dailyFondo,dailyMex,dailyAlphaAcum,'Portafolio (diario)','MEXTRAC09 (diario)',document.getElementById('rg-daily-chart'));
+  // ══ GRÁFICA DIARIA: barras por día, SIN línea de alfa ══
+  const dctx=document.getElementById('rg-daily-chart');
+  if(dctx){
+    Chart.getChart(dctx)?.destroy();
+    const dc=new Chart(dctx,{
+      type:'bar',
+      data:{
+        labels:dailyLabels,
+        datasets:[
+          {label:'Portafolio (diario)',data:dailyFondo,backgroundColor:BLUE_FONDO,borderRadius:3},
+          {label:'MEXTRAC09 (diario)',data:dailyMex,backgroundColor:PURPLE_MEX,borderRadius:3}
+        ]
+      },
+      options:{
+        responsive:true,maintainAspectRatio:false,
+        interaction:{mode:'index',intersect:false},
+        plugins:{
+          legend:{position:'bottom',labels:{color:'#475467',font:{size:11.5,family:'Geist'},boxWidth:14,boxHeight:8,padding:12}},
+          tooltip:{
+            backgroundColor:'#fff',titleColor:'#101828',bodyColor:'#475467',borderColor:'#E4E7EC',borderWidth:1,padding:10,
+            callbacks:{label:c=>`${c.dataset.label}: ${(c.parsed.y>=0?'+':'')}${c.parsed.y.toFixed(2)}%`}
+          }
+        },
+        scales:{
+          x:{ticks:{color:'#98A2B3',font:{size:11},maxTicksLimit:25},grid:{color:'rgba(0,0,0,.04)'}},
+          y:{ticks:{color:'#98A2B3',font:{size:11},callback:v=>(v>=0?'+':'')+v.toFixed(2)+'%'},grid:{color:'rgba(0,0,0,.04)'},
+             title:{display:true,text:'Rendimiento (%)',color:'#98A2B3',font:{size:10}}}
+        }
+      }
+    });
+    chartInst.push(dc);
+  }
 }
 
 go('dashboard');
