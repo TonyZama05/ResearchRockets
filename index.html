@@ -5589,6 +5589,13 @@ function renderPerformanceChart(){
   if(perfChart){try{perfChart.destroy();}catch(e){}perfChart=null;}
   if(!prices.length)return;
   const labels=dates.map(perfFmtFecha);
+  // Eje derecho en % = rendimiento del precio vs el primer cierre del periodo.
+  // Es el MISMO precio (una sola línea blanca), solo que el eje derecho lo lee como %.
+  const base0=prices[0];
+  const dmin=Math.min(...prices),dmax=Math.max(...prices);
+  const pad=(dmax-dmin)*0.12||dmax*0.02||1;
+  const yMin=dmin-pad,yMax=dmax+pad;
+  const toPct=v=>base0>0?(v/base0-1)*100:0;
   perfChart=new Chart(ctx,{
     type:'line',
     data:{labels,datasets:[{
@@ -5604,13 +5611,19 @@ function renderPerformanceChart(){
       plugins:{
         legend:{display:false},
         tooltip:{backgroundColor:'#fff',titleColor:'#101828',bodyColor:'#475467',borderColor:'#E4E7EC',borderWidth:1,padding:10,
-          callbacks:{label:c=>`Cierre: $${c.parsed.y.toFixed(2)}`}}
+          callbacks:{label:c=>{const v=c.parsed.y;const p=toPct(v);return `Cierre: $${v.toFixed(2)}  (${(p>=0?'+':'')+p.toFixed(2)}%)`;}}}
       },
       scales:{
         x:{ticks:{color:'rgba(255,255,255,.85)',font:{size:12,family:'Geist'},maxTicksLimit:14,maxRotation:0,autoSkip:true},
            grid:{color:'rgba(255,255,255,.06)'}},
-        y:{ticks:{color:'rgba(255,255,255,.85)',font:{size:12,family:'Geist'},callback:v=>v.toLocaleString('es-MX')},
-           grid:{color:'rgba(255,255,255,.08)'},grace:'12%'}
+        y:{position:'left',min:yMin,max:yMax,
+           ticks:{color:'rgba(255,255,255,.85)',font:{size:12,family:'Geist'},callback:v=>v.toLocaleString('es-MX')},
+           grid:{color:'rgba(255,255,255,.08)'},
+           title:{display:true,text:'Precio (MXN)',color:'rgba(255,255,255,.7)',font:{size:10}}},
+        y1:{position:'right',min:toPct(yMin),max:toPct(yMax),
+           ticks:{color:'rgba(255,255,255,.85)',font:{size:12,family:'Geist'},callback:v=>(v>=0?'+':'')+v.toFixed(1)+'%'},
+           grid:{drawOnChartArea:false},
+           title:{display:true,text:'Rendimiento (%)',color:'rgba(255,255,255,.7)',font:{size:10}}}
       }
     }
   });
