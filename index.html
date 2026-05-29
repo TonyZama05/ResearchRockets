@@ -145,6 +145,7 @@ canvas{display:block;width:100%!important}
     <div class="nav-section">An&aacute;lisis</div>
     <button class="ni" onclick="go('rendimiento')"><svg viewBox="0 0 16 16"><rect x="1" y="8" width="3" height="6"/><rect x="6" y="4" width="3" height="10"/><rect x="11" y="1" width="3" height="13"/></svg>Rendimiento</button>
     <button class="ni" onclick="go('rendgrafs')"><svg viewBox="0 0 16 16"><rect x="1" y="9" width="3" height="5"/><rect x="5.5" y="6" width="3" height="8"/><rect x="10" y="4" width="3" height="10"/><path d="M1 7l5-3 3 2 4-3" stroke-linecap="round"/></svg>Rend. Semanal &amp; Diario</button>
+    <button class="ni" onclick="go('performance')"><svg viewBox="0 0 16 16"><path d="M1 11l3.5-4 3 2.5L11 4l4 3.5" stroke-linecap="round" stroke-linejoin="round"/><circle cx="4.5" cy="7" r="1.4" fill="currentColor" stroke="none"/><circle cx="11" cy="4" r="1.4" fill="currentColor" stroke="none"/></svg>Performance</button>
     <button class="ni" onclick="go('resumensem')"><svg viewBox="0 0 16 16"><rect x="1.5" y="2" width="13" height="12" rx="1.5"/><path d="M1.5 6h13M5 2v12M9 2v12"/></svg>Resumen Semanal</button>
     <button class="ni" onclick="go('riesgo')"><svg viewBox="0 0 16 16"><path d="M8 2l1.5 4H14l-3.7 2.7 1.4 4.3L8 11l-3.7 2 1.4-4.3L2 6h4.5z"/></svg>Riesgo</button>
     <button class="ni" onclick="go('analytics')"><svg viewBox="0 0 16 16"><circle cx="8" cy="8" r="6"/><path d="M8 5v3l2 2"/></svg>Analytics</button>
@@ -917,11 +918,11 @@ function sortTable(tid,col,type='str'){
 function th(label,tid,col,type='str'){return`<th onclick="sortTable('${tid}',${col},'${type}')">${label}</th>`;}
 
 // ROUTING - No universo page
-const PAGES=['dashboard','ordenes','posicion','rendimiento','rendgrafs','resumensem','riesgo','analytics','atribucion','stocktiming','bestworst','vsbenchmarks','snapshot','infocoef','flujos','estadisticos','config'];
+const PAGES=['dashboard','ordenes','posicion','rendimiento','rendgrafs','performance','resumensem','riesgo','analytics','atribucion','stocktiming','bestworst','vsbenchmarks','snapshot','infocoef','flujos','estadisticos','config'];
 let chartInst=[];
 function go(page){
   document.querySelectorAll('.ni').forEach((el,i)=>el.classList.toggle('active',i===PAGES.indexOf(page)));
-  const titles={dashboard:'Dashboard',ordenes:'Órdenes',posicion:'Posición actual',rendimiento:'Rendimiento',rendgrafs:'Rendimiento Semanal & Diario',resumensem:'Resumen Semanal',riesgo:'Riesgo & Prospectivos',analytics:'Analytics',atribucion:'Performance Attribution',stocktiming:'Stock Picking vs Market Timing',bestworst:'Best Trade vs Worst Trade',vsbenchmarks:'Portafolio vs Benchmarks',snapshot:'Snapshot Diario',infocoef:'Information Coefficient & Fundamental Law',flujos:'Flujos & Ajustes de mercado',estadisticos:'Estadísticos & Medidas',config:'Configuración'};
+  const titles={dashboard:'Dashboard',ordenes:'Órdenes',posicion:'Posición actual',rendimiento:'Rendimiento',rendgrafs:'Rendimiento Semanal & Diario',performance:'Performance por Acción',resumensem:'Resumen Semanal',riesgo:'Riesgo & Prospectivos',analytics:'Analytics',atribucion:'Performance Attribution',stocktiming:'Stock Picking vs Market Timing',bestworst:'Best Trade vs Worst Trade',vsbenchmarks:'Portafolio vs Benchmarks',snapshot:'Snapshot Diario',infocoef:'Information Coefficient & Fundamental Law',flujos:'Flujos & Ajustes de mercado',estadisticos:'Estadísticos & Medidas',config:'Configuración'};
   document.getElementById('tb-title').textContent=titles[page]||page;
   document.getElementById('tb-date').textContent=new Date().toLocaleDateString('es-MX',{weekday:'long',year:'numeric',month:'long',day:'numeric'});
   // Sidebar: siempre muestra el capital asignado (V0 fijo)
@@ -933,7 +934,7 @@ function go(page){
     if(_sSub)_sSub.textContent='';
   }
   chartInst.forEach(c=>{try{c.destroy();}catch(e){}});chartInst=[];
-  const renders={dashboard:pgDash,ordenes:pgÓrdenes,posicion:pgPosicion,rendimiento:pgRendimiento,rendgrafs:pgRendGrafs,resumensem:pgResumenSemanal,riesgo:pgRiesgo,analytics:pgAnalytics,atribucion:pgAtribucion,stocktiming:pgStockTiming,bestworst:pgBestWorst,vsbenchmarks:pgVsBenchmarks,snapshot:pgSnapshot,infocoef:pgInfoCoef,flujos:pgFlujos,estadisticos:pgEstadísticos,config:pgConfig};
+  const renders={dashboard:pgDash,ordenes:pgÓrdenes,posicion:pgPosicion,rendimiento:pgRendimiento,rendgrafs:pgRendGrafs,performance:pgPerformance,resumensem:pgResumenSemanal,riesgo:pgRiesgo,analytics:pgAnalytics,atribucion:pgAtribucion,stocktiming:pgStockTiming,bestworst:pgBestWorst,vsbenchmarks:pgVsBenchmarks,snapshot:pgSnapshot,infocoef:pgInfoCoef,flujos:pgFlujos,estadisticos:pgEstadísticos,config:pgConfig};
   try{
     document.getElementById('content').innerHTML=(renders[page]||pgDash)();
   }catch(err){
@@ -949,6 +950,7 @@ function go(page){
   if(page==='atribucion')setTimeout(initAtribucionCharts,50);
   if(page==='stocktiming')setTimeout(initStockTiming,50);
   if(page==='rendgrafs')setTimeout(initRendGrafs,50);
+  if(page==='performance')setTimeout(initPerformance,50);
   if(page==='snapshot')setTimeout(initSnapshot,50);
   if(page==='infocoef')setTimeout(initInfoCoef,50);
   if(page==='posicion')setTimeout(initPosicion,50);
@@ -5503,6 +5505,119 @@ function initRendGrafs(){
     chartInst.push(dc);
   }
 }
+
+// ════════ PERFORMANCE — precio de cierre por acción ════════
+let perfChart=null;let perfSel=null;
+function perfTickers(){
+  const set=new Set();
+  for(const t in PRICE_DB)if(Object.keys(PRICE_DB[t]||{}).length)set.add(t);
+  if(S.preciosOverlay)for(const t in S.preciosOverlay)if(Object.keys(S.preciosOverlay[t]||{}).length)set.add(t);
+  return[...set].sort();
+}
+// Serie de cierres (fecha→precio) de un ticker, ya normalizada y ordenada
+function perfSeries(t){
+  const overlay=(S.preciosOverlay&&S.preciosOverlay[t])?S.preciosOverlay[t]:{};
+  const base=PRICE_DB[t]||{};
+  const db={};
+  for(const[rd,p]of Object.entries(base)){const n=parseDate(rd);if(n&&p!=null)db[n]=+p;}
+  for(const[rd,p]of Object.entries(overlay)){const n=parseDate(rd);if(n&&p!=null)db[n]=+p;}
+  return db;
+}
+const _MESES=['ene','feb','mar','abr','may','jun','jul','ago','sep','oct','nov','dic'];
+function perfFmtFecha(d){const p=(d||'').split('-');if(p.length<3)return d;return (+p[2])+' '+(_MESES[(+p[1])-1]||p[1]);}
+
+function pgPerformance(){
+  const tickers=perfTickers();
+  if(!tickers.length)return`<div class="card"><div class="empty" style="padding:40px;text-align:center;color:var(--txt3)">Aún no hay precios cargados. Sincroniza datos para ver el histórico de cierres.</div></div>`;
+  // Ticker por defecto: primera posición en cartera (no ETF), si no, el primero
+  const pos=buildPos();
+  const held=Object.keys(pos).filter(t=>t!=='MEXTRAC09');
+  const def=(perfSel&&tickers.includes(perfSel))?perfSel:((held[0]&&tickers.includes(held[0]))?held[0]:tickers[0]);
+  // Ventana por defecto = periodo de gestión (desde fechaInicio hasta el último cierre disponible)
+  const ini=S.fechaInicio||'2026-04-13';
+  const allD=getAllDates().filter(d=>d>=ini);
+  const desde=allD.length?allD[0]:ini;
+  const hasta=allD.length?allD[allD.length-1]:desde;
+  const opts=tickers.map(t=>{const n=UNIVERSO.find(e=>e.t===t)?.n||t;return`<option value="${t}" ${t===def?'selected':''}>${t} — ${n}</option>`;}).join('');
+  return`
+  <div class="card">
+    <div class="sec-h"><div class="sec-h-bar"></div><div class="sec-h-text">Histórico de precio de cierre</div><span class="sec-h-sub">Selecciona cualquier emisora con precios cargados · cierre de cada día durante la gestión</span></div>
+    <div style="display:flex;gap:14px;flex-wrap:wrap;align-items:flex-end;margin-bottom:16px">
+      <div class="fg" style="flex:2;min-width:260px"><label class="fl">Acción</label>
+        <select id="perf-ticker" onchange="renderPerformanceChart()">${opts}</select></div>
+      <div class="fg" style="min-width:130px"><label class="fl">Desde</label><input type="date" id="perf-desde" value="${desde}" onchange="renderPerformanceChart()"></div>
+      <div class="fg" style="min-width:130px"><label class="fl">Hasta</label><input type="date" id="perf-hasta" value="${hasta}" onchange="renderPerformanceChart()"></div>
+    </div>
+    <div id="perf-stats" class="sg4" style="margin-bottom:16px"></div>
+    <div style="background:#0B2447;border-radius:var(--r);padding:20px 16px 14px">
+      <div id="perf-title" style="color:#fff;font-size:13px;font-weight:600;letter-spacing:.01em;margin:0 4px 10px"></div>
+      <div style="position:relative;height:360px"><canvas id="perf-price-chart" style="width:100%!important;height:360px!important"></canvas></div>
+    </div>
+  </div>`;
+}
+
+function renderPerformanceChart(){
+  const sel=document.getElementById('perf-ticker');if(!sel)return;
+  const t=sel.value;perfSel=t;
+  const desde=document.getElementById('perf-desde')?.value||'';
+  const hasta=document.getElementById('perf-hasta')?.value||'';
+  const db=perfSeries(t);
+  const dates=Object.keys(db).sort().filter(d=>(!desde||d>=desde)&&(!hasta||d<=hasta));
+  const prices=dates.map(d=>db[d]);
+  const name=UNIVERSO.find(e=>e.t===t)?.n||t;
+  const titleEl=document.getElementById('perf-title');
+  if(titleEl)titleEl.textContent=t+' · '+name;
+
+  // Tarjetas resumen del periodo
+  const statsEl=document.getElementById('perf-stats');
+  if(statsEl){
+    if(prices.length>=2){
+      const first=prices[0],last=prices[prices.length-1];
+      const ret=first>0?(last-first)/first*100:0;
+      const mx=Math.max(...prices),mn=Math.min(...prices);
+      statsEl.innerHTML=
+        stCard('$'+f2(last,2),'Último cierre',perfFmtFecha(dates[dates.length-1]),'stat-acc')+
+        stCard((ret>=0?'+':'')+ret.toFixed(2)+'%','Rendimiento periodo',perfFmtFecha(dates[0])+' → '+perfFmtFecha(dates[dates.length-1]),ret>=0?'stat-grn':'stat-red')+
+        stCard('$'+f2(mx,2),'Máximo','En el periodo','stat-grn')+
+        stCard('$'+f2(mn,2),'Mínimo','En el periodo','stat-red');
+    }else{
+      statsEl.innerHTML=`<div class="stat" style="grid-column:1/-1"><div class="stat-l">Sin datos</div><div class="stat-v" style="font-size:15px">No hay cierres de ${t} en el rango seleccionado</div></div>`;
+    }
+  }
+
+  const ctx=document.getElementById('perf-price-chart');if(!ctx)return;
+  if(perfChart){try{perfChart.destroy();}catch(e){}perfChart=null;}
+  if(!prices.length)return;
+  const labels=dates.map(perfFmtFecha);
+  perfChart=new Chart(ctx,{
+    type:'line',
+    data:{labels,datasets:[{
+      label:t+' — cierre',data:prices,
+      borderColor:'#FFFFFF',backgroundColor:'rgba(255,255,255,.06)',
+      borderWidth:2.5,pointRadius:4,pointHoverRadius:6,
+      pointBackgroundColor:'#FFFFFF',pointBorderColor:'#FFFFFF',
+      tension:0,fill:false
+    }]},
+    options:{
+      responsive:true,maintainAspectRatio:false,
+      interaction:{mode:'index',intersect:false},
+      plugins:{
+        legend:{display:false},
+        tooltip:{backgroundColor:'#fff',titleColor:'#101828',bodyColor:'#475467',borderColor:'#E4E7EC',borderWidth:1,padding:10,
+          callbacks:{label:c=>`Cierre: $${c.parsed.y.toFixed(2)}`}}
+      },
+      scales:{
+        x:{ticks:{color:'rgba(255,255,255,.85)',font:{size:12,family:'Geist'},maxTicksLimit:14,maxRotation:0,autoSkip:true},
+           grid:{color:'rgba(255,255,255,.06)'}},
+        y:{ticks:{color:'rgba(255,255,255,.85)',font:{size:12,family:'Geist'},callback:v=>v.toLocaleString('es-MX')},
+           grid:{color:'rgba(255,255,255,.08)'},grace:'12%'}
+      }
+    }
+  });
+  chartInst.push(perfChart);
+}
+
+function initPerformance(){renderPerformanceChart();}
 
 go('dashboard');
 </script>
