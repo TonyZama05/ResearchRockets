@@ -4273,12 +4273,9 @@ function pgStockTiming(){
 
   <div class="card">
     <div class="sec-h"><div class="sec-h-bar"></div><div class="sec-h-text">Comparativa de índices y nivel de desinversión</div><span class="sec-h-sub">Barras grises = % efectivo (cash) al cierre de cada día</span></div>
-    <div style="position:relative;height:340px"><canvas id="st-chart" style="width:100%!important;height:340px!important"></canvas></div>
-  </div>
-
-  <div class="card">
-    <div class="sec-h"><div class="sec-h-bar" style="background:var(--grn)"></div><div class="sec-h-text">Composición del portafolio &mdash; sleeves Activo / Pasivo / Efectivo</div><span class="sec-h-sub">Área apilada al 100% &middot; clasificación por ticker cambia el 11-may-26 (rebalanceo). OMAB: Pasivo → Activo &middot; ASUR, KOF, GMEXICO salen; LACOMER, PEOLES, GAP, BOLSAA, AC entran</span></div>
-    <div style="position:relative;height:340px"><canvas id="st-area-chart" style="width:100%!important;height:340px!important"></canvas></div>
+    <div style="position:relative;height:300px"><canvas id="st-chart" style="width:100%!important;height:300px!important"></canvas></div>
+    <div class="sec-h" style="margin-top:22px"><div class="sec-h-bar" style="background:var(--grn)"></div><div class="sec-h-text">Composición del portafolio &mdash; sleeves Activo / Pasivo / Efectivo</div><span class="sec-h-sub">Área apilada al 100% &middot; mismo eje de días que la gráfica superior &middot; clasificación por ticker cambia el 11-may-26 (rebalanceo). OMAB: Pasivo → Activo &middot; ASUR, KOF, GMEXICO salen; LACOMER, PEOLES, GAP, BOLSAA, AC entran</span></div>
+    <div style="position:relative;height:300px"><canvas id="st-area-chart" style="width:100%!important;height:300px!important"></canvas></div>
     <div id="st-area-unclassified" style="margin-top:10px"></div>
   </div>
 
@@ -4369,9 +4366,9 @@ function initStockTiming(){
           callbacks:{label:c=>c.dataset.yAxisID==='y1'?`${c.dataset.label}: ${c.parsed.y.toFixed(2)}%`:`${c.dataset.label}: ${c.parsed.y.toFixed(4)} (${(c.parsed.y-100>=0?'+':'')+(c.parsed.y-100).toFixed(2)}%)`}}
       },
       scales:{
-        x:{ticks:{color:'#98A2B3',font:{size:11},maxTicksLimit:10},grid:{color:'rgba(0,0,0,.04)'}},
-        y:{ticks:{color:'#98A2B3',font:{size:11},callback:v=>v.toFixed(2)},grid:{color:'rgba(0,0,0,.04)'},grace:'5%',title:{display:true,text:'Índice base 100',color:'#98A2B3',font:{size:10}}},
-        y1:{position:'right',min:0,suggestedMax:Math.max(10,Math.ceil(Math.max(...d.rows.map(r=>r.pctCashCierre*100))*1.25)),ticks:{color:'#98A2B3',font:{size:11},callback:v=>v.toFixed(0)+'%'},grid:{drawOnChartArea:false},title:{display:true,text:'Nivel desinv (%)',color:'#98A2B3',font:{size:10}}}
+        x:{ticks:{display:false,maxTicksLimit:10},grid:{color:'rgba(0,0,0,.04)'}},
+        y:{afterFit:s=>{s.width=58},ticks:{color:'#98A2B3',font:{size:11},callback:v=>v.toFixed(2)},grid:{color:'rgba(0,0,0,.04)'},grace:'5%',title:{display:true,text:'Índice base 100',color:'#98A2B3',font:{size:10}}},
+        y1:{afterFit:s=>{s.width=52},position:'right',min:0,suggestedMax:Math.max(10,Math.ceil(Math.max(...d.rows.map(r=>r.pctCashCierre*100))*1.25)),ticks:{color:'#98A2B3',font:{size:11},callback:v=>v.toFixed(0)+'%'},grid:{drawOnChartArea:false},title:{display:true,text:'Nivel desinv (%)',color:'#98A2B3',font:{size:10}}}
       }
     }
   });
@@ -4414,25 +4411,27 @@ function initStockTiming(){
       perDate.push({date:h.date,activoPct,pasivoPct,sinClasifPct,cashPct});
     }
     if(perDate.length){
-      const labelsX=perDate.map(d=>d.date);
+      const pdMap={}; perDate.forEach(p=>{pdMap[p.date]=p;});
+      const labelsX=labels.slice(); // mismas fechas y orden que la gráfica superior
+      const col=(k)=>labelsX.map(dt=>pdMap[dt]?+pdMap[dt][k].toFixed(3):null);
       const haySinClasif=perDate.some(d=>d.sinClasifPct>0.01);
       // Orden del stack (abajo→arriba): Activo · Pasivo · Sin clasificar · Cash
       const datasets=[
-        {label:'Sleeve Activo',data:perDate.map(d=>+d.activoPct.toFixed(3)),
+        {label:'Sleeve Activo',data:col('activoPct'),
          borderColor:'#0C4A6E',backgroundColor:'rgba(12,74,110,.82)',
-         borderWidth:1,pointRadius:0,tension:0,fill:'origin',stack:'a'},
-        {label:'Sleeve Pasivo',data:perDate.map(d=>+d.pasivoPct.toFixed(3)),
+         borderWidth:1,pointRadius:0,tension:0,fill:'origin',stack:'a',spanGaps:true},
+        {label:'Sleeve Pasivo',data:col('pasivoPct'),
          borderColor:'#0EA5E9',backgroundColor:'rgba(14,165,233,.78)',
-         borderWidth:1,pointRadius:0,tension:0,fill:'-1',stack:'a'}
+         borderWidth:1,pointRadius:0,tension:0,fill:'-1',stack:'a',spanGaps:true}
       ];
       if(haySinClasif){
-        datasets.push({label:'Sin clasificar',data:perDate.map(d=>+d.sinClasifPct.toFixed(3)),
+        datasets.push({label:'Sin clasificar',data:col('sinClasifPct'),
          borderColor:'#D97706',backgroundColor:'rgba(217,119,6,.55)',
-         borderWidth:1,pointRadius:0,tension:0,fill:'-1',stack:'a'});
+         borderWidth:1,pointRadius:0,tension:0,fill:'-1',stack:'a',spanGaps:true});
       }
-      datasets.push({label:'Efectivo',data:perDate.map(d=>+d.cashPct.toFixed(3)),
+      datasets.push({label:'Efectivo',data:col('cashPct'),
          borderColor:'#475467',backgroundColor:'rgba(71,84,103,.85)',
-         borderWidth:1,pointRadius:0,tension:0,fill:'-1',stack:'a'});
+         borderWidth:1,pointRadius:0,tension:0,fill:'-1',stack:'a',spanGaps:true});
       const cA=new Chart(ctxA,{
         type:'line',
         data:{labels:labelsX,datasets},
@@ -4447,11 +4446,12 @@ function initStockTiming(){
           },
           scales:{
             x:{ticks:{color:'#98A2B3',font:{size:11},maxTicksLimit:10},grid:{color:'rgba(0,0,0,.04)'}},
-            y:{stacked:true,min:0,max:100,
+            y:{afterFit:s=>{s.width=58},stacked:true,min:0,max:100,
               ticks:{color:'#98A2B3',font:{size:11},callback:v=>v.toFixed(0)+'%',stepSize:20},
               grid:{color:'rgba(0,0,0,.04)'},
               title:{display:true,text:'% del portafolio',color:'#98A2B3',font:{size:10}}
-            }
+            },
+            y1:{afterFit:s=>{s.width=52},position:'right',display:true,grid:{drawOnChartArea:false,drawTicks:false},ticks:{display:false},border:{display:false}}
           }
         }
       });
@@ -5244,7 +5244,7 @@ function pgVsBenchmarks(){
   </div>
 
   <div class="card">
-    <div class="sec-h"><div class="sec-h-bar" style="background:var(--accent)"></div><div class="sec-h-text">Portafolio vs Benchmarks — base 100</div><span class="sec-h-sub">Periodo: ${b.date} → ${aligned[last].date} · ${aligned.length} días · Research Rockets (navy) · MEXTRAC09 (naranja) · NAFTRAC (morado) · ESGMEX (verde olivo)</span></div>
+    <div class="sec-h"><div class="sec-h-bar" style="background:var(--accent)"></div><div class="sec-h-text">Portafolio vs Benchmarks — rendimiento del periodo</div><span class="sec-h-sub">Periodo: ${b.date} → ${aligned[last].date} · ${aligned.length} días · barras ordenadas de mayor a menor · Alpha Horizon = contrincante</span></div>
     <div style="position:relative;height:400px"><canvas id="vsbench-chart" style="width:100%!important;height:400px!important"></canvas></div>
   </div>
 
@@ -5302,27 +5302,49 @@ function initVsBenchmarks(){
   const ctx1 = document.getElementById('vsbench-chart');
   if(ctx1){
     Chart.getChart(ctx1)?.destroy();
+    const finRet=(arr)=>{for(let i=arr.length-1;i>=0;i--){if(arr[i]!=null)return +(arr[i]-100).toFixed(2);}return null;};
+    const benchRows=[
+      {name:'Research Rockets', ret:finRet(fondoIdx), color:'#0C4A6E'},
+      {name:'MEXTRAC09',        ret:finRet(mexIdx),   color:'#B54708'},
+      {name:'NAFTRAC',          ret:finRet(nafIdx),   color:'#7C3AED'},
+      {name:'ESGMEX',           ret:finRet(esgIdx),   color:'#65A30D'},
+      {name:'Alpha Horizon',    ret:-1.77,            color:'#DC2626'}
+    ].filter(r=>r.ret!=null).sort((a,b)=>b.ret-a.ret);
+    const barValLabels={
+      id:'barValLabels',
+      afterDatasetsDraw(chart){
+        const meta=chart.getDatasetMeta(0);const ds=chart.data.datasets[0];const {ctx}=chart;
+        ctx.save();ctx.font='700 12px Geist, sans-serif';ctx.textAlign='center';
+        meta.data.forEach((bar,i)=>{
+          const v=ds.data[i];if(v==null)return;
+          const txt=(v>=0?'+':'')+Number(v).toFixed(2)+'%';
+          ctx.fillStyle=benchRows[i].color;
+          ctx.textBaseline=v>=0?'bottom':'top';
+          ctx.fillText(txt,bar.x,bar.y+(v>=0?-6:6));
+        });
+        ctx.restore();
+      }
+    };
     const c1 = new Chart(ctx1,{
-      type:'line',
-      data:{labels,datasets:[
-        {label:'Research Rockets',data:fondoIdx,borderColor:'#0C4A6E',backgroundColor:'rgba(12,74,110,.08)',borderWidth:2.8,pointRadius:2.8,pointBackgroundColor:'#0C4A6E',tension:0,fill:false},
-        {label:'MEXTRAC09 (benchmark)',data:mexIdx,borderColor:'#B54708',backgroundColor:'rgba(181,71,8,.08)',borderWidth:2,pointRadius:2.2,pointBackgroundColor:'#B54708',tension:0,fill:false},
-        {label:'NAFTRAC',data:nafIdx,borderColor:'#7C3AED',backgroundColor:'rgba(124,58,237,.08)',borderWidth:1.7,pointRadius:2,pointBackgroundColor:'#7C3AED',tension:0,fill:false,borderDash:[4,3]},
-        {label:'ESGMEX',data:esgIdx,borderColor:'#65A30D',backgroundColor:'rgba(101,163,13,.08)',borderWidth:1.7,pointRadius:2,pointBackgroundColor:'#65A30D',tension:0,fill:false,borderDash:[3,3],spanGaps:true}
-      ]},
+      type:'bar',
+      data:{labels:benchRows.map(r=>r.name),datasets:[{
+        label:'Rendimiento del periodo (%)',
+        data:benchRows.map(r=>r.ret),
+        backgroundColor:benchRows.map(r=>r.color),
+        borderRadius:5,borderWidth:0,barPercentage:.68,categoryPercentage:.8
+      }]},
+      plugins:[barValLabels],
       options:{
         responsive:true,maintainAspectRatio:false,
-        interaction:{mode:'index',intersect:false},
         plugins:{
-          legend:{position:'bottom',labels:{color:'#475467',font:{size:11.5,family:'Geist'},boxWidth:14,boxHeight:8,padding:10}},
+          legend:{display:false},
           tooltip:{backgroundColor:'#fff',titleColor:'#101828',bodyColor:'#475467',borderColor:'#E4E7EC',borderWidth:1,padding:10,
-            itemSort:(a,b)=>b.parsed.y-a.parsed.y,
-            callbacks:{label:c=>`${c.dataset.label}: ${c.parsed.y.toFixed(2)} (${(c.parsed.y-100>=0?'+':'')}${(c.parsed.y-100).toFixed(2)}%)`}}
+            callbacks:{label:c=>`${c.label}: ${(c.parsed.y>=0?'+':'')}${c.parsed.y.toFixed(2)}%`}}
         },
         scales:{
-          x:{ticks:{color:'#98A2B3',font:{size:11},maxTicksLimit:12},grid:{color:'rgba(0,0,0,.04)'}},
-          y:{ticks:{color:'#98A2B3',font:{size:11},callback:v=>v.toFixed(0)},grid:{color:'rgba(0,0,0,.04)'},
-             title:{display:true,text:'Base 100',color:'#98A2B3',font:{size:10}}}
+          x:{ticks:{color:'#475467',font:{size:12,weight:'600'}},grid:{display:false}},
+          y:{grace:'15%',ticks:{color:'#98A2B3',font:{size:11},callback:v=>(v>=0?'+':'')+v.toFixed(1)+'%'},grid:{color:'rgba(0,0,0,.04)'},
+             title:{display:true,text:'Rendimiento del periodo (%)',color:'#98A2B3',font:{size:10}}}
         }
       }
     });
