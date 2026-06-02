@@ -4272,10 +4272,9 @@ function pgStockTiming(){
   </div>
 
   <div class="card">
-    <div class="sec-h"><div class="sec-h-bar"></div><div class="sec-h-text">Comparativa de índices y nivel de desinversión</div><span class="sec-h-sub">Barras grises = % efectivo (cash) al cierre de cada día</span></div>
+    <div class="sec-h"><div class="sec-h-bar"></div><div class="sec-h-text">Comparativa de índices y nivel de desinversión</div><span class="sec-h-sub">Barras grises = % efectivo (cash) al cierre · abajo: composición Activo / Pasivo / Efectivo (mismo eje de días)</span></div>
     <div style="position:relative;height:300px"><canvas id="st-chart" style="width:100%!important;height:300px!important"></canvas></div>
-    <div class="sec-h" style="margin-top:22px"><div class="sec-h-bar" style="background:var(--grn)"></div><div class="sec-h-text">Composición del portafolio &mdash; sleeves Activo / Pasivo / Efectivo</div><span class="sec-h-sub">Área apilada al 100% &middot; mismo eje de días que la gráfica superior &middot; clasificación por ticker cambia el 11-may-26 (rebalanceo). OMAB: Pasivo → Activo &middot; ASUR, KOF, GMEXICO salen; LACOMER, PEOLES, GAP, BOLSAA, AC entran</span></div>
-    <div style="position:relative;height:300px"><canvas id="st-area-chart" style="width:100%!important;height:300px!important"></canvas></div>
+    <div style="position:relative;height:300px;margin-top:-10px"><canvas id="st-area-chart" style="width:100%!important;height:300px!important"></canvas></div>
     <div id="st-area-unclassified" style="margin-top:10px"></div>
   </div>
 
@@ -5308,7 +5307,7 @@ function initVsBenchmarks(){
       {name:'MEXTRAC09',        ret:finRet(mexIdx),   color:'#B54708'},
       {name:'NAFTRAC',          ret:finRet(nafIdx),   color:'#7C3AED'},
       {name:'ESGMEX',           ret:finRet(esgIdx),   color:'#65A30D'},
-      {name:'Alpha Horizon',    ret:-1.77,            color:'#DC2626'}
+      {name:'Alpha Horizon',    ret:-1.73,            color:'#DC2626'}
     ].filter(r=>r.ret!=null).sort((a,b)=>b.ret-a.ret);
     const barValLabels={
       id:'barValLabels',
